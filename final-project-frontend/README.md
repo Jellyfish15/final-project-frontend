@@ -11,6 +11,5 @@ This app is called Nudl pronounced like "noodle". It is a Tiktok like app but sp
 - CSS
 - Responsive Design
 
-## Expanding the ESLint configuration
 
 
