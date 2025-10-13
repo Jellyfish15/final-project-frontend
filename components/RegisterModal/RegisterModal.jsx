@@ -11,13 +11,22 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onSwitchToLogin }) => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
+  const resetForm = () => {
+    setFormData({
+      username: "",
+      password: "",
+      confirmPassword: "",
+      email: "",
+    });
+    setErrors({});
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
-
 
     if (errors[name]) {
       setErrors((prev) => ({
@@ -58,45 +67,26 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onSwitchToLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validateForm()) return;
 
     setIsLoading(true);
-    try {
-      
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      if (onRegister) {
-        onRegister({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-        });
-      }
-
-     
-      setFormData({
-        username: "",
-        password: "",
-        confirmPassword: "",
-        email: "",
+    if (onRegister) {
+      onRegister({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
       });
-      onClose();
-    } catch (error) {
-      setErrors({ submit: "Registration failed. Please try again." });
-    } finally {
-      setIsLoading(false);
     }
+
+    resetForm();
+    onClose();
+    setIsLoading(false);
   };
 
   const handleClose = () => {
-    setFormData({
-      username: "",
-      password: "",
-      confirmPassword: "",
-      email: "",
-    });
-    setErrors({});
+    resetForm();
     onClose();
   };
 

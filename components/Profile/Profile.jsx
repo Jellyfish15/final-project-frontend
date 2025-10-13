@@ -66,19 +66,6 @@ const Profile = () => {
 
           <div className="profile__videos">
             <div className="profile__video-grid">
-              <div
-                className="profile__upload-button"
-                onClick={handleUploadVideo}
-              >
-                <div className="profile__upload-content">
-                  <div className="profile__upload-icon">📹</div>
-                  <div className="profile__upload-text">Upload Video</div>
-                  <div className="profile__upload-subtext">
-                    Share your knowledge
-                  </div>
-                </div>
-              </div>
-
               <div className="profile__no-videos">
                 <div className="profile__no-videos-content">
                   <div className="profile__no-videos-icon">🎥</div>

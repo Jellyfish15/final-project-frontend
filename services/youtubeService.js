@@ -48,7 +48,7 @@ export const getEducationalVideoFeed = async (count = 10) => {
 
     const filteredVideos = detailsData.items.filter((video) => {
       const duration = parseDuration(video.contentDetails.duration);
-      return duration <= 90;
+      return duration <= 300; // Increased to 5 minutes (300 seconds)
     });
 
     const formattedVideos = filteredVideos.map(formatVideoForApp);
@@ -67,7 +67,7 @@ export const getEducationalVideoFeed = async (count = 10) => {
         const additionalFilteredVideos = additionalDetailsData.items.filter(
           (video) => {
             const duration = parseDuration(video.contentDetails.duration);
-            return duration <= 90;
+            return duration <= 300; // Increased to 5 minutes (300 seconds)
           }
         );
 
