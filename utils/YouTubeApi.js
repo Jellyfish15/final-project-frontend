@@ -3,6 +3,15 @@ const BASE_URL =
   import.meta.env.VITE_YOUTUBE_API_BASE_URL ||
   "https://www.googleapis.com/youtube/v3";
 
+// Temporary debugging - remove after fixing
+console.log("🔍 DEBUG - API Key Status:", {
+  hasApiKey: !!API_KEY,
+  apiKeyLength: API_KEY?.length || 0,
+  firstChars: API_KEY?.substring(0, 10) || 'undefined',
+  baseUrl: BASE_URL,
+  mode: import.meta.env.MODE
+});
+
 export const searchEducationalVideos = async (
   maxResults = 10,
   pageToken = ""
@@ -28,6 +37,12 @@ export const searchEducationalVideos = async (
   const randomQuery =
     educationalQueries[Math.floor(Math.random() * educationalQueries.length)];
 
+  console.log("🎯 DEBUG - Making API call:", {
+    query: randomQuery,
+    hasKey: !!API_KEY,
+    url: `${BASE_URL}/search`
+  });
+
   const searchParams = new URLSearchParams({
     part: "snippet",
     q: randomQuery,
@@ -47,12 +62,29 @@ export const searchEducationalVideos = async (
   }
 
   const searchResponse = await fetch(`${BASE_URL}/search?${searchParams}`);
+  
+  console.log("📡 DEBUG - API Response:", {
+    status: searchResponse.status,
+    statusText: searchResponse.statusText,
+    ok: searchResponse.ok
+  });
 
   if (!searchResponse.ok) {
-    throw new Error(`YouTube API search failed: ${searchResponse.status}`);
+    const errorText = await searchResponse.text();
+    console.error("❌ DEBUG - API Error Details:", {
+      status: searchResponse.status,
+      statusText: searchResponse.statusText,
+      errorBody: errorText,
+      requestUrl: `${BASE_URL}/search?${searchParams}`
+    });
+    throw new Error(`YouTube API search failed: ${searchResponse.status} - ${errorText}`);
   }
 
   const searchData = await searchResponse.json();
+  console.log("✅ DEBUG - API Success:", {
+    itemCount: searchData.items?.length || 0,
+    hasItems: !!(searchData.items && searchData.items.length > 0)
+  });
   return searchData;
 };
 
