@@ -42,8 +42,12 @@ export const formatVideoForApp = (youtubeVideo) => {
 export const getEducationalVideoFeed = async (count = 10) => {
   try {
     const searchData = await searchEducationalVideos(count);
-    const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
 
+    if (!searchData.items || searchData.items.length === 0) {
+      return [];
+    }
+
+    const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
     const detailsData = await getVideoDetails(videoIds);
 
     const filteredVideos = detailsData.items.filter((video) => {
