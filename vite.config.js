@@ -7,4 +7,9 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  base: "/final-project-frontend/",
+  build: {
+    outDir: "dist",
+    assetsDir: "assets",
+  },
 });
