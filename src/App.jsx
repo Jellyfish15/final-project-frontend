@@ -5,15 +5,15 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import Profile from "../components/Profile/Profile";
-import Search from "../components/Search/Search";
-import Video from "../components/Video/Video";
-import Header from "../components/Header/Header";
-import Footer from "../components/Footer/Footer";
-import LoginModal from "../components/LoginModal/LoginModal";
-import RegisterModal from "../components/RegisterModal/RegisterModal";
-import { AuthProvider } from "../components/AuthContext/AuthContext";
-import { VideoProvider } from "../components/VideoContext/VideoContext";
+import Profile from "./components/Profile/Profile";
+import Search from "./components/Search/Search";
+import Video from "./components/Video/Video";
+import Header from "./components/Header/Header";
+import Footer from "./components/Footer/Footer";
+import LoginModal from "./components/LoginModal/LoginModal";
+import RegisterModal from "./components/RegisterModal/RegisterModal";
+import { AuthProvider } from "./components/AuthContext/AuthContext";
+import { VideoProvider } from "./components/VideoContext/VideoContext";
 import "./App.css";
 
 function App() {

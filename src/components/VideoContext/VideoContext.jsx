@@ -5,7 +5,7 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import { getEducationalVideoFeed } from "../../services/youtubeService.js";
+import { getEducationalVideoFeed } from "../../../services/youtubeService.js";
 
 const VideoContext = createContext();
 
