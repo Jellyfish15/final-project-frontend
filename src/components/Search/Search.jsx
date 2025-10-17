@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useVideo } from "../VideoContext/VideoContext";
-import SearchIcon from "../Assets/search.svg";
+import { useVideo } from "../../contexts/VideoContext";
+import SearchIcon from "../../images/search.svg";
 import "./Search.css";
 
 const Search = () => {

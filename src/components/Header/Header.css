@@ -95,7 +95,8 @@
 }
 
 .header__logo-text {
-  font-family: Roboto, sans-serif;
+  font-family: var(--font-primary);
+  font-weight: 600;
 }
 
 .header__center {

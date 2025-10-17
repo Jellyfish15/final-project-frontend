@@ -1,12 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 
 import "./Profile.css";
 
 const Profile = () => {
-  const handleUploadVideo = () => {
-    console.log("Upload video clicked");
-  };
-
   return (
     <div className="profile">
       <div className="profile__container">

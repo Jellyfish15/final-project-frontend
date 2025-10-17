@@ -1,9 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import "./Footer.css";
-import FacebookIcon from "../Assets/facebook.svg";
-import TwitterIcon from "../Assets/twitter.svg";
-import InstagramIcon from "../Assets/instagram.svg";
+import FacebookIcon from "../../images/facebook.svg";
+import TwitterIcon from "../../images/twitter.svg";
+import InstagramIcon from "../../images/instagram.svg";
 
 const Footer = () => {
   return (
@@ -42,21 +42,39 @@ const Footer = () => {
         <div className="footer__bottom">
           <p className="footer__copyright">© 2025 Nudl. All rights reserved.</p>
           <div className="footer__social">
-            <a href="#" className="footer__social-link">
+            <a
+              href="https://www.facebook.com/profile.php?id=61582658960169"
+              className="footer__social-link"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Visit Nudl on Facebook"
+            >
               <img
                 src={FacebookIcon}
                 alt="Facebook"
                 className="footer__social-icon"
               />
             </a>
-            <a href="#" className="footer__social-link">
+            <a
+              href="https://x.com/stgenad"
+              className="footer__social-link"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Visit Nudl on X (Twitter)"
+            >
               <img
                 src={TwitterIcon}
-                alt="Twitter"
+                alt="X (Twitter)"
                 className="footer__social-icon"
               />
             </a>
-            <a href="#" className="footer__social-link">
+            <a
+              href="https://www.instagram.com/nudl_app/"
+              className="footer__social-link"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Visit Nudl on Instagram"
+            >
               <img
                 src={InstagramIcon}
                 alt="Instagram"

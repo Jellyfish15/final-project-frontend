@@ -1,6 +1,6 @@
 import React from "react";
 import "./Video.css";
-import { useVideo } from "../VideoContext/VideoContext";
+import { useVideo } from "../../contexts/VideoContext";
 import YouTubePlayer from "../YouTubePlayer/YouTubePlayer";
 import VideoLoader from "../VideoLoader/VideoLoader";
 

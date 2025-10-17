@@ -2,8 +2,8 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../AuthContext/AuthContext";
 import "./Header.css";
-import searchIcon from "../Assets/search.svg";
-import profileIcon from "../Assets/profile.svg";
+import searchIcon from "../../images/search.svg";
+import profileIcon from "../../images/profile.svg";
 
 const Header = ({ onOpenLogin, onOpenRegister }) => {
   const location = useLocation();

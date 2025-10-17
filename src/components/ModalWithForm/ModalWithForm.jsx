@@ -10,8 +10,6 @@ const ModalWithForm = ({
   onSubmit,
   isLoading = false,
 }) => {
-  if (!isOpen) return null;
-
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(e);
@@ -23,13 +21,15 @@ const ModalWithForm = ({
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Escape") {
-      onClose();
-    }
-  };
-
   React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
     document.addEventListener("keydown", handleKeyDown);
     document.body.style.overflow = "hidden";
 
@@ -37,7 +37,9 @@ const ModalWithForm = ({
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "unset";
     };
-  }, []);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="modal" onClick={handleOverlayClick}>
