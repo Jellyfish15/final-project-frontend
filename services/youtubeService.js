@@ -42,13 +42,17 @@ export const formatVideoForApp = (youtubeVideo) => {
 export const getEducationalVideoFeed = async (count = 10) => {
   try {
     const searchData = await searchEducationalVideos(count);
-    const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
 
+    if (!searchData.items || searchData.items.length === 0) {
+      return [];
+    }
+
+    const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
     const detailsData = await getVideoDetails(videoIds);
 
     const filteredVideos = detailsData.items.filter((video) => {
       const duration = parseDuration(video.contentDetails.duration);
-      return duration <= 90;
+      return duration <= 300; // Increased to 5 minutes (300 seconds)
     });
 
     const formattedVideos = filteredVideos.map(formatVideoForApp);
@@ -67,7 +71,7 @@ export const getEducationalVideoFeed = async (count = 10) => {
         const additionalFilteredVideos = additionalDetailsData.items.filter(
           (video) => {
             const duration = parseDuration(video.contentDetails.duration);
-            return duration <= 90;
+            return duration <= 300; // Increased to 5 minutes (300 seconds)
           }
         );
 
