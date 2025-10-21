@@ -35,9 +35,18 @@ const Video = () => {
     const container = containerRef.current;
     if (!container) return;
 
-    // Create a more targeted touch handler that checks touch position
+    // Enhanced iPhone-optimized touch handler
     const handleTouchStartEnhanced = (e) => {
+      // Immediately prevent any potential interference with bottom navigation
       const touch = e.touches[0];
+      const windowHeight = window.innerHeight;
+      const bottomNavHeight = 70; // Height of bottom navigation
+
+      // iPhone-specific: Don't handle touches in bottom navigation area
+      if (touch.clientY > windowHeight - bottomNavHeight - 20) {
+        return; // Let bottom navigation handle this touch
+      }
+
       const rect = container.getBoundingClientRect();
       const relativeX = touch.clientX - rect.left;
       const relativeY = touch.clientY - rect.top;
@@ -46,36 +55,46 @@ const Video = () => {
       const videoContainer = container.querySelector(
         ".video-page__video-container"
       );
+
       if (videoContainer) {
         const videoRect = videoContainer.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
 
-        // Check if touch is within video area (with some tolerance)
+        // iPhone-optimized touch area detection
         const isInVideoArea =
-          touch.clientX >= videoRect.left - 50 &&
-          touch.clientX <= videoRect.right + 50 &&
+          touch.clientX >= videoRect.left - 30 &&
+          touch.clientX <= videoRect.right + 30 &&
           touch.clientY >= videoRect.top &&
-          touch.clientY <= videoRect.bottom;
+          touch.clientY <= videoRect.bottom - 20; // Extra margin from bottom
 
-        // Only handle touch if it's in the video area and not on UI elements
         if (isInVideoArea) {
           // Check if touch target is not a button or interactive element
           const isInteractiveElement = e.target.closest(
-            "button, .video-page__action, .video-page__mute-btn, .video-page__nav-btn"
+            "button, .video-page__action, .video-page__mute-btn, .video-page__nav-btn, .bottom-nav, .video-page__bottom-info"
           );
 
           if (!isInteractiveElement) {
+            // Prevent default to stop any scroll behavior
+            e.preventDefault();
+            e.stopPropagation();
             handleTouchStart(e);
           }
         }
       } else {
-        // Fallback: exclude right side where actions are
-        const isInVideoArea = relativeX < rect.width * 0.85; // Exclude right 15% where actions are
+        // Fallback: more conservative area detection for iPhone
+        const isInVideoArea =
+          relativeX > 30 &&
+          relativeX < rect.width - 80 && // Exclude right side for actions
+          relativeY > 20 &&
+          relativeY < rect.height - 60; // Exclude bottom area
+
         if (isInVideoArea) {
           const isInteractiveElement = e.target.closest(
-            "button, .video-page__action, .video-page__mute-btn, .video-page__nav-btn"
+            "button, .video-page__action, .video-page__mute-btn, .video-page__nav-btn, .bottom-nav, .video-page__bottom-info"
           );
+
           if (!isInteractiveElement) {
+            e.preventDefault();
+            e.stopPropagation();
             handleTouchStart(e);
           }
         }
@@ -83,11 +102,29 @@ const Video = () => {
     };
 
     const handleTouchMoveEnhanced = (e) => {
-      // Only handle move if we're in a drag state
+      // iPhone-specific: Aggressively prevent default for vertical moves
+      const touch = e.touches[0];
+      if (touch) {
+        const deltaY = Math.abs(
+          touch.clientY - (touch.startY || touch.clientY)
+        );
+        const deltaX = Math.abs(
+          touch.clientX - (touch.startX || touch.clientX)
+        );
+
+        // If it's more vertical than horizontal, prevent default
+        if (deltaY > deltaX && deltaY > 10) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+
       handleTouchMove(e);
     };
 
     const handleTouchEndEnhanced = (e) => {
+      // Ensure we don't interfere with other elements
+      e.stopPropagation();
       handleTouchEnd(e);
     };
 

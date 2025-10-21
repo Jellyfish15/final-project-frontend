@@ -157,19 +157,28 @@ export const VideoProvider = ({
       const deltaY = touch.clientY - touchState.startY;
       const deltaX = touch.clientX - touchState.startX;
 
-      // Enhanced vertical swipe detection - prevent default more aggressively for vertical swipes
-      const isVerticalSwipe = Math.abs(deltaY) > Math.abs(deltaX) * 1.5;
-      const hasMinimumMovement = Math.abs(deltaY) > 15;
+      // iPhone/Safari-optimized: More aggressive preventDefault
+      const isVerticalSwipe = Math.abs(deltaY) > Math.abs(deltaX) * 1.2;
+      const hasAnyMovement = Math.abs(deltaY) > 5; // Lower threshold
 
-      if (isVerticalSwipe && hasMinimumMovement) {
+      // For iPhone, prevent default on any potential vertical swipe
+      if (isVerticalSwipe && hasAnyMovement) {
         event.preventDefault();
         event.stopPropagation();
 
+        // iPhone-specific: Also prevent body scroll
+        if (typeof document !== "undefined") {
+          document.body.style.overflow = "hidden";
+          setTimeout(() => {
+            document.body.style.overflow = "";
+          }, 100);
+        }
+
         if (isSafari()) {
-          // Additional Safari-specific handling
-          console.log("[Safari] Preventing default for vertical swipe", {
+          console.log("[Safari] Aggressive preventDefault for vertical swipe", {
             deltaY,
             deltaX,
+            isVerticalSwipe,
           });
         }
       }
