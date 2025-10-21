@@ -53,6 +53,22 @@
   height: 100%;
   object-fit: cover;
   border: none;
+  /* Allow video to be clickable but not capture touch events */
+  touch-action: none;
+}
+
+.video-page__touch-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  /* Transparent overlay that handles touch events */
+  pointer-events: auto;
+  background: transparent;
+  /* Ensure touch events are handled properly */
+  touch-action: manipulation;
 }
 
 .video-page__mute-btn {
