@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import "./Video.css";
 import { useVideo } from "../../contexts/VideoContext";
 import YouTubePlayer from "../YouTubePlayer/YouTubePlayer";
 import VideoLoader from "../VideoLoader/VideoLoader";
-import TouchInstructions from "../TouchInstructions/TouchInstructions";
 
 const Video = () => {
+  const containerRef = useRef(null);
   const {
     currentVideo,
     currentIndex,
@@ -30,15 +30,59 @@ const Video = () => {
     swipeIndicator,
   } = useVideo();
 
+  // Safari-specific touch event setup
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Add touch event listeners with proper options for Safari
+    const touchStartOptions = { passive: false };
+    const touchMoveOptions = { passive: false };
+    const touchEndOptions = { passive: true };
+
+    container.addEventListener(
+      "touchstart",
+      handleTouchStart,
+      touchStartOptions
+    );
+    container.addEventListener("touchmove", handleTouchMove, touchMoveOptions);
+    container.addEventListener("touchend", handleTouchEnd, touchEndOptions);
+    container.addEventListener(
+      "touchcancel",
+      handleTouchCancel,
+      touchEndOptions
+    );
+
+    return () => {
+      container.removeEventListener(
+        "touchstart",
+        handleTouchStart,
+        touchStartOptions
+      );
+      container.removeEventListener(
+        "touchmove",
+        handleTouchMove,
+        touchMoveOptions
+      );
+      container.removeEventListener(
+        "touchend",
+        handleTouchEnd,
+        touchEndOptions
+      );
+      container.removeEventListener(
+        "touchcancel",
+        handleTouchCancel,
+        touchEndOptions
+      );
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel]);
+
   return (
     <div className="video-page">
       <div
+        ref={containerRef}
         className="video-page__container"
         onWheel={handleWheel}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchCancel}
       >
         <div className="video-page__video-container">
           {(isLoading || isVideoSwitching) && <VideoLoader />}
@@ -157,9 +201,6 @@ const Video = () => {
           </div>
         )}
       </div>
-
-      {/* Touch instructions for first-time mobile users */}
-      <TouchInstructions />
     </div>
   );
 };
