@@ -1,6 +1,12 @@
-import React, { createContext, useContext, useState, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
 import { triggerSwipeHaptic } from "../utils/hapticFeedback";
-import { throttle } from "../utils/touchUtils";
+import { logTouchEvent, isSafari } from "../utils/touchDebug";
 
 const VideoContext = createContext();
 
@@ -49,23 +55,26 @@ export const VideoProvider = ({
 
   const currentVideo = videos[currentIndex] || null;
 
-  const scrollToVideo = (direction) => {
-    let newIndex = currentIndex;
+  const scrollToVideo = useCallback(
+    (direction) => {
+      let newIndex = currentIndex;
 
-    if (direction === "next" && currentIndex < videos.length - 1) {
-      newIndex = currentIndex + 1;
-    } else if (direction === "previous" && currentIndex > 0) {
-      newIndex = currentIndex - 1;
-    }
+      if (direction === "next" && currentIndex < videos.length - 1) {
+        newIndex = currentIndex + 1;
+      } else if (direction === "previous" && currentIndex > 0) {
+        newIndex = currentIndex - 1;
+      }
 
-    if (newIndex !== currentIndex) {
-      setIsVideoSwitching(true);
-      setTimeout(() => {
-        setCurrentIndex(newIndex);
-        setIsVideoSwitching(false);
-      }, 300);
-    }
-  };
+      if (newIndex !== currentIndex) {
+        setIsVideoSwitching(true);
+        setTimeout(() => {
+          setCurrentIndex(newIndex);
+          setIsVideoSwitching(false);
+        }, 300);
+      }
+    },
+    [currentIndex, videos.length]
+  );
 
   const togglePlay = () => {
     if (videoRef.current && currentVideo?.videoType !== "youtube") {
@@ -109,7 +118,8 @@ export const VideoProvider = ({
   };
 
   // Touch event handlers for mobile swipe gestures
-  const handleTouchStart = (e) => {
+  const handleTouchStart = useCallback((e) => {
+    logTouchEvent("touchstart", e);
     const touch = e.touches[0];
     setTouchState({
       startY: touch.clientY,
@@ -118,70 +128,107 @@ export const VideoProvider = ({
       isDragging: true,
       currentY: touch.clientY,
     });
-  };
+  }, []);
 
-  const handleTouchMove = throttle((event) => {
-    if (!touchState.isDragging) return;
+  const handleTouchMove = useCallback(
+    (event) => {
+      if (!touchState.isDragging) return;
 
-    const touch = event.touches[0];
-    const deltaY = touch.clientY - touchState.startY;
+      logTouchEvent("touchmove", event);
+      const touch = event.touches[0];
+      const deltaY = touch.clientY - touchState.startY;
+      const deltaX = touch.clientX - touchState.startX;
 
-    // Only prevent default for vertical swipes to maintain horizontal scrolling
-    if (
-      Math.abs(deltaY) > 15 &&
-      Math.abs(deltaY) > Math.abs(touch.clientX - touchState.startX)
-    ) {
-      event.preventDefault();
-    }
-
-    setTouchState((prev) => ({
-      ...prev,
-      currentY: touch.clientY,
-    }));
-  }, 16); // ~60fps throttling
-
-  const handleTouchEnd = () => {
-    if (!touchState.isDragging) return;
-
-    const deltaY = touchState.currentY - touchState.startY;
-    const deltaTime = Date.now() - touchState.startTime;
-    const velocity = Math.abs(deltaY) / deltaTime;
-
-    // Determine if it's a valid swipe gesture
-    const minSwipeDistance = 50; // Minimum distance for swipe
-    const maxSwipeTime = 500; // Maximum time for swipe (ms)
-    const minVelocity = 0.1; // Minimum velocity for swipe
-
-    const isValidSwipe =
-      Math.abs(deltaY) > minSwipeDistance &&
-      deltaTime < maxSwipeTime &&
-      velocity > minVelocity;
-
-    if (isValidSwipe) {
-      if (deltaY > 0) {
-        // Swipe down - go to previous video
-        if (currentIndex > 0) {
-          triggerSwipeHaptic("previous", true);
-          showSwipeIndicator("previous", "↑ Previous Video");
-          scrollToVideo("previous");
-        } else {
-          triggerSwipeHaptic("previous", false);
-          showSwipeIndicator("blocked", "First Video");
-        }
-      } else {
-        // Swipe up - go to next video
-        if (currentIndex < videos.length - 1) {
-          triggerSwipeHaptic("next", true);
-          showSwipeIndicator("next", "↓ Next Video");
-          scrollToVideo("next");
-        } else {
-          triggerSwipeHaptic("next", false);
-          showSwipeIndicator("blocked", "Last Video");
+      // Safari-specific: be more conservative with preventDefault
+      // Only prevent default for clear, significant vertical swipes
+      if (Math.abs(deltaY) > 40 && Math.abs(deltaY) > Math.abs(deltaX) * 2) {
+        event.preventDefault();
+        if (isSafari()) {
+          // Additional Safari-specific handling
+          console.log("[Safari] Preventing default for vertical swipe");
         }
       }
-    }
 
-    // Reset touch state
+      setTouchState((prev) => ({
+        ...prev,
+        currentY: touch.clientY,
+      }));
+    },
+    [touchState.isDragging, touchState.startY, touchState.startX]
+  );
+
+  const handleTouchEnd = useCallback(
+    (event) => {
+      if (!touchState.isDragging) return;
+
+      logTouchEvent("touchend", event);
+
+      const deltaY = touchState.currentY - touchState.startY;
+      const deltaX = Math.abs(touchState.currentY - touchState.startX);
+      const deltaTime = Date.now() - touchState.startTime;
+      const velocity = Math.abs(deltaY) / deltaTime;
+
+      // Safari-optimized swipe detection - more lenient thresholds
+      const minSwipeDistance = isSafari() ? 30 : 40;
+      const maxSwipeTime = isSafari() ? 1000 : 800;
+      const minVelocity = isSafari() ? 0.03 : 0.05;
+
+      // Ensure it's more vertical than horizontal
+      const isVertical = Math.abs(deltaY) > deltaX;
+
+      const isValidSwipe =
+        Math.abs(deltaY) > minSwipeDistance &&
+        deltaTime < maxSwipeTime &&
+        velocity > minVelocity &&
+        isVertical;
+
+      console.log("[Touch Debug] Swipe analysis:", {
+        deltaY,
+        deltaX,
+        deltaTime,
+        velocity,
+        isVertical,
+        isValidSwipe,
+        isSafari: isSafari(),
+      });
+
+      if (isValidSwipe) {
+        if (deltaY > 0) {
+          // Swipe down - go to previous video
+          if (currentIndex > 0) {
+            triggerSwipeHaptic("previous", true);
+            showSwipeIndicator("previous", "↑ Previous Video");
+            scrollToVideo("previous");
+          } else {
+            triggerSwipeHaptic("previous", false);
+            showSwipeIndicator("blocked", "First Video");
+          }
+        } else {
+          // Swipe up - go to next video
+          if (currentIndex < videos.length - 1) {
+            triggerSwipeHaptic("next", true);
+            showSwipeIndicator("next", "↓ Next Video");
+            scrollToVideo("next");
+          } else {
+            triggerSwipeHaptic("next", false);
+            showSwipeIndicator("blocked", "Last Video");
+          }
+        }
+      }
+
+      // Reset touch state
+      setTouchState({
+        startY: 0,
+        startX: 0,
+        startTime: 0,
+        isDragging: false,
+        currentY: 0,
+      });
+    },
+    [touchState, currentIndex, videos.length, scrollToVideo, showSwipeIndicator]
+  );
+
+  const handleTouchCancel = useCallback(() => {
     setTouchState({
       startY: 0,
       startX: 0,
@@ -189,20 +236,10 @@ export const VideoProvider = ({
       isDragging: false,
       currentY: 0,
     });
-  };
-
-  const handleTouchCancel = () => {
-    setTouchState({
-      startY: 0,
-      startX: 0,
-      startTime: 0,
-      isDragging: false,
-      currentY: 0,
-    });
-  };
+  }, []);
 
   // Show swipe feedback indicator
-  const showSwipeIndicator = (direction, message) => {
+  const showSwipeIndicator = useCallback((direction, message) => {
     setSwipeIndicator({
       show: true,
       direction,
@@ -217,7 +254,7 @@ export const VideoProvider = ({
         message: "",
       });
     }, 1500);
-  };
+  }, []);
 
   const value = {
     videos,

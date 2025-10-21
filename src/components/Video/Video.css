@@ -15,9 +15,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Touch optimization */
-  touch-action: pan-y;
+  /* Safari-specific touch optimization */
+  touch-action: manipulation;
   -webkit-overflow-scrolling: touch;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   /* Smooth transitions for touch interactions */
   transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -304,11 +307,14 @@
   }
 
   .video-page__container {
-    /* Enhanced touch responsiveness */
-    touch-action: pan-y;
+    /* Enhanced touch responsiveness for Safari */
+    touch-action: manipulation;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+    /* Fix Safari scrolling issues */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .video-page__video-container {
