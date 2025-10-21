@@ -3,6 +3,7 @@ import "./Video.css";
 import { useVideo } from "../../contexts/VideoContext";
 import YouTubePlayer from "../YouTubePlayer/YouTubePlayer";
 import VideoLoader from "../VideoLoader/VideoLoader";
+import TouchInstructions from "../TouchInstructions/TouchInstructions";
 
 const Video = () => {
   const {
@@ -22,11 +23,23 @@ const Video = () => {
     handleShare,
     handleComment,
     handleWheel,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    handleTouchCancel,
+    swipeIndicator,
   } = useVideo();
 
   return (
     <div className="video-page">
-      <div className="video-page__container" onWheel={handleWheel}>
+      <div
+        className="video-page__container"
+        onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+      >
         <div className="video-page__video-container">
           {(isLoading || isVideoSwitching) && <VideoLoader />}
 
@@ -132,7 +145,21 @@ const Video = () => {
             ↓
           </button>
         </div>
+
+        {/* Swipe feedback indicator */}
+        {swipeIndicator.show && (
+          <div
+            className={`video-page__swipe-indicator ${
+              swipeIndicator.show ? "video-page__swipe-indicator--show" : ""
+            }`}
+          >
+            {swipeIndicator.message}
+          </div>
+        )}
       </div>
+
+      {/* Touch instructions for first-time mobile users */}
+      <TouchInstructions />
     </div>
   );
 };

@@ -1,0 +1,17 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#646cff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#535bf2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#gradient)" />
+  
+  <!-- Play button triangle -->
+  <polygon points="200,180 200,332 340,256" fill="white" />
+  
+  <!-- Nudl text -->
+  <text x="256" y="420" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="48" font-weight="bold">Nudl</text>
+</svg>
