@@ -30,10 +30,45 @@ const Video = () => {
     swipeIndicator,
   } = useVideo();
 
-  // Enhanced touch event setup - focus on video area only
+  // Enhanced touch event setup with direct video container handling
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // Also add listeners to video container directly for better capture
+    const videoContainer = container.querySelector('.video-page__video-container');
+    const touchOverlay = container.querySelector('.video-page__touch-overlay');
+    
+    console.log("[Touch Setup] Setting up enhanced touch listeners", {
+      container: !!container,
+      videoContainer: !!videoContainer,
+      touchOverlay: !!touchOverlay
+    });
+
+    // Enhanced touch options
+    const touchOptions = { passive: false, capture: true };
+    
+    // Video container touch handlers (as backup)
+    const videoTouchStart = (e) => {
+      console.log("[Video Container Direct] Touch start");
+      handleTouchStartEnhanced(e);
+    };
+    
+    const videoTouchMove = (e) => {
+      console.log("[Video Container Direct] Touch move");
+      handleTouchMoveEnhanced(e);
+    };
+    
+    const videoTouchEnd = (e) => {
+      console.log("[Video Container Direct] Touch end");
+      handleTouchEndEnhanced(e);
+    };
+    
+    if (videoContainer) {
+      videoContainer.addEventListener('touchstart', videoTouchStart, touchOptions);
+      videoContainer.addEventListener('touchmove', videoTouchMove, touchOptions);
+      videoContainer.addEventListener('touchend', videoTouchEnd, touchOptions);
+    }
 
     // Simplified and more lenient touch handler for iPhone debugging
     const handleTouchStartEnhanced = (e) => {
@@ -170,6 +205,14 @@ const Video = () => {
     );
 
     return () => {
+      // Clean up video container listeners
+      if (videoContainer) {
+        videoContainer.removeEventListener('touchstart', videoTouchStart, touchOptions);
+        videoContainer.removeEventListener('touchmove', videoTouchMove, touchOptions);
+        videoContainer.removeEventListener('touchend', videoTouchEnd, touchOptions);
+      }
+      
+      // Clean up container listeners
       container.removeEventListener(
         "touchstart",
         handleTouchStartEnhanced,
@@ -200,7 +243,21 @@ const Video = () => {
         className="video-page__container"
         onWheel={handleWheel}
       >
-        <div className="video-page__video-container">
+        <div 
+          className="video-page__video-container"
+          onTouchStart={(e) => {
+            console.log("[Video Container] Touch start on video container");
+            handleTouchStartEnhanced(e);
+          }}
+          onTouchMove={(e) => {
+            console.log("[Video Container] Touch move on video container");
+            handleTouchMoveEnhanced(e);
+          }}
+          onTouchEnd={(e) => {
+            console.log("[Video Container] Touch end on video container");
+            handleTouchEndEnhanced(e);
+          }}
+        >
           {(isLoading || isVideoSwitching) && <VideoLoader />}
 
           {currentVideo && (
@@ -244,7 +301,34 @@ const Video = () => {
                   {/* Touch overlay for swipe detection */}
                   <div
                     className="video-page__touch-overlay"
-                    onClick={togglePlay}
+                    onClick={(e) => {
+                      console.log("[Touch Overlay] Click detected");
+                      togglePlay();
+                    }}
+                    onTouchStart={(e) => {
+                      console.log("[Touch Overlay] Touch start on overlay - WORKING!");
+                      // Add visual feedback
+                      e.target.style.backgroundColor = 'rgba(255,0,0,0.1)';
+                      setTimeout(() => {
+                        e.target.style.backgroundColor = 'transparent';
+                      }, 200);
+                      
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleTouchStartEnhanced(e);
+                    }}
+                    onTouchMove={(e) => {
+                      console.log("[Touch Overlay] Touch move on overlay - WORKING!");
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleTouchMoveEnhanced(e);
+                    }}
+                    onTouchEnd={(e) => {
+                      console.log("[Touch Overlay] Touch end on overlay - WORKING!");
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleTouchEndEnhanced(e);
+                    }}
                   />
                 </>
               )}
