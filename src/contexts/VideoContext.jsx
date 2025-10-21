@@ -139,6 +139,13 @@ export const VideoProvider = ({
   const handleTouchStart = useCallback((e) => {
     logTouchEvent("touchstart", e);
     const touch = e.touches[0];
+
+    console.log("[VideoContext] Touch start:", {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      timestamp: Date.now(),
+    });
+
     setTouchState({
       startY: touch.clientY,
       startX: touch.clientX,
@@ -206,13 +213,13 @@ export const VideoProvider = ({
       const deltaTime = Date.now() - touchState.startTime;
       const velocity = Math.abs(deltaY) / deltaTime;
 
-      // Enhanced swipe detection - more responsive thresholds
-      const minSwipeDistance = isSafari() ? 25 : 35;
-      const maxSwipeTime = isSafari() ? 1200 : 1000;
-      const minVelocity = isSafari() ? 0.02 : 0.04;
+      // Very lenient swipe detection for debugging
+      const minSwipeDistance = 15; // Much lower threshold
+      const maxSwipeTime = 2000; // More time allowed
+      const minVelocity = 0.01; // Very low velocity requirement
 
-      // Ensure it's more vertical than horizontal - use proper deltaX calculation
-      const isVertical = Math.abs(deltaY) > actualDeltaX * 1.2;
+      // More lenient vertical detection
+      const isVertical = Math.abs(deltaY) > actualDeltaX * 0.8;
 
       const isValidSwipe =
         Math.abs(deltaY) > minSwipeDistance &&
@@ -220,17 +227,29 @@ export const VideoProvider = ({
         velocity > minVelocity &&
         isVertical;
 
+      // Simple fallback - just check for basic vertical movement
+      const isBasicSwipe = Math.abs(deltaY) > 30;
+
       console.log("[Touch Debug] Swipe analysis:", {
         deltaY,
         deltaX,
+        actualDeltaX,
         deltaTime,
         velocity,
         isVertical,
         isValidSwipe,
+        isBasicSwipe,
+        minSwipeDistance,
+        maxSwipeTime,
+        minVelocity,
         isSafari: isSafari(),
+        touchState: touchState,
+        currentIndex,
+        videosLength: videos.length,
       });
 
-      if (isValidSwipe) {
+      // Use either the sophisticated detection or the basic fallback
+      if (isValidSwipe || isBasicSwipe) {
         if (deltaY > 0) {
           // Swipe down - go to previous video
           if (currentIndex > 0) {

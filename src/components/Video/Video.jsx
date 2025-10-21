@@ -35,72 +35,87 @@ const Video = () => {
     const container = containerRef.current;
     if (!container) return;
 
-    // Enhanced iPhone-optimized touch handler
+    // Simplified and more lenient touch handler for iPhone debugging
     const handleTouchStartEnhanced = (e) => {
-      // Immediately prevent any potential interference with bottom navigation
       const touch = e.touches[0];
       const windowHeight = window.innerHeight;
-      const bottomNavHeight = 70; // Height of bottom navigation
+      const bottomNavHeight = 70;
+
+      console.log("[Touch Debug] Touch start detected:", {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        windowHeight,
+        bottomThreshold: windowHeight - bottomNavHeight - 20,
+        target: e.target.className,
+      });
 
       // iPhone-specific: Don't handle touches in bottom navigation area
       if (touch.clientY > windowHeight - bottomNavHeight - 20) {
-        return; // Let bottom navigation handle this touch
+        console.log("[Touch Debug] Touch in bottom nav area, ignoring");
+        return;
       }
 
       const rect = container.getBoundingClientRect();
       const relativeX = touch.clientX - rect.left;
       const relativeY = touch.clientY - rect.top;
 
-      // Calculate video area bounds (excluding UI elements)
-      const videoContainer = container.querySelector(
-        ".video-page__video-container"
-      );
+      console.log("[Touch Debug] Container bounds:", {
+        rect,
+        relativeX,
+        relativeY,
+      });
 
-      if (videoContainer) {
-        const videoRect = videoContainer.getBoundingClientRect();
+      // More lenient touch area detection - focus on center 80% of screen
+      const isInVideoArea =
+        relativeX > rect.width * 0.1 &&
+        relativeX < rect.width * 0.9 &&
+        relativeY > rect.height * 0.1 &&
+        relativeY < rect.height * 0.8;
 
-        // iPhone-optimized touch area detection
-        const isInVideoArea =
-          touch.clientX >= videoRect.left - 30 &&
-          touch.clientX <= videoRect.right + 30 &&
-          touch.clientY >= videoRect.top &&
-          touch.clientY <= videoRect.bottom - 20; // Extra margin from bottom
+      console.log("[Touch Debug] Video area check:", {
+        isInVideoArea,
+        leftBound: rect.width * 0.1,
+        rightBound: rect.width * 0.9,
+        topBound: rect.height * 0.1,
+        bottomBound: rect.height * 0.8,
+      });
 
-        if (isInVideoArea) {
-          // Check if touch target is not a button or interactive element
-          const isInteractiveElement = e.target.closest(
-            "button, .video-page__action, .video-page__mute-btn, .video-page__nav-btn, .bottom-nav, .video-page__bottom-info"
+      if (isInVideoArea) {
+        // Check if touch target is not a button or interactive element
+        const isInteractiveElement = e.target.closest(
+          "button, .video-page__action, .video-page__mute-btn, .video-page__nav-btn, .bottom-nav"
+        );
+
+        // Check if touching video element or touch overlay
+        const isVideoOrOverlay = e.target.closest(
+          "video, .video-page__touch-overlay, .video-page__video-container"
+        );
+
+        console.log("[Touch Debug] Interactive element check:", {
+          isInteractiveElement: !!isInteractiveElement,
+          isVideoOrOverlay: !!isVideoOrOverlay,
+          targetElement: e.target.tagName,
+          targetClass: e.target.className,
+        });
+
+        // Handle touch if it's not on interactive buttons
+        if (!isInteractiveElement) {
+          console.log(
+            "[Touch Debug] Starting touch handling - target:",
+            e.target.tagName
           );
-
-          if (!isInteractiveElement) {
-            // Prevent default to stop any scroll behavior
-            e.preventDefault();
-            e.stopPropagation();
-            handleTouchStart(e);
-          }
+          e.preventDefault();
+          e.stopPropagation();
+          handleTouchStart(e);
+        } else {
+          console.log(
+            "[Touch Debug] Interactive element detected, not handling touch"
+          );
         }
       } else {
-        // Fallback: more conservative area detection for iPhone
-        const isInVideoArea =
-          relativeX > 30 &&
-          relativeX < rect.width - 80 && // Exclude right side for actions
-          relativeY > 20 &&
-          relativeY < rect.height - 60; // Exclude bottom area
-
-        if (isInVideoArea) {
-          const isInteractiveElement = e.target.closest(
-            "button, .video-page__action, .video-page__mute-btn, .video-page__nav-btn, .bottom-nav, .video-page__bottom-info"
-          );
-
-          if (!isInteractiveElement) {
-            e.preventDefault();
-            e.stopPropagation();
-            handleTouchStart(e);
-          }
-        }
+        console.log("[Touch Debug] Touch outside video area");
       }
     };
-
     const handleTouchMoveEnhanced = (e) => {
       // iPhone-specific: Aggressively prevent default for vertical moves
       const touch = e.touches[0];
@@ -205,26 +220,33 @@ const Video = () => {
                   className="video-page__video"
                 />
               ) : (
-                <video
-                  ref={videoRef}
-                  className="video-page__video"
-                  loop
-                  autoPlay={isPlaying}
-                  muted={isMuted}
-                  playsInline
-                  onClick={togglePlay}
-                >
-                  <source src={currentVideo.videoUrl} type="video/mp4" />
-                  <div className="video-page__video-placeholder">
-                    <div className="video-page__placeholder-content">
-                      <div className="video-page__placeholder-icon">🎥</div>
-                      <p>Educational Video</p>
-                      <p className="video-page__placeholder-title">
-                        {currentVideo.title}
-                      </p>
+                <>
+                  <video
+                    ref={videoRef}
+                    className="video-page__video"
+                    loop
+                    autoPlay={isPlaying}
+                    muted={isMuted}
+                    playsInline
+                  >
+                    <source src={currentVideo.videoUrl} type="video/mp4" />
+                    <div className="video-page__video-placeholder">
+                      <div className="video-page__placeholder-content">
+                        <div className="video-page__placeholder-icon">🎥</div>
+                        <p>Educational Video</p>
+                        <p className="video-page__placeholder-title">
+                          {currentVideo.title}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </video>
+                  </video>
+
+                  {/* Touch overlay for swipe detection */}
+                  <div
+                    className="video-page__touch-overlay"
+                    onClick={togglePlay}
+                  />
+                </>
               )}
 
               {!isPlaying && currentVideo.videoType !== "youtube" && (
