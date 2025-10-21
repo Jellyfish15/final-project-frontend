@@ -254,21 +254,17 @@ export const VideoProvider = ({
           // Swipe down - go to previous video
           if (currentIndex > 0) {
             triggerSwipeHaptic("previous", true);
-            showSwipeIndicator("previous", "↑ Previous Video");
             scrollToVideo("previous");
           } else {
             triggerSwipeHaptic("previous", false);
-            showSwipeIndicator("blocked", "First Video");
           }
         } else {
           // Swipe up - go to next video
           if (currentIndex < videos.length - 1) {
             triggerSwipeHaptic("next", true);
-            showSwipeIndicator("next", "↓ Next Video");
             scrollToVideo("next");
           } else {
             triggerSwipeHaptic("next", false);
-            showSwipeIndicator("blocked", "Last Video");
           }
         }
       }

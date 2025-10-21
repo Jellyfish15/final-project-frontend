@@ -27,7 +27,6 @@ const Video = () => {
     handleTouchMove,
     handleTouchEnd,
     handleTouchCancel,
-    swipeIndicator,
   } = useVideo();
 
   // Enhanced touch event setup with direct video container handling
@@ -36,38 +35,48 @@ const Video = () => {
     if (!container) return;
 
     // Also add listeners to video container directly for better capture
-    const videoContainer = container.querySelector('.video-page__video-container');
-    const touchOverlay = container.querySelector('.video-page__touch-overlay');
-    
+    const videoContainer = container.querySelector(
+      ".video-page__video-container"
+    );
+    const touchOverlay = container.querySelector(".video-page__touch-overlay");
+
     console.log("[Touch Setup] Setting up enhanced touch listeners", {
       container: !!container,
       videoContainer: !!videoContainer,
-      touchOverlay: !!touchOverlay
+      touchOverlay: !!touchOverlay,
     });
 
     // Enhanced touch options
     const touchOptions = { passive: false, capture: true };
-    
+
     // Video container touch handlers (as backup)
     const videoTouchStart = (e) => {
       console.log("[Video Container Direct] Touch start");
       handleTouchStartEnhanced(e);
     };
-    
+
     const videoTouchMove = (e) => {
       console.log("[Video Container Direct] Touch move");
       handleTouchMoveEnhanced(e);
     };
-    
+
     const videoTouchEnd = (e) => {
       console.log("[Video Container Direct] Touch end");
       handleTouchEndEnhanced(e);
     };
-    
+
     if (videoContainer) {
-      videoContainer.addEventListener('touchstart', videoTouchStart, touchOptions);
-      videoContainer.addEventListener('touchmove', videoTouchMove, touchOptions);
-      videoContainer.addEventListener('touchend', videoTouchEnd, touchOptions);
+      videoContainer.addEventListener(
+        "touchstart",
+        videoTouchStart,
+        touchOptions
+      );
+      videoContainer.addEventListener(
+        "touchmove",
+        videoTouchMove,
+        touchOptions
+      );
+      videoContainer.addEventListener("touchend", videoTouchEnd, touchOptions);
     }
 
     // Simplified and more lenient touch handler for iPhone debugging
@@ -207,11 +216,23 @@ const Video = () => {
     return () => {
       // Clean up video container listeners
       if (videoContainer) {
-        videoContainer.removeEventListener('touchstart', videoTouchStart, touchOptions);
-        videoContainer.removeEventListener('touchmove', videoTouchMove, touchOptions);
-        videoContainer.removeEventListener('touchend', videoTouchEnd, touchOptions);
+        videoContainer.removeEventListener(
+          "touchstart",
+          videoTouchStart,
+          touchOptions
+        );
+        videoContainer.removeEventListener(
+          "touchmove",
+          videoTouchMove,
+          touchOptions
+        );
+        videoContainer.removeEventListener(
+          "touchend",
+          videoTouchEnd,
+          touchOptions
+        );
       }
-      
+
       // Clean up container listeners
       container.removeEventListener(
         "touchstart",
@@ -243,7 +264,7 @@ const Video = () => {
         className="video-page__container"
         onWheel={handleWheel}
       >
-        <div 
+        <div
           className="video-page__video-container"
           onTouchStart={(e) => {
             console.log("[Video Container] Touch start on video container");
@@ -306,25 +327,31 @@ const Video = () => {
                       togglePlay();
                     }}
                     onTouchStart={(e) => {
-                      console.log("[Touch Overlay] Touch start on overlay - WORKING!");
+                      console.log(
+                        "[Touch Overlay] Touch start on overlay - WORKING!"
+                      );
                       // Add visual feedback
-                      e.target.style.backgroundColor = 'rgba(255,0,0,0.1)';
+                      e.target.style.backgroundColor = "rgba(255,0,0,0.1)";
                       setTimeout(() => {
-                        e.target.style.backgroundColor = 'transparent';
+                        e.target.style.backgroundColor = "transparent";
                       }, 200);
-                      
+
                       e.preventDefault();
                       e.stopPropagation();
                       handleTouchStartEnhanced(e);
                     }}
                     onTouchMove={(e) => {
-                      console.log("[Touch Overlay] Touch move on overlay - WORKING!");
+                      console.log(
+                        "[Touch Overlay] Touch move on overlay - WORKING!"
+                      );
                       e.preventDefault();
                       e.stopPropagation();
                       handleTouchMoveEnhanced(e);
                     }}
                     onTouchEnd={(e) => {
-                      console.log("[Touch Overlay] Touch end on overlay - WORKING!");
+                      console.log(
+                        "[Touch Overlay] Touch end on overlay - WORKING!"
+                      );
                       e.preventDefault();
                       e.stopPropagation();
                       handleTouchEndEnhanced(e);
@@ -396,17 +423,6 @@ const Video = () => {
             ↓
           </button>
         </div>
-
-        {/* Swipe feedback indicator */}
-        {swipeIndicator.show && (
-          <div
-            className={`video-page__swipe-indicator ${
-              swipeIndicator.show ? "video-page__swipe-indicator--show" : ""
-            }`}
-          >
-            {swipeIndicator.message}
-          </div>
-        )}
       </div>
     </div>
   );
