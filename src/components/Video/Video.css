@@ -318,6 +318,13 @@
   }
 
   .video-page__video-container {
+    /* Ensure video area captures touch events properly */
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+  }
+
+  .video-page__video-container {
     width: 100%;
     max-width: 400px;
     /* Prevent text selection during touch */
@@ -336,12 +343,17 @@
     right: 60px;
     bottom: 80px;
     gap: 15px;
+    /* Ensure actions have higher z-index but don't block video touches */
+    z-index: 20;
+    pointer-events: auto;
   }
 
   .video-page__action {
     width: 40px;
     height: 40px;
     padding: 6px;
+    /* Ensure individual actions capture touches */
+    pointer-events: auto;
   }
 
   .video-page__action-icon {
@@ -356,6 +368,9 @@
     right: 10px;
     top: 50%; /* Keep navigation centered */
     padding: 12px 8px;
+    /* Ensure navigation has higher z-index but doesn't block video touches */
+    z-index: 20;
+    pointer-events: auto;
   }
 
   /* Add swipe indicator styles for mobile */

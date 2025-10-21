@@ -157,13 +157,20 @@ export const VideoProvider = ({
       const deltaY = touch.clientY - touchState.startY;
       const deltaX = touch.clientX - touchState.startX;
 
-      // Safari-specific: be more conservative with preventDefault
-      // Only prevent default for clear, significant vertical swipes
-      if (Math.abs(deltaY) > 40 && Math.abs(deltaY) > Math.abs(deltaX) * 2) {
+      // Enhanced vertical swipe detection - prevent default more aggressively for vertical swipes
+      const isVerticalSwipe = Math.abs(deltaY) > Math.abs(deltaX) * 1.5;
+      const hasMinimumMovement = Math.abs(deltaY) > 15;
+
+      if (isVerticalSwipe && hasMinimumMovement) {
         event.preventDefault();
+        event.stopPropagation();
+
         if (isSafari()) {
           // Additional Safari-specific handling
-          console.log("[Safari] Preventing default for vertical swipe");
+          console.log("[Safari] Preventing default for vertical swipe", {
+            deltaY,
+            deltaX,
+          });
         }
       }
 
@@ -182,17 +189,21 @@ export const VideoProvider = ({
       logTouchEvent("touchend", event);
 
       const deltaY = touchState.currentY - touchState.startY;
-      const deltaX = Math.abs(touchState.currentY - touchState.startX);
+      const deltaX = Math.abs(touchState.startX - touchState.currentY); // Fixed calculation
+      const actualDeltaX = Math.abs(
+        touchState.startX -
+          (event.changedTouches?.[0]?.clientX || touchState.startX)
+      );
       const deltaTime = Date.now() - touchState.startTime;
       const velocity = Math.abs(deltaY) / deltaTime;
 
-      // Safari-optimized swipe detection - more lenient thresholds
-      const minSwipeDistance = isSafari() ? 30 : 40;
-      const maxSwipeTime = isSafari() ? 1000 : 800;
-      const minVelocity = isSafari() ? 0.03 : 0.05;
+      // Enhanced swipe detection - more responsive thresholds
+      const minSwipeDistance = isSafari() ? 25 : 35;
+      const maxSwipeTime = isSafari() ? 1200 : 1000;
+      const minVelocity = isSafari() ? 0.02 : 0.04;
 
-      // Ensure it's more vertical than horizontal
-      const isVertical = Math.abs(deltaY) > deltaX;
+      // Ensure it's more vertical than horizontal - use proper deltaX calculation
+      const isVertical = Math.abs(deltaY) > actualDeltaX * 1.2;
 
       const isValidSwipe =
         Math.abs(deltaY) > minSwipeDistance &&

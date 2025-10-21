@@ -30,10 +30,66 @@ const Video = () => {
     swipeIndicator,
   } = useVideo();
 
-  // Safari-specific touch event setup
+  // Enhanced touch event setup - focus on video area only
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // Create a more targeted touch handler that checks touch position
+    const handleTouchStartEnhanced = (e) => {
+      const touch = e.touches[0];
+      const rect = container.getBoundingClientRect();
+      const relativeX = touch.clientX - rect.left;
+      const relativeY = touch.clientY - rect.top;
+
+      // Calculate video area bounds (excluding UI elements)
+      const videoContainer = container.querySelector(
+        ".video-page__video-container"
+      );
+      if (videoContainer) {
+        const videoRect = videoContainer.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        // Check if touch is within video area (with some tolerance)
+        const isInVideoArea =
+          touch.clientX >= videoRect.left - 50 &&
+          touch.clientX <= videoRect.right + 50 &&
+          touch.clientY >= videoRect.top &&
+          touch.clientY <= videoRect.bottom;
+
+        // Only handle touch if it's in the video area and not on UI elements
+        if (isInVideoArea) {
+          // Check if touch target is not a button or interactive element
+          const isInteractiveElement = e.target.closest(
+            "button, .video-page__action, .video-page__mute-btn, .video-page__nav-btn"
+          );
+
+          if (!isInteractiveElement) {
+            handleTouchStart(e);
+          }
+        }
+      } else {
+        // Fallback: exclude right side where actions are
+        const isInVideoArea = relativeX < rect.width * 0.85; // Exclude right 15% where actions are
+        if (isInVideoArea) {
+          const isInteractiveElement = e.target.closest(
+            "button, .video-page__action, .video-page__mute-btn, .video-page__nav-btn"
+          );
+          if (!isInteractiveElement) {
+            handleTouchStart(e);
+          }
+        }
+      }
+    };
+
+    const handleTouchMoveEnhanced = (e) => {
+      // Only handle move if we're in a drag state
+      handleTouchMove(e);
+    };
+
+    const handleTouchEndEnhanced = (e) => {
+      handleTouchEnd(e);
+    };
 
     // Add touch event listeners with proper options for Safari
     const touchStartOptions = { passive: false };
@@ -42,11 +98,19 @@ const Video = () => {
 
     container.addEventListener(
       "touchstart",
-      handleTouchStart,
+      handleTouchStartEnhanced,
       touchStartOptions
     );
-    container.addEventListener("touchmove", handleTouchMove, touchMoveOptions);
-    container.addEventListener("touchend", handleTouchEnd, touchEndOptions);
+    container.addEventListener(
+      "touchmove",
+      handleTouchMoveEnhanced,
+      touchMoveOptions
+    );
+    container.addEventListener(
+      "touchend",
+      handleTouchEndEnhanced,
+      touchEndOptions
+    );
     container.addEventListener(
       "touchcancel",
       handleTouchCancel,
@@ -56,17 +120,17 @@ const Video = () => {
     return () => {
       container.removeEventListener(
         "touchstart",
-        handleTouchStart,
+        handleTouchStartEnhanced,
         touchStartOptions
       );
       container.removeEventListener(
         "touchmove",
-        handleTouchMove,
+        handleTouchMoveEnhanced,
         touchMoveOptions
       );
       container.removeEventListener(
         "touchend",
-        handleTouchEnd,
+        handleTouchEndEnhanced,
         touchEndOptions
       );
       container.removeEventListener(
