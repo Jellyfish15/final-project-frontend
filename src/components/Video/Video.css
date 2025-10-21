@@ -15,6 +15,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Touch optimization */
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  /* Smooth transitions for touch interactions */
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .video-page__video-container {
@@ -292,11 +297,26 @@
 @media (max-width: 768px) {
   .video-page {
     top: 60px;
+    /* Optimize for mobile touch */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .video-page__container {
+    /* Enhanced touch responsiveness */
+    touch-action: pan-y;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .video-page__video-container {
     width: 100%;
     max-width: 400px;
+    /* Prevent text selection during touch */
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .video-page__bottom-info {
@@ -330,6 +350,38 @@
     right: 10px;
     top: 50%; /* Keep navigation centered */
     padding: 12px 8px;
+  }
+
+  /* Add swipe indicator styles for mobile */
+  .video-page__swipe-indicator {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 600;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  .video-page__swipe-indicator--show {
+    opacity: 1;
+  }
+
+  /* Touch feedback for actions */
+  .video-page__action:active {
+    transform: scale(0.9);
+  }
+
+  .video-page__mute-btn:active {
+    transform: scale(0.95);
   }
 
   .video-page__nav-btn {

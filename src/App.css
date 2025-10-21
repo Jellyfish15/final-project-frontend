@@ -48,21 +48,23 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .page-body::-webkit-scrollbar {
     display: none;
   }
-  
+
   .app__main {
     padding-bottom: 70px; /* Space for bottom navigation */
   }
-  
+
   /* Improve touch targets */
-  button, .btn, a {
+  button,
+  .btn,
+  a {
     min-height: 44px;
     min-width: 44px;
   }
-  
+
   /* Hide system UI in standalone mode */
   .app {
     /* Remove default margins in standalone mode */
@@ -79,14 +81,14 @@
     padding: 0;
     margin: 0;
   }
-  
+
   .app {
     /* Full app experience */
     height: 100vh;
     height: 100dvh;
     overflow: hidden;
   }
-  
+
   .app__main {
     /* Allow content to scroll within app container */
     overflow-y: auto;

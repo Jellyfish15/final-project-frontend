@@ -43,7 +43,7 @@
 }
 
 .bottom-nav__item--active::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -74,12 +74,12 @@
   .bottom-nav {
     display: block;
   }
-  
+
   /* Add padding to main content to account for bottom nav */
   .app__main {
     padding-bottom: 70px;
   }
-  
+
   /* Hide regular header navigation on mobile */
   .header__center {
     display: none;
@@ -92,11 +92,11 @@
     background: rgba(36, 36, 36, 0.95);
     border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
-  
+
   .bottom-nav__item {
     color: rgba(255, 255, 255, 0.6);
   }
-  
+
   .bottom-nav__item--active {
     color: #646cff;
   }
