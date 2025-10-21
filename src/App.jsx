@@ -10,6 +10,7 @@ import Search from "./components/Search/Search";
 import Video from "./components/Video/Video";
 import Header from "./components/Header/Header";
 import Footer from "./components/Footer/Footer";
+import BottomNavigation from "./components/BottomNavigation/BottomNavigation";
 import LoginModal from "./components/LoginModal/LoginModal";
 import RegisterModal from "./components/RegisterModal/RegisterModal";
 import { AuthProvider } from "./components/AuthContext/AuthContext";
@@ -165,6 +166,7 @@ function App() {
               </Routes>
             </main>
             <Footer />
+            <BottomNavigation />
 
             <LoginModal
               isOpen={modals.login}

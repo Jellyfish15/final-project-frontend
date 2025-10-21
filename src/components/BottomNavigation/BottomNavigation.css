@@ -1,0 +1,110 @@
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  padding: env(safe-area-inset-bottom) 0 0 0;
+  display: none;
+}
+
+.bottom-nav__container {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 16px 12px 16px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.bottom-nav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  text-decoration: none;
+  color: #8a8b9b;
+  transition: all 0.2s ease;
+  border-radius: 12px;
+  min-width: 60px;
+  position: relative;
+}
+
+.bottom-nav__item:active {
+  transform: scale(0.95);
+}
+
+.bottom-nav__item--active {
+  color: #646cff;
+}
+
+.bottom-nav__item--active::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  height: 80%;
+  background: rgba(100, 108, 255, 0.1);
+  border-radius: 12px;
+  z-index: -1;
+}
+
+.bottom-nav__icon {
+  font-size: 22px;
+  margin-bottom: 4px;
+  display: block;
+  line-height: 1;
+}
+
+.bottom-nav__label {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  text-align: center;
+}
+
+/* Show bottom navigation on mobile devices */
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: block;
+  }
+  
+  /* Add padding to main content to account for bottom nav */
+  .app__main {
+    padding-bottom: 70px;
+  }
+  
+  /* Hide regular header navigation on mobile */
+  .header__center {
+    display: none;
+  }
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .bottom-nav {
+    background: rgba(36, 36, 36, 0.95);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .bottom-nav__item {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  
+  .bottom-nav__item--active {
+    color: #646cff;
+  }
+}
+
+/* Support for devices with notches */
+@supports (padding: max(0px)) {
+  .bottom-nav {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
