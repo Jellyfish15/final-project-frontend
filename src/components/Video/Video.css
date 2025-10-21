@@ -411,12 +411,8 @@
   }
 
   .video-page__navigation {
-    right: 10px;
-    top: 50%; /* Keep navigation centered */
-    padding: 12px 8px;
-    /* Ensure navigation has higher z-index but doesn't block video touches */
-    z-index: 20;
-    pointer-events: auto;
+    /* Hide navigation arrows on mobile/phone screens */
+    display: none;
   }
 
   /* Add swipe indicator styles for mobile */
