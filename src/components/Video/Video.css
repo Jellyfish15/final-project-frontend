@@ -8,6 +8,16 @@
   overflow: hidden;
 }
 
+/* Mobile adjustments for bottom navigation */
+@media (max-width: 768px) {
+  .video-page {
+    /* Account for bottom navigation on mobile */
+    height: calc(100vh - 60px - 70px);
+    /* Ensure video page doesn't interfere with bottom nav touches */
+    z-index: 1;
+  }
+}
+
 .video-page__container {
   position: relative;
   width: 100%;
@@ -322,6 +332,19 @@
     position: relative;
     z-index: 1;
     pointer-events: auto;
+    /* iPhone-specific touch optimization */
+    touch-action: pan-y;
+    -webkit-touch-callout: none;
+  }
+
+  .video-page__bottom-info {
+    /* Prevent bottom info from interfering with swipes */
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .video-page__bottom-info * {
+    pointer-events: none;
   }
 
   .video-page__video-container {

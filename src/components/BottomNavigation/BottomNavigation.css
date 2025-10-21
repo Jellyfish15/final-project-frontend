@@ -10,6 +10,13 @@
   z-index: 1000;
   padding: env(safe-area-inset-bottom) 0 0 0;
   display: none;
+  /* iPhone-specific touch optimization */
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Ensure it captures its own touches */
+  pointer-events: auto;
 }
 
 .bottom-nav__container {
