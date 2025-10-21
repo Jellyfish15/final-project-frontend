@@ -117,6 +117,24 @@ export const VideoProvider = ({
     }
   };
 
+  // Show swipe feedback indicator
+  const showSwipeIndicator = useCallback((direction, message) => {
+    setSwipeIndicator({
+      show: true,
+      direction,
+      message,
+    });
+
+    // Hide indicator after 1.5 seconds
+    setTimeout(() => {
+      setSwipeIndicator({
+        show: false,
+        direction: "",
+        message: "",
+      });
+    }, 1500);
+  }, []);
+
   // Touch event handlers for mobile swipe gestures
   const handleTouchStart = useCallback((e) => {
     logTouchEvent("touchstart", e);
@@ -236,24 +254,6 @@ export const VideoProvider = ({
       isDragging: false,
       currentY: 0,
     });
-  }, []);
-
-  // Show swipe feedback indicator
-  const showSwipeIndicator = useCallback((direction, message) => {
-    setSwipeIndicator({
-      show: true,
-      direction,
-      message,
-    });
-
-    // Hide indicator after 1.5 seconds
-    setTimeout(() => {
-      setSwipeIndicator({
-        show: false,
-        direction: "",
-        message: "",
-      });
-    }, 1500);
   }, []);
 
   const value = {
