@@ -244,8 +244,21 @@
 }
 
 @media (max-width: 768px) {
+  .header {
+    /* Make header more transparent and smaller on mobile */
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+  
   .header__container {
     padding: 0 15px;
+    height: 40px; /* Reduced from 60px */
+  }
+
+  .header__logo {
+    font-size: 16px; /* Smaller logo */
   }
 
   .header__logo-text {
@@ -258,11 +271,12 @@
 
   .header__link--videos span:last-child {
     display: inline; /* Keep Videos text visible */
-    font-size: 12px;
+    font-size: 10px; /* Smaller text */
   }
 
   .header__link {
-    padding: 8px;
+    padding: 6px; /* Smaller padding */
+    font-size: 12px; /* Smaller font */
   }
 
   .header__center {
@@ -271,12 +285,12 @@
   }
 
   .header__auth-buttons {
-    gap: 8px;
+    gap: 6px; /* Reduced gap */
   }
 
   .header__auth-btn {
-    padding: 6px 12px;
-    font-size: 12px;
+    padding: 4px 8px; /* Smaller buttons */
+    font-size: 10px; /* Smaller text */
   }
 
   .header__username {
@@ -284,6 +298,11 @@
   }
 
   .header__user {
-    gap: 8px;
+    gap: 6px; /* Reduced gap */
+  }
+  
+  .header__user-avatar {
+    width: 24px; /* Smaller avatar */
+    height: 24px;
   }
 }

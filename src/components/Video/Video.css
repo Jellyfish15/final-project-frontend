@@ -8,11 +8,12 @@
   overflow: hidden;
 }
 
-/* Mobile adjustments for bottom navigation */
+/* Mobile adjustments for fullscreen-like experience */
 @media (max-width: 768px) {
   .video-page {
-    /* Account for bottom navigation on mobile */
-    height: calc(100vh - 60px - 70px);
+    /* Use more of the screen - reduce header/footer space */
+    top: 40px; /* Reduced from 60px */
+    height: calc(100vh - 40px - 50px); /* Reduced bottom space from 70px to 50px */
     /* Ensure video page doesn't interfere with bottom nav touches */
     z-index: 1;
   }
@@ -372,7 +373,8 @@
 
   .video-page__video-container {
     width: 100%;
-    max-width: 400px;
+    max-width: 100%; /* Use full width for better mobile experience */
+    height: 100%; /* Use full height */
     /* Prevent text selection during touch */
     -webkit-user-select: none;
     user-select: none;
@@ -382,12 +384,14 @@
     left: 10px;
     right: 10px;
     width: auto;
-    bottom: 10px;
+    bottom: 60px; /* Move up slightly to account for smaller bottom nav */
+    background: rgba(0, 0, 0, 0.6); /* More transparent */
+    padding: 8px 12px; /* Smaller padding */
   }
 
   .video-page__actions {
     right: 60px;
-    bottom: 80px;
+    bottom: 120px; /* Move up to accommodate smaller bottom nav */
     gap: 15px;
     /* Ensure actions have higher z-index but don't block video touches */
     z-index: 20;
