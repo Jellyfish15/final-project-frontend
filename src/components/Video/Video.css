@@ -11,11 +11,14 @@
 /* Mobile adjustments for fullscreen-like experience */
 @media (max-width: 768px) {
   .video-page {
-    /* Use more of the screen - reduce header/footer space */
-    top: 40px; /* Reduced from 60px */
-    height: calc(100vh - 40px - 50px); /* Reduced bottom space from 70px to 50px */
+    /* Position right under the header with no gap */
+    top: 40px; /* Matches the mobile header height exactly */
+    height: calc(100vh - 40px - 50px); /* Account for header and bottom nav */
     /* Ensure video page doesn't interfere with bottom nav touches */
     z-index: 1;
+    /* Remove any potential margins or padding that could cause white space */
+    margin: 0;
+    padding: 0;
   }
 }
 
@@ -349,6 +352,9 @@
     /* Fix Safari scrolling issues */
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    /* Remove any spacing that could cause white gaps */
+    margin: 0;
+    padding: 0;
   }
 
   .video-page__video-container {
@@ -375,6 +381,9 @@
     width: 100%;
     max-width: 100%; /* Use full width for better mobile experience */
     height: 100%; /* Use full height */
+    /* Remove any potential white space */
+    margin: 0;
+    padding: 0;
     /* Prevent text selection during touch */
     -webkit-user-select: none;
     user-select: none;

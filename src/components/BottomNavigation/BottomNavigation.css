@@ -86,21 +86,21 @@
     -webkit-backdrop-filter: blur(15px);
     border-top: 1px solid rgba(0, 0, 0, 0.05);
   }
-  
+
   .bottom-nav__container {
     padding: 4px 16px 6px 16px; /* Reduced padding */
   }
-  
+
   .bottom-nav__item {
     padding: 4px 12px; /* Reduced padding */
     min-width: 50px; /* Smaller minimum width */
   }
-  
+
   .bottom-nav__icon {
     font-size: 18px; /* Smaller icons */
     margin-bottom: 2px; /* Reduced margin */
   }
-  
+
   .bottom-nav__label {
     font-size: 9px; /* Smaller text */
   }

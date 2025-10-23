@@ -34,7 +34,7 @@
 
 .app__main {
   flex: 1;
-  background-color: #f8f8f8;
+  background-color: black;
   /* Add padding for bottom navigation on mobile */
   padding-bottom: 0;
 }
