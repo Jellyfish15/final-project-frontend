@@ -5,7 +5,7 @@ import "./Header.css";
 import searchIcon from "../../images/search.svg";
 import profileIcon from "../../images/profile.svg";
 
-const Header = ({ onOpenLogin, onOpenRegister }) => {
+const Header = ({ onOpenLogin, onOpenRegister, className = "" }) => {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
 
@@ -13,7 +13,7 @@ const Header = ({ onOpenLogin, onOpenRegister }) => {
     <header
       className={`header ${
         location.pathname === "/videos" ? "header--transparent" : ""
-      }`}
+      } ${className}`}
     >
       <div className="header__container">
         <div className="header__brand">

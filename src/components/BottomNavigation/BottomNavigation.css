@@ -80,34 +80,40 @@
 @media (max-width: 768px) {
   .bottom-nav {
     display: block;
-    /* Make more transparent and smaller */
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    /* Make much more transparent and smaller */
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(0, 0, 0, 0.03);
   }
 
   .bottom-nav__container {
-    padding: 4px 16px 6px 16px; /* Reduced padding */
+    padding: 2px 12px 4px 12px; /* Much smaller padding */
   }
 
   .bottom-nav__item {
-    padding: 4px 12px; /* Reduced padding */
-    min-width: 50px; /* Smaller minimum width */
+    padding: 2px 8px; /* Much smaller padding */
+    min-width: 40px; /* Smaller minimum width */
   }
 
   .bottom-nav__icon {
-    font-size: 18px; /* Smaller icons */
-    margin-bottom: 2px; /* Reduced margin */
+    font-size: 16px; /* Smaller icons */
+    margin-bottom: 1px; /* Minimal margin */
   }
 
   .bottom-nav__label {
-    font-size: 9px; /* Smaller text */
+    font-size: 8px; /* Much smaller text */
   }
 
-  /* Add padding to main content to account for smaller bottom nav */
+  /* Add much less padding to main content for smaller bottom nav */
   .app__main {
-    padding-bottom: 50px; /* Reduced from 70px */
+    padding-bottom: 35px; /* Much smaller - reduced from 50px */
+  }
+
+  /* No padding on videos page since header is hidden */
+  .app__main--videos {
+    padding-bottom: 35px;
+    padding-top: 0; /* No top padding since header is hidden */
   }
 
   /* Hide regular header navigation on mobile */

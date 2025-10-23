@@ -71,6 +71,12 @@
     padding-bottom: 70px; /* Space for bottom navigation */
   }
 
+  /* Videos page gets fullscreen treatment */
+  .app__main--videos {
+    padding-top: 0; /* No top padding since header is hidden */
+    padding-bottom: 35px; /* Less bottom padding for smaller nav */
+  }
+
   /* Improve touch targets */
   button,
   .btn,
