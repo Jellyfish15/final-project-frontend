@@ -11,9 +11,9 @@
 /* Mobile adjustments for fullscreen-like experience */
 @media (max-width: 768px) {
   .video-page {
-    /* Position right under the header with no gap */
-    top: 40px; /* Matches the mobile header height exactly */
-    height: calc(100vh - 40px - 50px); /* Account for header and bottom nav */
+    /* Position at the very top of the screen - no header on mobile */
+    top: 0;
+    height: 100vh; /* Full viewport height */
     /* Ensure video page doesn't interfere with bottom nav touches */
     z-index: 1;
     /* Remove any potential margins or padding that could cause white space */
@@ -336,11 +336,56 @@
 
 @media (max-width: 768px) {
   .video-page {
-    top: 60px;
+    /* Start from the very top on mobile - no header */
+    top: 0;
+    height: 100vh;
     /* Optimize for mobile touch */
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+    /* TikTok-style: CSS variables for adaptive positioning */
+    --bottom-nav-height: 35px;
+    --description-height: 60px;
+    --actions-bottom-margin: 20px;
+    --actions-bottom-position: calc(var(--bottom-nav-height) + var(--description-height) + var(--actions-bottom-margin));
+  }
+
+  /* TikTok-style: Adaptive positioning for different screen heights */
+  @media (max-height: 667px) {
+    .video-page {
+      --description-height: 50px;
+      --actions-bottom-margin: 15px;
+    }
+  }
+
+  @media (min-height: 812px) {
+    .video-page {
+      --description-height: 70px;
+      --actions-bottom-margin: 25px;
+    }
+  }
+
+  @media (min-height: 900px) {
+    .video-page {
+      --description-height: 80px;
+      --actions-bottom-margin: 30px;
+    }
+  }
+
+  /* TikTok-style: Extra tall screens (iPhone 14 Pro Max, etc.) */
+  @media (min-height: 1000px) {
+    .video-page {
+      --description-height: 90px;
+      --actions-bottom-margin: 35px;
+    }
+  }
+
+  /* TikTok-style: Ultra-tall screens */
+  @media (min-height: 1100px) {
+    .video-page {
+      --description-height: 100px;
+      --actions-bottom-margin: 40px;
+    }
   }
 
   .video-page__container {
@@ -355,6 +400,9 @@
     /* Remove any spacing that could cause white gaps */
     margin: 0;
     padding: 0;
+    /* TikTok-style: Center content vertically */
+    align-items: center;
+    justify-content: center;
   }
 
   .video-page__video-container {
@@ -380,7 +428,8 @@
   .video-page__video-container {
     width: 100%;
     max-width: 100%; /* Use full width for better mobile experience */
-    height: 100%; /* Use full height */
+    height: 100vh; /* TikTok-style: Full viewport height */
+    max-height: 100vh; /* Ensure it fills screen */
     /* Remove any potential white space */
     margin: 0;
     padding: 0;
@@ -390,37 +439,63 @@
   }
 
   .video-page__bottom-info {
-    left: 10px;
-    right: 10px;
+    position: absolute;
+    left: 12px; /* TikTok-style: Close to left edge */
+    bottom: calc(var(--bottom-nav-height, 35px) + 10px); /* TikTok-style: Adaptive above bottom nav */
+    right: 80px; /* Leave space for action buttons */
     width: auto;
-    bottom: 60px; /* Move up slightly to account for smaller bottom nav */
-    background: rgba(0, 0, 0, 0.6); /* More transparent */
-    padding: 8px 12px; /* Smaller padding */
+    background: transparent; /* TikTok-style: No background */
+    padding: 0; /* TikTok-style: No padding */
+    border-radius: 0; /* TikTok-style: No border radius */
+    backdrop-filter: none; /* TikTok-style: No backdrop filter */
+    /* TikTok-style: Adaptive height based on screen size */
+    min-height: var(--description-height, 60px);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
   }
 
   .video-page__actions {
-    right: 60px;
-    bottom: 120px; /* Move up to accommodate smaller bottom nav */
-    gap: 15px;
+    position: absolute;
+    right: 12px; /* TikTok-style: Very close to right edge */
+    bottom: var(--actions-bottom-position, 120px); /* TikTok-style: Adaptive positioning */
+    gap: 20px; /* TikTok-style: More spacing between buttons */
     /* Ensure actions have higher z-index but don't block video touches */
     z-index: 20;
     pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    /* TikTok-style: Adaptive positioning based on screen height */
+    min-height: fit-content;
   }
 
   .video-page__action {
-    width: 40px;
-    height: 40px;
-    padding: 6px;
+    width: 48px; /* TikTok-style: Larger buttons */
+    height: 48px;
+    padding: 8px;
+    /* TikTok-style: More subtle styling */
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%; /* Perfect circles like TikTok */
+    backdrop-filter: blur(8px);
     /* Ensure individual actions capture touches */
     pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 
   .video-page__action-icon {
-    font-size: 18px;
+    font-size: 22px; /* TikTok-style: Larger icons */
+    margin-bottom: 2px;
   }
 
   .video-page__action-count {
-    font-size: 10px;
+    font-size: 11px; /* TikTok-style: Small count text */
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   }
 
   .video-page__navigation {
@@ -478,12 +553,33 @@
 }
 
 @media (max-width: 480px) {
+  .video-page {
+    /* TikTok-style: Adjust variables for smaller screens */
+    --bottom-nav-height: 35px;
+    --description-height: 50px;
+    --actions-bottom-margin: 15px;
+    --actions-bottom-position: calc(var(--bottom-nav-height) + var(--description-height) + var(--actions-bottom-margin));
+  }
+
+  /* Further adjustments for very small screens */
+  @media (max-height: 600px) {
+    .video-page {
+      --description-height: 40px;
+      --actions-bottom-margin: 10px;
+    }
+  }
+
   .video-page__bottom-info {
     padding: 12px;
   }
 
   .video-page__video-title {
-    font-size: 14px;
+    font-size: 15px; /* TikTok-style: Clean, readable size */
+    font-weight: 600; /* TikTok-style: Semi-bold */
+    color: white;
+    margin: 0;
+    line-height: 1.4;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); /* TikTok-style: Text shadow for readability */
   }
 
   .video-page__desc-text {
@@ -499,23 +595,39 @@
   }
 
   .video-page__actions {
-    gap: 12px;
-    right: 50px;
-    bottom: 70px;
+    gap: 18px; /* TikTok-style: Consistent spacing */
+    right: 10px; /* Even closer to edge on smaller screens */
+    bottom: var(--actions-bottom-position, 100px); /* TikTok-style: Adaptive positioning */
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    min-height: fit-content;
   }
 
   .video-page__action {
-    width: 35px;
-    height: 35px;
+    width: 44px; /* Slightly smaller on small screens */
+    height: 44px;
     padding: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%;
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 
   .video-page__action-icon {
-    font-size: 16px;
+    font-size: 20px; /* TikTok-style: Good size for small screens */
+    margin-bottom: 2px;
   }
 
   .video-page__action-count {
-    font-size: 9px;
+    font-size: 10px; /* TikTok-style: Small but readable */
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   }
 
   .video-page__navigation {
@@ -546,6 +658,14 @@
   justify-content: center;
   align-items: center;
   color: white;
+}
+
+@media (max-width: 768px) {
+  .video-page__error,
+  .video-page__no-videos {
+    top: 0; /* Full screen on mobile */
+    height: 100vh;
+  }
 }
 
 .video-page__error-content,
@@ -588,6 +708,12 @@
 }
 
 @media (max-width: 768px) {
+  .video-page__error,
+  .video-page__no-videos {
+    top: 0; /* Full screen on mobile */
+    height: 100vh;
+  }
+
   .video-page__error-content,
   .video-page__no-videos-content {
     padding: 16px;
