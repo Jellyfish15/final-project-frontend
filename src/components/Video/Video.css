@@ -339,6 +339,7 @@
     /* Start from the very top on mobile - no header */
     top: 0;
     height: 100vh;
+    height: 100dvh; /* Safari-optimized dynamic viewport height */
     /* Optimize for mobile touch */
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -352,6 +353,18 @@
         var(--actions-bottom-margin)
     );
     --description-bottom-margin: 15px; /* Safe margin above bottom nav */
+    /* Safari-specific optimizations */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    /* Support for Safari safe areas */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Safari-specific viewport unit support */
+  @supports (height: 100dvh) {
+    .video-page {
+      height: 100dvh;
+    }
   }
 
   /* TikTok-style: Adaptive positioning for different screen heights */
@@ -412,18 +425,16 @@
     /* TikTok-style: Center content vertically but account for bottom nav */
     align-items: center;
     justify-content: center;
-    /* Ensure container doesn't overlap with bottom nav */
-    height: calc(100vh - var(--bottom-nav-height, 35px));
-  }
-
-  .video-page__video-container {
-    /* Ensure video area captures touch events properly */
-    position: relative;
-    z-index: 1;
-    pointer-events: auto;
-    /* iPhone-specific touch optimization */
-    touch-action: pan-y;
-    -webkit-touch-callout: none;
+    /* Ensure container doesn't overlap with bottom nav - Safari optimized */
+    height: calc(
+      100vh - var(--bottom-nav-height, 35px) - env(safe-area-inset-bottom, 0px)
+    );
+    height: calc(
+      100dvh - var(--bottom-nav-height, 35px) - env(safe-area-inset-bottom, 0px)
+    ); /* Safari dynamic viewport */
+    /* Safari-specific positioning fixes */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
 
   .video-page__bottom-info {
@@ -439,22 +450,34 @@
   .video-page__video-container {
     width: 100%;
     max-width: 100%; /* Use full width for better mobile experience */
+    /* Safari-optimized height calculation for perfect bottom nav alignment */
     height: calc(
-      100vh - var(--bottom-nav-height, 35px)
-    ); /* Align bottom with top of bottom nav */
+      100vh - var(--bottom-nav-height, 35px) - env(safe-area-inset-bottom, 0px)
+    );
+    height: calc(
+      100dvh - var(--bottom-nav-height, 35px) - env(safe-area-inset-bottom, 0px)
+    ); /* Dynamic viewport height for Safari */
     max-height: calc(
-      100vh - var(--bottom-nav-height, 35px)
-    ); /* Ensure perfect alignment */
+      100vh - var(--bottom-nav-height, 35px) - env(safe-area-inset-bottom, 0px)
+    );
+    max-height: calc(
+      100dvh - var(--bottom-nav-height, 35px) - env(safe-area-inset-bottom, 0px)
+    ); /* Dynamic viewport height for Safari */
     /* Remove any potential white space */
     margin: 0;
     padding: 0;
     /* Prevent text selection during touch */
     -webkit-user-select: none;
     user-select: none;
-    /* Position video container to align with bottom nav */
+    /* Position video container to align with bottom nav - Safari optimized */
     position: absolute;
     top: 0;
     left: 0;
+    /* Safari-specific fixes for viewport alignment */
+    -webkit-transform: translateZ(0); /* Force hardware acceleration */
+    transform: translateZ(0);
+    /* Ensure proper layering */
+    z-index: 1;
   }
 
   .video-page__bottom-info {
