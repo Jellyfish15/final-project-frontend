@@ -346,29 +346,36 @@
     /* TikTok-style: CSS variables for adaptive positioning */
     --bottom-nav-height: 35px;
     --description-height: 60px;
-    --actions-bottom-margin: 20px;
-    --actions-bottom-position: calc(var(--bottom-nav-height) + var(--description-height) + var(--actions-bottom-margin));
+    --actions-bottom-margin: 25px; /* Increased margin for better spacing */
+    --actions-bottom-position: calc(
+      var(--bottom-nav-height) + var(--description-height) +
+        var(--actions-bottom-margin)
+    );
+    --description-bottom-margin: 15px; /* Safe margin above bottom nav */
   }
 
   /* TikTok-style: Adaptive positioning for different screen heights */
   @media (max-height: 667px) {
     .video-page {
       --description-height: 50px;
-      --actions-bottom-margin: 15px;
+      --actions-bottom-margin: 20px;
+      --description-bottom-margin: 12px;
     }
   }
 
   @media (min-height: 812px) {
     .video-page {
       --description-height: 70px;
-      --actions-bottom-margin: 25px;
+      --actions-bottom-margin: 30px;
+      --description-bottom-margin: 18px;
     }
   }
 
   @media (min-height: 900px) {
     .video-page {
       --description-height: 80px;
-      --actions-bottom-margin: 30px;
+      --actions-bottom-margin: 35px;
+      --description-bottom-margin: 20px;
     }
   }
 
@@ -376,7 +383,8 @@
   @media (min-height: 1000px) {
     .video-page {
       --description-height: 90px;
-      --actions-bottom-margin: 35px;
+      --actions-bottom-margin: 40px;
+      --description-bottom-margin: 22px;
     }
   }
 
@@ -384,7 +392,8 @@
   @media (min-height: 1100px) {
     .video-page {
       --description-height: 100px;
-      --actions-bottom-margin: 40px;
+      --actions-bottom-margin: 45px;
+      --description-bottom-margin: 25px;
     }
   }
 
@@ -400,9 +409,11 @@
     /* Remove any spacing that could cause white gaps */
     margin: 0;
     padding: 0;
-    /* TikTok-style: Center content vertically */
+    /* TikTok-style: Center content vertically but account for bottom nav */
     align-items: center;
     justify-content: center;
+    /* Ensure container doesn't overlap with bottom nav */
+    height: calc(100vh - var(--bottom-nav-height, 35px));
   }
 
   .video-page__video-container {
@@ -428,20 +439,30 @@
   .video-page__video-container {
     width: 100%;
     max-width: 100%; /* Use full width for better mobile experience */
-    height: 100vh; /* TikTok-style: Full viewport height */
-    max-height: 100vh; /* Ensure it fills screen */
+    height: calc(
+      100vh - var(--bottom-nav-height, 35px)
+    ); /* Align bottom with top of bottom nav */
+    max-height: calc(
+      100vh - var(--bottom-nav-height, 35px)
+    ); /* Ensure perfect alignment */
     /* Remove any potential white space */
     margin: 0;
     padding: 0;
     /* Prevent text selection during touch */
     -webkit-user-select: none;
     user-select: none;
+    /* Position video container to align with bottom nav */
+    position: absolute;
+    top: 0;
+    left: 0;
   }
 
   .video-page__bottom-info {
     position: absolute;
     left: 12px; /* TikTok-style: Close to left edge */
-    bottom: calc(var(--bottom-nav-height, 35px) + 10px); /* TikTok-style: Adaptive above bottom nav */
+    bottom: calc(
+      var(--bottom-nav-height, 35px) + var(--description-bottom-margin, 15px)
+    ); /* Safe margin above bottom nav */
     right: 80px; /* Leave space for action buttons */
     width: auto;
     background: transparent; /* TikTok-style: No background */
@@ -450,15 +471,21 @@
     backdrop-filter: none; /* TikTok-style: No backdrop filter */
     /* TikTok-style: Adaptive height based on screen size */
     min-height: var(--description-height, 60px);
+    max-height: var(--description-height, 60px);
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+    /* Ensure text never overlaps with bottom nav */
+    z-index: 15;
   }
 
   .video-page__actions {
     position: absolute;
     right: 12px; /* TikTok-style: Very close to right edge */
-    bottom: var(--actions-bottom-position, 120px); /* TikTok-style: Adaptive positioning */
+    bottom: var(
+      --actions-bottom-position,
+      120px
+    ); /* TikTok-style: Adaptive positioning */
     gap: 20px; /* TikTok-style: More spacing between buttons */
     /* Ensure actions have higher z-index but don't block video touches */
     z-index: 20;
@@ -557,15 +584,20 @@
     /* TikTok-style: Adjust variables for smaller screens */
     --bottom-nav-height: 35px;
     --description-height: 50px;
-    --actions-bottom-margin: 15px;
-    --actions-bottom-position: calc(var(--bottom-nav-height) + var(--description-height) + var(--actions-bottom-margin));
+    --actions-bottom-margin: 20px; /* Increased for better spacing */
+    --actions-bottom-position: calc(
+      var(--bottom-nav-height) + var(--description-height) +
+        var(--actions-bottom-margin)
+    );
+    --description-bottom-margin: 12px; /* Safe margin above bottom nav */
   }
 
   /* Further adjustments for very small screens */
   @media (max-height: 600px) {
     .video-page {
       --description-height: 40px;
-      --actions-bottom-margin: 10px;
+      --actions-bottom-margin: 15px;
+      --description-bottom-margin: 10px;
     }
   }
 
@@ -597,7 +629,10 @@
   .video-page__actions {
     gap: 18px; /* TikTok-style: Consistent spacing */
     right: 10px; /* Even closer to edge on smaller screens */
-    bottom: var(--actions-bottom-position, 100px); /* TikTok-style: Adaptive positioning */
+    bottom: var(
+      --actions-bottom-position,
+      100px
+    ); /* TikTok-style: Adaptive positioning */
     position: absolute;
     display: flex;
     flex-direction: column;
