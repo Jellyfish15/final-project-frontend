@@ -170,9 +170,11 @@ function App() {
 
     return (
       <div className={`app ${isVideosPage ? "app--videos" : ""}`}>
+        {/* Hide header on mobile for videos page */}
         <Header
           onOpenLogin={() => openModal("login")}
           onOpenRegister={() => openModal("register")}
+          className={isVideosPage ? "header--mobile-hidden" : ""}
         />
         <main
           className={`app__main ${isVideosPage ? "app__main--videos" : ""}`}
