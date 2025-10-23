@@ -6,7 +6,7 @@
 
 .page-body {
   font-family: var(--font-primary);
-  background-color: #f8f8f8;
+  background-color: white; /* Default white background */
   color: #161823;
   line-height: 1.6;
   /* Prevent pull-to-refresh and overscroll */
@@ -14,6 +14,11 @@
   -webkit-overflow-scrolling: touch;
   /* Improve touch responsiveness */
   touch-action: manipulation;
+}
+
+/* Black background for videos page */
+.page-body--videos {
+  background-color: black;
 }
 
 #root {
@@ -34,9 +39,18 @@
 
 .app__main {
   flex: 1;
-  background-color: black;
+  background-color: white; /* Default white background */
   /* Add padding for bottom navigation on mobile */
   padding-bottom: 0;
+}
+
+/* Black background for videos page */
+.app--videos {
+  background-color: black;
+}
+
+.app__main--videos {
+  background-color: black;
 }
 
 /* Mobile app-like styling */
@@ -75,11 +89,16 @@
 /* PWA standalone mode styling */
 @media all and (display-mode: standalone) {
   .page-body {
-    /* Hide browser chrome */
-    background-color: #000;
+    /* Default to white background in standalone mode */
+    background-color: white;
     /* Ensure content goes to edges */
     padding: 0;
     margin: 0;
+  }
+
+  /* Black background for videos page in standalone mode */
+  .page-body--videos {
+    background-color: black;
   }
 
   .app {

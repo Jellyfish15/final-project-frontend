@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import Profile from "./components/Profile/Profile";
 import Search from "./components/Search/Search";
@@ -148,40 +149,66 @@ function App() {
     refreshVideos: loadVideos,
   };
 
+  // Component to handle location-based styling
+  const AppContent = () => {
+    const location = useLocation();
+    const isVideosPage = location.pathname === "/videos";
+
+    // Update body class based on current page
+    useEffect(() => {
+      if (isVideosPage) {
+        document.body.classList.add("page-body--videos");
+      } else {
+        document.body.classList.remove("page-body--videos");
+      }
+
+      // Cleanup function
+      return () => {
+        document.body.classList.remove("page-body--videos");
+      };
+    }, [isVideosPage]);
+
+    return (
+      <div className={`app ${isVideosPage ? "app--videos" : ""}`}>
+        <Header
+          onOpenLogin={() => openModal("login")}
+          onOpenRegister={() => openModal("register")}
+        />
+        <main
+          className={`app__main ${isVideosPage ? "app__main--videos" : ""}`}
+        >
+          <Routes>
+            <Route path="/" element={<Navigate to="/videos" replace />} />
+            <Route path="/search" element={<Search />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/videos" element={<Video />} />
+          </Routes>
+        </main>
+        <Footer />
+        <BottomNavigation />
+
+        <LoginModal
+          isOpen={modals.login}
+          onClose={() => closeModal("login")}
+          onLogin={handleLogin}
+          onSwitchToRegister={switchToRegister}
+        />
+
+        <RegisterModal
+          isOpen={modals.register}
+          onClose={() => closeModal("register")}
+          onRegister={handleRegister}
+          onSwitchToLogin={switchToLogin}
+        />
+      </div>
+    );
+  };
+
   return (
     <AuthProvider>
       <VideoProvider {...videoApiProps}>
         <Router>
-          <div className="app">
-            <Header
-              onOpenLogin={() => openModal("login")}
-              onOpenRegister={() => openModal("register")}
-            />
-            <main className="app__main">
-              <Routes>
-                <Route path="/" element={<Navigate to="/videos" replace />} />
-                <Route path="/search" element={<Search />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/videos" element={<Video />} />
-              </Routes>
-            </main>
-            <Footer />
-            <BottomNavigation />
-
-            <LoginModal
-              isOpen={modals.login}
-              onClose={() => closeModal("login")}
-              onLogin={handleLogin}
-              onSwitchToRegister={switchToRegister}
-            />
-
-            <RegisterModal
-              isOpen={modals.register}
-              onClose={() => closeModal("register")}
-              onRegister={handleRegister}
-              onSwitchToLogin={switchToLogin}
-            />
-          </div>
+          <AppContent />
         </Router>
       </VideoProvider>
     </AuthProvider>
