@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { useAuth } from "../AuthContext/AuthContext";
 import ModalWithForm from "../ModalWithForm/ModalWithForm";
 
-const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToRegister }) => {
+const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     password: "",
   });
   const [errors, setErrors] = useState({});
@@ -27,8 +29,10 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToRegister }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.username.trim()) {
-      newErrors.username = "Username is required";
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email";
     }
 
     if (!formData.password) {
@@ -46,23 +50,19 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToRegister }) => {
 
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const result = await login({
+        email: formData.email,
+        password: formData.password,
+      });
 
-      if (formData.username === "demo" && formData.password === "password") {
-        if (onLogin) {
-          onLogin({
-            username: formData.username,
-            isAuthenticated: true,
-          });
-        }
-
+      if (result.success) {
         setFormData({
-          username: "",
+          email: "",
           password: "",
         });
         onClose();
       } else {
-        setErrors({ submit: "Invalid username or password" });
+        setErrors({ submit: result.message || "Login failed" });
       }
     } catch (error) {
       setErrors({ submit: "Login failed. Please try again." });
@@ -73,7 +73,7 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToRegister }) => {
 
   const handleClose = () => {
     setFormData({
-      username: "",
+      email: "",
       password: "",
     });
     setErrors({});
@@ -90,22 +90,20 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToRegister }) => {
       isLoading={isLoading}
     >
       <div className="modal__field">
-        <label htmlFor="login-username" className="modal__label">
-          Username
+        <label htmlFor="login-email" className="modal__label">
+          Email
         </label>
         <input
-          id="login-username"
-          type="text"
-          name="username"
+          id="login-email"
+          type="email"
+          name="email"
           className="modal__input"
-          placeholder="Enter your username"
-          value={formData.username}
+          placeholder="Enter your email"
+          value={formData.email}
           onChange={handleInputChange}
           required
         />
-        {errors.username && (
-          <div className="modal__error">{errors.username}</div>
-        )}
+        {errors.email && <div className="modal__error">{errors.email}</div>}
       </div>
 
       <div className="modal__field">
@@ -134,6 +132,7 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToRegister }) => {
           type="button"
           className="modal__link-button"
           onClick={() => {
+            // TODO: Implement forgot password
           }}
         >
           Forgot password?

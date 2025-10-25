@@ -122,9 +122,9 @@ function App() {
 
   const handleLogin = async (userData) => {
     try {
-      console.log("Processing login for:", userData.username);
-
-      console.log(" User logged in:", userData);
+      console.log("Processing login for:", userData.username || userData.email);
+      // The actual login is now handled by AuthContext
+      // This is just for UI feedback
       closeModal("login");
     } catch (error) {
       console.error("Login failed:", error);
@@ -134,8 +134,8 @@ function App() {
   const handleRegister = async (userData) => {
     try {
       console.log("Processing registration for:", userData.username);
-
-      console.log(" User registered:", userData);
+      // The actual registration is now handled by AuthContext
+      // This is just for UI feedback
       closeModal("register");
     } catch (error) {
       console.error("Registration failed:", error);
@@ -192,14 +192,12 @@ function App() {
         <LoginModal
           isOpen={modals.login}
           onClose={() => closeModal("login")}
-          onLogin={handleLogin}
           onSwitchToRegister={switchToRegister}
         />
 
         <RegisterModal
           isOpen={modals.register}
           onClose={() => closeModal("register")}
-          onRegister={handleRegister}
           onSwitchToLogin={switchToLogin}
         />
       </div>
