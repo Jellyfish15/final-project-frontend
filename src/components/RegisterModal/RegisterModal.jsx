@@ -1,12 +1,15 @@
 import React, { useState } from "react";
+import { useAuth } from "../AuthContext/AuthContext";
 import ModalWithForm from "../ModalWithForm/ModalWithForm";
 
-const RegisterModal = ({ isOpen, onClose, onRegister, onSwitchToLogin }) => {
+const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
     confirmPassword: "",
     email: "",
+    displayName: "",
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -17,6 +20,7 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onSwitchToLogin }) => {
       password: "",
       confirmPassword: "",
       email: "",
+      displayName: "",
     });
     setErrors({});
   };
@@ -43,6 +47,13 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onSwitchToLogin }) => {
       newErrors.username = "Username is required";
     } else if (formData.username.length < 3) {
       newErrors.username = "Username must be at least 3 characters";
+    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      newErrors.username =
+        "Username can only contain letters, numbers, and underscores";
+    }
+
+    if (!formData.displayName.trim()) {
+      newErrors.displayName = "Display name is required";
     }
 
     if (!formData.email.trim()) {
@@ -70,19 +81,25 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onSwitchToLogin }) => {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    if (onRegister) {
-      onRegister({
+    try {
+      const result = await register({
         username: formData.username,
+        displayName: formData.displayName,
         email: formData.email,
         password: formData.password,
       });
-    }
 
-    resetForm();
-    onClose();
-    setIsLoading(false);
+      if (result.success) {
+        resetForm();
+        onClose();
+      } else {
+        setErrors({ submit: result.message || "Registration failed" });
+      }
+    } catch (error) {
+      setErrors({ submit: "Registration failed. Please try again." });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleClose = () => {
@@ -115,6 +132,25 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onSwitchToLogin }) => {
         />
         {errors.username && (
           <div className="modal__error">{errors.username}</div>
+        )}
+      </div>
+
+      <div className="modal__field">
+        <label htmlFor="register-display-name" className="modal__label">
+          Display Name
+        </label>
+        <input
+          id="register-display-name"
+          type="text"
+          name="displayName"
+          className="modal__input"
+          placeholder="Your display name"
+          value={formData.displayName}
+          onChange={handleInputChange}
+          required
+        />
+        {errors.displayName && (
+          <div className="modal__error">{errors.displayName}</div>
         )}
       </div>
 

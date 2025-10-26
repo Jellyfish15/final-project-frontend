@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { authAPI, usersAPI } from "../../services/api";
 
 const AuthContext = createContext();
 
@@ -26,46 +27,80 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("nudlUser");
-    if (savedUser) {
-      try {
-        const userData = JSON.parse(savedUser);
-        setUser(userData);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error("Error parsing saved user data:", error);
-        localStorage.removeItem("nudlUser");
+    const initializeAuth = async () => {
+      const savedUser = localStorage.getItem("nudlUser");
+      const token = localStorage.getItem("authToken");
+
+      if (savedUser && token) {
+        try {
+          // Verify token with backend
+          const response = await authAPI.getCurrentUser();
+          if (response.success) {
+            setAuthenticatedUser(response.user);
+          } else {
+            // Invalid token, clear storage
+            localStorage.removeItem("nudlUser");
+            localStorage.removeItem("authToken");
+          }
+        } catch (error) {
+          console.error("Error verifying saved user:", error);
+          localStorage.removeItem("nudlUser");
+          localStorage.removeItem("authToken");
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
-  const login = (userData) => {
-    setAuthenticatedUser(userData);
+  const login = async (credentials) => {
+    try {
+      const response = await authAPI.login(credentials);
+      if (response.success) {
+        setAuthenticatedUser(response.user);
+        return { success: true, user: response.user };
+      }
+      return { success: false, message: response.message };
+    } catch (error) {
+      console.error("Login error:", error);
+      return { success: false, message: error.message };
+    }
   };
 
-  const register = (userData) => {
-    const newUser = {
-      ...userData,
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-      followers: 0,
-      following: 0,
-      videos: 0,
-      likes: 0,
-    };
-    setAuthenticatedUser(newUser);
+  const register = async (userData) => {
+    try {
+      const response = await authAPI.register(userData);
+      if (response.success) {
+        setAuthenticatedUser(response.user);
+        return { success: true, user: response.user };
+      }
+      return { success: false, message: response.message };
+    } catch (error) {
+      console.error("Registration error:", error);
+      return { success: false, message: error.message };
+    }
   };
 
   const logout = () => {
+    authAPI.logout();
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem("nudlUser");
   };
 
-  const updateUser = (updates) => {
-    const updatedUser = { ...user, ...updates };
-    setAuthenticatedUser(updatedUser);
+  const updateUser = async (updates) => {
+    try {
+      const response = await usersAPI.updateProfile(updates);
+      if (response.success) {
+        const updatedUser = { ...user, ...response.user };
+        setAuthenticatedUser(updatedUser);
+        return { success: true, user: updatedUser };
+      }
+      return { success: false, message: response.message };
+    } catch (error) {
+      console.error("Update user error:", error);
+      return { success: false, message: error.message };
+    }
   };
 
   const value = {

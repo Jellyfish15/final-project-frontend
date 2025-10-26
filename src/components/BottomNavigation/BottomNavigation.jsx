@@ -4,6 +4,7 @@ import "./BottomNavigation.css";
 
 const BottomNavigation = () => {
   const location = useLocation();
+  const isVideosPage = location.pathname === "/videos";
 
   const navItems = [
     {
@@ -27,7 +28,7 @@ const BottomNavigation = () => {
   ];
 
   return (
-    <nav className="bottom-nav">
+    <nav className={`bottom-nav ${isVideosPage ? "bottom-nav--videos" : ""}`}>
       <div className="bottom-nav__container">
         {navItems.map((item) => (
           <Link

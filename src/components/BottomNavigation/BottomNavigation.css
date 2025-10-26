@@ -87,6 +87,37 @@
     border-top: 1px solid rgba(0, 0, 0, 0.03);
   }
 
+  /* Black semi-transparent bottom navigation for videos page */
+  .bottom-nav--videos {
+    background: rgba(0, 0, 0, 0.6); /* Black semi-transparent */
+    backdrop-filter: blur(15px); /* Enhanced blur for better effect */
+    -webkit-backdrop-filter: blur(15px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1); /* Light border for contrast */
+  }
+
+  /* White text and icons for videos page black background */
+  .bottom-nav--videos .bottom-nav__item {
+    color: rgba(255, 255, 255, 0.7); /* White semi-transparent text */
+  }
+
+  .bottom-nav--videos .bottom-nav__item--active {
+    color: #ffffff; /* Pure white for active item */
+  }
+
+  .bottom-nav--videos .bottom-nav__item--active::before {
+    background: rgba(
+      255,
+      255,
+      255,
+      0.15
+    ); /* White semi-transparent active background */
+  }
+
+  /* Hover/touch effects for videos page */
+  .bottom-nav--videos .bottom-nav__item:active {
+    color: rgba(255, 255, 255, 0.9); /* Brighter white on touch */
+  }
+
   .bottom-nav__container {
     padding: 2px 12px 4px 12px; /* Much smaller padding */
   }
