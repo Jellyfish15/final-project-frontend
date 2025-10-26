@@ -334,6 +334,246 @@ router.get("/me/stats", auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/users/interactions/batch
+// @desc    Record batch of user interactions for AI learning
+// @access  Private
+router.post("/interactions/batch", auth, async (req, res) => {
+  try {
+    const { interactions } = req.body;
+
+    if (!interactions || !Array.isArray(interactions)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid interactions data",
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Process each interaction
+    for (const interaction of interactions) {
+      await processUserInteraction(user, interaction);
+    }
+
+    res.json({
+      success: true,
+      message: "Interactions recorded successfully",
+      count: interactions.length,
+    });
+  } catch (error) {
+    console.error("Record interactions error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+// @route   GET /api/users/analytics
+// @desc    Get user's interaction analytics
+// @access  Private
+router.get("/analytics", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Calculate analytics from viewing history and search history
+    const analytics = {
+      totalWatchTime: user.viewingHistory.reduce(
+        (sum, view) => sum + (view.watchTime || 0),
+        0
+      ),
+      videosWatched: user.viewingHistory.length,
+      completionRate:
+        user.viewingHistory.filter((view) => view.completed).length /
+        Math.max(user.viewingHistory.length, 1),
+      searchesPerformed: user.searchHistory.length,
+      favoriteCategories: getFavoriteCategories(user.viewingHistory),
+      averageWatchTime:
+        user.viewingHistory.length > 0
+          ? user.viewingHistory.reduce(
+              (sum, view) => sum + (view.watchTime || 0),
+              0
+            ) / user.viewingHistory.length
+          : 0,
+      preferredDuration: user.preferredDuration || 180,
+    };
+
+    res.json({
+      success: true,
+      analytics,
+    });
+  } catch (error) {
+    console.error("Get analytics error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+// @route   PUT /api/users/preferences
+// @desc    Update user preferences
+// @access  Private
+router.put(
+  "/preferences",
+  [
+    auth,
+    body("interests").optional().isArray({ max: 10 }),
+    body("preferredDuration").optional().isInt({ min: 30, max: 600 }),
+    body("aiPersonalizationEnabled").optional().isBoolean(),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { interests, preferredDuration, aiPersonalizationEnabled } =
+        req.body;
+
+      const user = await User.findById(req.user.userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      // Update preferences
+      if (interests !== undefined) user.interests = interests;
+      if (preferredDuration !== undefined)
+        user.preferredDuration = preferredDuration;
+      if (aiPersonalizationEnabled !== undefined)
+        user.aiPersonalizationEnabled = aiPersonalizationEnabled;
+
+      await user.save();
+
+      res.json({
+        success: true,
+        message: "Preferences updated successfully",
+        preferences: {
+          interests: user.interests,
+          preferredDuration: user.preferredDuration,
+          aiPersonalizationEnabled: user.aiPersonalizationEnabled,
+        },
+      });
+    } catch (error) {
+      console.error("Update preferences error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+      });
+    }
+  }
+);
+
+// Helper function to process individual interactions
+async function processUserInteraction(user, interaction) {
+  const { type, videoId, metadata, timestamp } = interaction;
+
+  try {
+    switch (type) {
+      case "video_view":
+        // Add to viewing history
+        const viewRecord = {
+          videoId: videoId,
+          watchTime: metadata.watchTime || 0,
+          completed: metadata.completed || false,
+          timestamp: new Date(timestamp),
+        };
+
+        // Remove old entry if exists and add new one
+        user.viewingHistory = user.viewingHistory.filter(
+          (view) => view.videoId.toString() !== videoId
+        );
+        user.viewingHistory.push(viewRecord);
+
+        // Keep only last 100 views
+        if (user.viewingHistory.length > 100) {
+          user.viewingHistory = user.viewingHistory.slice(-100);
+        }
+
+        // Update preferred duration based on watched videos
+        if (metadata.completed && metadata.videoDuration) {
+          const currentPreferred = user.preferredDuration || 180;
+          const newDuration = metadata.videoDuration;
+          // Gradually adjust preferred duration
+          user.preferredDuration = Math.round(
+            currentPreferred * 0.9 + newDuration * 0.1
+          );
+        }
+
+        break;
+
+      case "search":
+        // Add to search history
+        const searchRecord = {
+          query: metadata.query,
+          videoId: metadata.selectedVideoId || null,
+          action: metadata.selectedVideoId ? "click" : "search_only",
+          timestamp: new Date(timestamp),
+        };
+
+        user.searchHistory.push(searchRecord);
+
+        // Keep only last 50 searches
+        if (user.searchHistory.length > 50) {
+          user.searchHistory = user.searchHistory.slice(-50);
+        }
+
+        break;
+
+      case "video_engagement":
+        // Update engagement patterns (could be used for future recommendations)
+        break;
+
+      case "recommendation":
+        // Track recommendation effectiveness
+        break;
+
+      default:
+        // Log unknown interaction types for future analysis
+        console.log("Unknown interaction type:", type);
+    }
+
+    await user.save();
+  } catch (error) {
+    console.error("Error processing interaction:", error);
+  }
+}
+
+// Helper function to get favorite categories
+function getFavoriteCategories(viewingHistory) {
+  const categoryCount = {};
+
+  viewingHistory.forEach((view) => {
+    // This would need to look up the video to get category
+    // For now, return empty array
+  });
+
+  return Object.entries(categoryCount)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([category]) => category);
+}
+
 // @route   DELETE /api/users/account
 // @desc    Delete user account (soft delete)
 // @access  Private

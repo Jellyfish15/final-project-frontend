@@ -3,8 +3,206 @@ const { body, validationResult } = require("express-validator");
 const Video = require("../models/Video");
 const User = require("../models/User");
 const { auth, optionalAuth } = require("../middleware/auth");
+const aiSearchService = require("../services/aiSearchService");
 
 const router = express.Router();
+
+// @route   GET /api/videos/search/smart
+// @desc    AI-powered semantic search for videos
+// @access  Public (better with auth)
+router.get("/search/smart", optionalAuth, async (req, res) => {
+  try {
+    const { q: query, limit = 20, includeAll = false } = req.query;
+
+    if (!query || query.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: "Search query must be at least 2 characters long",
+      });
+    }
+
+    // Get user profile for personalization
+    let userProfile = null;
+    if (req.user) {
+      userProfile = await User.findById(req.user.userId).select(
+        "interests viewingHistory preferredDuration searchHistory"
+      );
+    }
+
+    // Get all videos for search (or filter based on includeAll flag)
+    const searchVideos = await Video.find({
+      status: "approved",
+      isPrivate: false,
+      publishedAt: { $exists: true, $lte: new Date() },
+    })
+      .populate("creator", "username displayName avatar isVerified")
+      .lean();
+
+    // Perform AI-powered semantic search
+    const searchResults = await aiSearchService.semanticSearch(
+      query,
+      searchVideos,
+      userProfile
+    );
+
+    // Limit results
+    const limitedResults = searchResults.slice(0, parseInt(limit));
+
+    // Format results for response
+    const formattedResults = limitedResults.map((video) => ({
+      id: video._id,
+      title: video.title,
+      description: video.description,
+      videoUrl: video.videoUrl,
+      thumbnailUrl: video.thumbnailUrl,
+      duration: video.duration,
+      category: video.category,
+      tags: video.tags,
+      creator: {
+        username: video.creator?.username || "unknown",
+        displayName: video.creator?.displayName || "Unknown Creator",
+        avatar:
+          video.creator?.avatar || "https://via.placeholder.com/40x40?text=U",
+        isVerified: video.creator?.isVerified || false,
+      },
+      views: video.views,
+      likes: video.likes?.length || 0,
+      comments: video.comments?.length || 0,
+      shares: video.shares,
+      publishedAt: video.publishedAt,
+      relevanceScore: video.relevanceScore,
+      isLiked: req.user
+        ? video.likes?.some((like) => like.user.toString() === req.user.userId)
+        : false,
+    }));
+
+    // Store search analytics (if user is authenticated)
+    if (req.user && formattedResults.length > 0) {
+      // Could store search patterns for future improvements
+      console.log(`User ${req.user.userId} searched for: "${query}"`);
+    }
+
+    res.json({
+      success: true,
+      query: query,
+      results: formattedResults,
+      totalFound: limitedResults.length,
+      searchAnalysis: {
+        query: query,
+        resultCount: limitedResults.length,
+        hasPersonalization: !!userProfile,
+      },
+    });
+  } catch (error) {
+    console.error("Smart search error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Search service temporarily unavailable",
+    });
+  }
+});
+
+// @route   GET /api/videos/search/suggestions
+// @desc    Get search suggestions based on partial query
+// @access  Public
+router.get("/search/suggestions", async (req, res) => {
+  try {
+    const { q: partialQuery, limit = 8 } = req.query;
+
+    if (!partialQuery || partialQuery.trim().length < 1) {
+      return res.json({
+        success: true,
+        suggestions: [],
+      });
+    }
+
+    // Get sample of videos for suggestions
+    const videos = await Video.find({
+      status: "approved",
+      isPrivate: false,
+    })
+      .select("title category tags")
+      .limit(1000)
+      .lean();
+
+    // Generate AI-powered suggestions
+    const suggestions = aiSearchService.generateSearchSuggestions(
+      partialQuery,
+      videos
+    );
+
+    res.json({
+      success: true,
+      suggestions: suggestions.slice(0, parseInt(limit)),
+      query: partialQuery,
+    });
+  } catch (error) {
+    console.error("Search suggestions error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to generate suggestions",
+      suggestions: [],
+    });
+  }
+});
+
+// @route   POST /api/videos/search/feedback
+// @desc    Record search feedback for learning
+// @access  Private
+router.post(
+  "/search/feedback",
+  [
+    auth,
+    body("query").isLength({ min: 2, max: 200 }).trim(),
+    body("videoId").isMongoId(),
+    body("action").isIn(["click", "like", "skip", "complete"]),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid feedback data",
+          errors: errors.array(),
+        });
+      }
+
+      const { query, videoId, action, relevanceRating } = req.body;
+
+      // Record feedback for future AI improvements
+      const feedback = {
+        userId: req.user.userId,
+        query,
+        videoId,
+        action,
+        relevanceRating: relevanceRating || null,
+        timestamp: new Date(),
+      };
+
+      // Store in user's search history (could be a separate collection)
+      await User.findByIdAndUpdate(req.user.userId, {
+        $push: {
+          searchHistory: {
+            $each: [feedback],
+            $slice: -100, // Keep only last 100 searches
+          },
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Feedback recorded successfully",
+      });
+    } catch (error) {
+      console.error("Search feedback error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Unable to record feedback",
+      });
+    }
+  }
+);
 
 // @route   GET /api/videos/feed
 // @desc    Get algorithmic video feed

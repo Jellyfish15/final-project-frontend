@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext/AuthContext";
 import { usersAPI, videosAPI, uploadAPI } from "../../services/api";
 import LoadingSpinner from "../LoadingSpinner/LoadingSpinner";
@@ -7,12 +8,15 @@ import "./Profile.css";
 
 const Profile = () => {
   const { user, isAuthenticated, updateUser } = useAuth();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("videos");
   const [userVideos, setUserVideos] = useState([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // Store video ID to delete
+  const [deleting, setDeleting] = useState(false);
   const [profileData, setProfileData] = useState({
     username: "",
     displayName: "",
@@ -115,6 +119,24 @@ const Profile = () => {
     }
   };
 
+  const handleDeleteVideo = async (videoId) => {
+    setDeleting(true);
+    try {
+      await uploadAPI.deleteVideo(videoId);
+
+      // Remove video from state
+      setUserVideos((prev) => prev.filter((video) => video._id !== videoId));
+      setDeleteConfirm(null);
+
+      console.log("Video deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete video:", error);
+      alert("Failed to delete video. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleCancelEdit = () => {
     // Reset to original user data
     if (user) {
@@ -132,6 +154,15 @@ const Profile = () => {
     // Add the new video to the list
     setUserVideos((prev) => [video, ...prev]);
     setShowUploadModal(false);
+  };
+
+  const handleVideoClick = (video) => {
+    console.log("[Profile] Video clicked:", {
+      id: video._id,
+      title: video.title,
+    });
+    // Navigate to videos page with the video ID as a query parameter
+    navigate(`/videos?videoId=${video._id}`);
   };
 
   const formatNumber = (num) => {
@@ -252,25 +283,25 @@ const Profile = () => {
         </div>
 
         <div className="profile__stats">
-          <div className="profile__stat">
+          <div key="videos" className="profile__stat">
             <span className="profile__stat-number">
               {formatNumber(user.videoCount || 0)}
             </span>
             <span className="profile__stat-label">Videos</span>
           </div>
-          <div className="profile__stat">
+          <div key="followers" className="profile__stat">
             <span className="profile__stat-number">
               {formatNumber(user.followersCount || 0)}
             </span>
             <span className="profile__stat-label">Followers</span>
           </div>
-          <div className="profile__stat">
+          <div key="following" className="profile__stat">
             <span className="profile__stat-number">
               {formatNumber(user.followingCount || 0)}
             </span>
             <span className="profile__stat-label">Following</span>
           </div>
-          <div className="profile__stat">
+          <div key="likes" className="profile__stat">
             <span className="profile__stat-number">
               {formatNumber(user.totalLikes || 0)}
             </span>
@@ -342,7 +373,11 @@ const Profile = () => {
                   <div className="profile__video-grid">
                     {userVideos.map((video) => (
                       <div key={video._id} className="profile__video-item">
-                        <div className="profile__video-thumbnail">
+                        <div
+                          className="profile__video-thumbnail"
+                          onClick={() => handleVideoClick(video)}
+                          style={{ cursor: "pointer" }}
+                        >
                           <img
                             src={
                               video.thumbnailUrl ||
@@ -355,6 +390,7 @@ const Profile = () => {
                               <span>👁 {formatNumber(video.views || 0)}</span>
                               <span>❤️ {formatNumber(video.likes || 0)}</span>
                             </div>
+                            <div className="profile__video-play-icon">▶️</div>
                           </div>
                         </div>
                         <h4 className="profile__video-title">{video.title}</h4>
@@ -367,6 +403,16 @@ const Profile = () => {
                           <span className="profile__video-date">
                             {new Date(video.uploadedAt).toLocaleDateString()}
                           </span>
+                          <button
+                            className="profile__video-delete-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirm(video._id);
+                            }}
+                            disabled={deleting}
+                          >
+                            🗑️
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -416,6 +462,35 @@ const Profile = () => {
         onClose={() => setShowUploadModal(false)}
         onUploadSuccess={handleUploadSuccess}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Delete Video</h3>
+            <p>
+              Are you sure you want to delete this video? This action cannot be
+              undone.
+            </p>
+            <div className="modal-buttons">
+              <button
+                className="btn-secondary"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-danger"
+                onClick={() => handleDeleteVideo(deleteConfirm)}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

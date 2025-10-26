@@ -265,7 +265,7 @@ videoSchema.methods.addComment = async function (userId, username, text) {
   return this.comments[this.comments.length - 1];
 };
 
-// Static method to get algorithm feed
+// Static method to get algorithm feed with AI recommendations
 videoSchema.statics.getAlgorithmFeed = async function (
   user,
   page = 1,
@@ -273,7 +273,45 @@ videoSchema.statics.getAlgorithmFeed = async function (
 ) {
   const skip = (page - 1) * limit;
 
-  // Base query for approved, public videos
+  try {
+    // If AI recommendations are enabled and user has sufficient data, use AI service
+    if (
+      user &&
+      user.aiPersonalizationEnabled &&
+      (user.interests?.length > 0 || user.viewingHistory?.length > 0)
+    ) {
+      const aiRecommendationService = require("../services/aiRecommendationService");
+
+      // Get all available videos for AI processing
+      const allVideos = await this.find({
+        status: "approved",
+        isPrivate: false,
+        publishedAt: { $exists: true, $lte: new Date() },
+      }).populate("creator", "username displayName avatar isVerified");
+
+      // Get AI-powered recommendations
+      const aiRecommendations =
+        await aiRecommendationService.getPersonalizedRecommendations(
+          user,
+          allVideos,
+          {
+            count: limit * 3, // Get more than needed for better selection
+            excludeWatched: true,
+            diversityFactor: 0.3,
+          }
+        );
+
+      // Apply pagination
+      return aiRecommendations.slice(skip, skip + limit);
+    }
+  } catch (error) {
+    console.error(
+      "AI recommendation failed, falling back to legacy algorithm:",
+      error
+    );
+  }
+
+  // Fallback to original algorithm
   const baseQuery = {
     status: "approved",
     isPrivate: false,

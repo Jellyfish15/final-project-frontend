@@ -36,6 +36,7 @@ app.use(
             "http://localhost:3001",
             "http://localhost:3002",
             "http://localhost:3003",
+            "http://localhost:3005",
           ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -144,10 +145,11 @@ process.on("SIGTERM", () => {
 // Start server
 const startServer = async () => {
   await connectDB();
-  app.listen(PORT, () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
     console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+    console.log(`🌐 Server bound to 0.0.0.0:${PORT}`);
   });
 };
 

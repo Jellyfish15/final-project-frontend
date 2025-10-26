@@ -135,10 +135,6 @@ router.post(
         "other",
       ])
       .withMessage("Invalid category"),
-    body("tags")
-      .optional()
-      .isArray({ max: 10 })
-      .withMessage("Tags must be an array with maximum 10 items"),
     body("isPrivate")
       .optional()
       .isBoolean()
@@ -146,9 +142,16 @@ router.post(
   ],
   async (req, res) => {
     try {
+      console.log("Upload request body:", req.body);
+      console.log(
+        "Upload request file:",
+        req.file ? req.file.filename : "No file"
+      );
+
       // Check for validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.log("Validation errors:", errors.array());
         // Delete uploaded file if validation fails
         if (req.file) {
           fs.unlinkSync(req.file.path);
@@ -167,7 +170,20 @@ router.post(
         });
       }
 
-      const { title, description, category, tags, isPrivate } = req.body;
+      const { title, description, category, isPrivate } = req.body;
+
+      // Parse tags from JSON string if provided
+      let tags = [];
+      if (req.body.tags) {
+        try {
+          tags = JSON.parse(req.body.tags);
+          if (!Array.isArray(tags)) {
+            tags = [];
+          }
+        } catch (e) {
+          tags = [];
+        }
+      }
 
       // Get video metadata (you might want to use ffprobe for this)
       const videoUrl = `/uploads/videos/${req.file.filename}`;
@@ -186,11 +202,12 @@ router.post(
         duration: 0, // You'd get this from video metadata
         fileSize,
         category,
-        tags: tags || [],
+        tags: tags,
         creator: req.user.userId,
-        isPrivate: isPrivate || false,
-        status: "pending", // Videos need approval
+        isPrivate: isPrivate === "true" || isPrivate === true,
+        status: "approved", // Auto-approve for development
         uploadedAt: new Date(),
+        publishedAt: new Date(),
       });
 
       await video.save();
@@ -373,6 +390,64 @@ router.get("/my-videos", auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
+    });
+  }
+});
+
+// @route   DELETE /api/upload/video/:videoId
+// @desc    Delete a video and its files
+// @access  Private
+router.delete("/video/:videoId", auth, async (req, res) => {
+  try {
+    console.log("DELETE route hit with videoId:", req.params.videoId);
+    const { videoId } = req.params;
+
+    const video = await Video.findById(videoId);
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: "Video not found",
+      });
+    }
+
+    // Check if user owns the video
+    if (video.creator.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete this video",
+      });
+    }
+
+    // Delete video file if it exists
+    if (video.videoUrl && !video.videoUrl.startsWith("http")) {
+      const videoFilePath = path.join(__dirname, "..", video.videoUrl);
+      if (fs.existsSync(videoFilePath)) {
+        fs.unlinkSync(videoFilePath);
+        console.log("Deleted video file:", videoFilePath);
+      }
+    }
+
+    // Delete thumbnail file if it exists
+    if (video.thumbnailUrl && !video.thumbnailUrl.startsWith("http")) {
+      const thumbnailFilePath = path.join(__dirname, "..", video.thumbnailUrl);
+      if (fs.existsSync(thumbnailFilePath)) {
+        fs.unlinkSync(thumbnailFilePath);
+        console.log("Deleted thumbnail file:", thumbnailFilePath);
+      }
+    }
+
+    // Delete video record from database
+    await Video.findByIdAndDelete(videoId);
+
+    res.json({
+      success: true,
+      message: "Video deleted successfully",
+    });
+  } catch (error) {
+    console.error("Video deletion error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error during video deletion",
     });
   }
 });

@@ -1,3 +1,261 @@
+/* AI Search Enhancements */
+.search__controls {
+  margin-bottom: 20px;
+}
+
+.search__mode-toggle {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.search__mode-btn {
+  padding: 8px 16px;
+  border: 2px solid #e1e1e1;
+  border-radius: 20px;
+  background: white;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search__mode-btn:hover {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.search__mode-btn--active {
+  border-color: #8b5cf6;
+  background: #8b5cf6;
+  color: white;
+}
+
+.search__form {
+  width: 100%;
+}
+
+.search__suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e1e1e1;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.search__suggestion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.search__suggestion:hover {
+  background-color: #f8f9ff;
+}
+
+.search__suggestion:last-child {
+  border-bottom: none;
+}
+
+.search__suggestion-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.6;
+}
+
+.search__analysis {
+  margin-top: 15px;
+  margin-bottom: 10px;
+}
+
+.search__analysis-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.search__tag {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+}
+
+.search__tag--question {
+  background: #3b82f6;
+}
+
+.search__tag--intent {
+  background: #8b5cf6;
+}
+
+.search__tag--category {
+  background: #10b981;
+}
+
+.search__tag--difficulty {
+  background: #f59e0b;
+}
+
+.search__loading {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.search__loading-spinner {
+  font-size: 48px;
+  animation: spin 2s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.search__trending {
+  margin-top: 30px;
+}
+
+.search__trending h4 {
+  margin-bottom: 15px;
+  color: #333;
+  font-size: 16px;
+}
+
+.search__trending-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.search__recent {
+  margin-top: 25px;
+}
+
+.search__recent h4 {
+  margin-bottom: 15px;
+  color: #333;
+  font-size: 16px;
+}
+
+.search__recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.search__recent-item {
+  padding: 8px 16px;
+  border: 1px solid #e1e1e1;
+  border-radius: 20px;
+  background: white;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search__recent-item:hover {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.search__video-result--ai {
+  border: 2px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.search__video-result--ai:hover {
+  border-color: #8b5cf6;
+}
+
+.search__relevance-score {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background: rgba(139, 92, 246, 0.9);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.search__video-category {
+  font-size: 12px;
+  color: #8b5cf6;
+  margin-top: 4px;
+}
+
+.search__verified {
+  color: #10b981;
+  margin-left: 4px;
+}
+
+.search__suggestions-help {
+  margin-top: 20px;
+  text-align: left;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.search__suggestions-help ul {
+  margin-top: 10px;
+  padding-left: 20px;
+}
+
+.search__suggestions-help li {
+  margin-bottom: 5px;
+  color: #666;
+}
+
+/* Mobile Responsive for AI features */
+@media (max-width: 768px) {
+  .search__mode-toggle {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .search__mode-btn {
+    width: 150px;
+  }
+
+  .search__analysis-tags {
+    justify-content: flex-start;
+  }
+
+  .search__trending-tags {
+    justify-content: flex-start;
+  }
+
+  .search__recent-list {
+    align-items: flex-start;
+  }
+}
+
+/* Original Search Styles */
 .search {
   max-width: 800px;
   margin: 0 auto;
@@ -386,7 +644,6 @@
     height: 200px;
   }
 }
-
 
 .search__video-result--simple {
   padding: 16px;

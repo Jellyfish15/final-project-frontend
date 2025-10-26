@@ -4,9 +4,11 @@ import React, {
   useState,
   useRef,
   useCallback,
+  useEffect,
 } from "react";
 import { triggerSwipeHaptic } from "../utils/hapticFeedback";
 import { logTouchEvent, isSafari } from "../utils/touchDebug";
+import userInteractionService from "../services/userInteractionService";
 
 const VideoContext = createContext();
 
@@ -30,7 +32,14 @@ export const VideoProvider = ({
   const [isLiked, setIsLiked] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
+  const [focusedVideos, setFocusedVideos] = useState(null); // New state for focused feed
   const videoRef = useRef(null);
+  const [watchTracker, setWatchTracker] = useState(null);
+
+  // Initialize user interaction tracking on mount
+  useEffect(() => {
+    userInteractionService.initializeSession();
+  }, []);
 
   // Touch handling state
   const [touchState, setTouchState] = useState({
@@ -48,12 +57,23 @@ export const VideoProvider = ({
     message: "",
   });
 
-  // Use videos from props (App component handles API calls)
-  const videos = initialVideos;
+  // Use focused videos if available, otherwise use all videos
+  const videos = focusedVideos || initialVideos;
   const isLoading = isLoadingVideos;
   const error = videosError;
 
   const currentVideo = videos[currentIndex] || null;
+
+  // Debug current video changes
+  useEffect(() => {
+    console.log("[VideoContext] Current index changed to:", currentIndex);
+    console.log(
+      "[VideoContext] Current video is now:",
+      currentVideo
+        ? { id: currentVideo._id, title: currentVideo.title }
+        : "none"
+    );
+  }, [currentIndex, currentVideo]);
 
   const scrollToVideo = useCallback(
     (direction) => {
@@ -66,15 +86,186 @@ export const VideoProvider = ({
       }
 
       if (newIndex !== currentIndex) {
+        // Clean up previous watch tracker
+        if (watchTracker) {
+          watchTracker.complete();
+        }
+
         setIsVideoSwitching(true);
         setTimeout(() => {
           setCurrentIndex(newIndex);
           setIsVideoSwitching(false);
         }, 300);
+
+        // Track navigation
+        userInteractionService.trackNavigation(
+          `video_${currentIndex}`,
+          `video_${newIndex}`,
+          { method: "swipe", direction }
+        );
       }
     },
-    [currentIndex, videos.length]
+    [currentIndex, videos.length, watchTracker]
   );
+
+  const setVideoById = useCallback(
+    (videoId, createFocusedFeed = false) => {
+      console.log(
+        "[VideoContext] setVideoById called with:",
+        videoId,
+        "createFocusedFeed:",
+        createFocusedFeed
+      );
+      console.log("[VideoContext] Available videos:", initialVideos.length);
+
+      const videoIndex = initialVideos.findIndex(
+        (video) => video._id === videoId || video.id === videoId
+      );
+      console.log("[VideoContext] Found video at index:", videoIndex);
+
+      if (videoIndex !== -1) {
+        if (createFocusedFeed) {
+          // Create a focused feed where the target video appears FIRST (index 0)
+          const focusedFeedSize = 10;
+          const targetVideoPosition = 0; // Put target video at index 0 (first position) for immediate visibility
+
+          // Calculate start and end indices for the focused feed
+          let startIndex = Math.max(0, videoIndex - targetVideoPosition);
+          let endIndex = Math.min(
+            initialVideos.length,
+            startIndex + focusedFeedSize
+          );
+
+          // Adjust if we don't have enough videos after our target
+          if (endIndex - startIndex < focusedFeedSize && startIndex > 0) {
+            startIndex = Math.max(0, endIndex - focusedFeedSize);
+          }
+
+          const focusedVideosFeed = initialVideos.slice(startIndex, endIndex);
+          const newCurrentIndex = videoIndex - startIndex;
+
+          console.log("[VideoContext] Creating focused feed:", {
+            originalIndex: videoIndex,
+            totalVideos: initialVideos.length,
+            targetVideoPosition: targetVideoPosition,
+            feedStart: startIndex,
+            feedEnd: endIndex,
+            focusedFeedSize: focusedVideosFeed.length,
+            newCurrentIndex: newCurrentIndex,
+            targetVideoInFeed: focusedVideosFeed[newCurrentIndex]?._id,
+            targetVideoTitle: focusedVideosFeed[newCurrentIndex]?.title,
+            targetVideoUrl: focusedVideosFeed[newCurrentIndex]?.videoUrl,
+            targetVideoType: focusedVideosFeed[newCurrentIndex]?.videoType,
+            allFeedVideos: focusedVideosFeed.map((v) => ({
+              id: v._id,
+              title: v.title,
+              type: v.videoType,
+            })),
+          });
+
+          // Set the focused feed and current index to the target video
+          setFocusedVideos(focusedVideosFeed);
+          setCurrentIndex(newCurrentIndex);
+        } else {
+          // Clear focused feed and use full list
+          setFocusedVideos(null);
+          setCurrentIndex(videoIndex);
+        }
+
+        setIsVideoSwitching(true);
+        setTimeout(() => {
+          setIsVideoSwitching(false);
+        }, 300);
+      } else {
+        console.log(
+          "[VideoContext] Video with ID not found in current feed:",
+          videoId
+        );
+        console.log(
+          "[VideoContext] Attempting to fetch video directly from API..."
+        );
+
+        // Try to fetch the specific video from the API
+        fetchSingleVideo(videoId, createFocusedFeed);
+      }
+    },
+    [initialVideos, currentIndex]
+  );
+
+  // Function to fetch a single video by ID and add it to the context
+  const fetchSingleVideo = useCallback(
+    async (videoId, createFocusedFeed = false) => {
+      try {
+        const videosAPI = (await import("../services/api")).videosAPI;
+        const response = await videosAPI.getVideo(videoId);
+
+        if (response.success && response.video) {
+          console.log(
+            "[VideoContext] Successfully fetched video:",
+            response.video
+          );
+
+          // Fix video URLs for uploaded videos
+          const backendURL = "http://localhost:5000";
+          let video = response.video;
+
+          // Ensure the video has the right structure (_id vs id)
+          if (video.id && !video._id) {
+            video._id = video.id;
+          }
+
+          if (video.videoUrl && !video.videoUrl.startsWith("http")) {
+            let videoUrl = video.videoUrl.startsWith("/api/")
+              ? video.videoUrl.replace("/api/", "/")
+              : video.videoUrl;
+            video.videoUrl = `${backendURL}${videoUrl}`;
+          }
+
+          if (video.thumbnailUrl && !video.thumbnailUrl.startsWith("http")) {
+            let thumbnailUrl = video.thumbnailUrl.startsWith("/api/")
+              ? video.thumbnailUrl.replace("/api/", "/")
+              : video.thumbnailUrl;
+            video.thumbnailUrl = `${backendURL}${thumbnailUrl}`;
+          }
+
+          video.videoType = "uploaded"; // Mark as uploaded video
+
+          if (createFocusedFeed) {
+            // Create a focused feed with just this video and some context from existing videos
+            const contextVideos = initialVideos.slice(0, 9); // Get first 9 videos as context
+            const focusedVideosFeed = [video, ...contextVideos];
+
+            console.log(
+              "[VideoContext] Creating focused feed with fetched video at index 0"
+            );
+            setFocusedVideos(focusedVideosFeed);
+            setCurrentIndex(0);
+          } else {
+            // Add video to existing feed and navigate to it
+            const updatedVideos = [video, ...initialVideos];
+            setFocusedVideos(updatedVideos);
+            setCurrentIndex(0);
+          }
+
+          setIsVideoSwitching(true);
+          setTimeout(() => {
+            setIsVideoSwitching(false);
+          }, 300);
+        } else {
+          console.error("[VideoContext] Failed to fetch video:", response);
+        }
+      } catch (error) {
+        console.error("[VideoContext] Error fetching single video:", error);
+      }
+    },
+    [initialVideos]
+  );
+
+  const resetToFullFeed = useCallback(() => {
+    console.log("[VideoContext] Resetting to full feed");
+    setFocusedVideos(null);
+    setCurrentIndex(0);
+  }, []);
 
   const togglePlay = () => {
     if (videoRef.current && currentVideo?.videoType !== "youtube") {
@@ -97,15 +288,39 @@ export const VideoProvider = ({
   };
 
   const handleLike = () => {
-    setIsLiked(!isLiked);
+    const newLikedState = !isLiked;
+    setIsLiked(newLikedState);
+
+    // Track engagement
+    if (currentVideo) {
+      userInteractionService.trackVideoEngagement(
+        currentVideo._id,
+        newLikedState ? "like" : "unlike",
+        { source: "video_player" }
+      );
+    }
   };
 
   const handleShare = () => {
     console.log("Sharing video:", currentVideo?.title);
+
+    // Track engagement
+    if (currentVideo) {
+      userInteractionService.trackVideoEngagement(currentVideo._id, "share", {
+        source: "video_player",
+      });
+    }
   };
 
   const handleComment = () => {
-    console.log("Opening comments for:", currentVideo?.title);
+    console.log("Comment on video:", currentVideo?.title);
+
+    // Track engagement
+    if (currentVideo) {
+      userInteractionService.trackVideoEngagement(currentVideo._id, "comment", {
+        source: "video_player",
+      });
+    }
   };
 
   const handleWheel = (e) => {
@@ -303,6 +518,9 @@ export const VideoProvider = ({
     error,
     videoRef,
     scrollToVideo,
+    setVideoById,
+    resetToFullFeed,
+    isFocusedFeed: focusedVideos !== null,
     togglePlay,
     toggleMute,
     handleLike,

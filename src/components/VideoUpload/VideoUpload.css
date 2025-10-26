@@ -73,6 +73,7 @@
   transition: border-color 0.2s ease;
   outline: none;
   background: white;
+  color: #161823;
 }
 
 .video-upload__input:focus,

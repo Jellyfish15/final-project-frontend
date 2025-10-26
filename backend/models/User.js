@@ -96,6 +96,48 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
+    // AI and personalization features
+    viewingHistory: [
+      {
+        videoId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Video",
+        },
+        watchTime: Number, // seconds watched
+        completed: Boolean,
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    searchHistory: [
+      {
+        query: String,
+        videoId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Video",
+        },
+        action: {
+          type: String,
+          enum: ["click", "like", "skip", "complete"],
+        },
+        relevanceRating: Number, // 1-5 rating
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    preferredDuration: {
+      type: Number, // preferred video length in seconds
+      default: 180, // 3 minutes default
+    },
+    aiPersonalizationEnabled: {
+      type: Boolean,
+      default: true,
+    },
+
     // Account status
     isVerified: {
       type: Boolean,

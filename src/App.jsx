@@ -17,6 +17,7 @@ import RegisterModal from "./components/RegisterModal/RegisterModal";
 import { AuthProvider } from "./components/AuthContext/AuthContext";
 import { VideoProvider } from "./contexts/VideoContext";
 import { getEducationalVideoFeed } from "../services/youtubeService.js";
+import { videosAPI } from "./services/api.js";
 import "./App.css";
 
 function App() {
@@ -28,22 +29,124 @@ function App() {
   const [videos, setVideos] = useState([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(true);
   const [videosError, setVideosError] = useState(null);
+  const [youtubeApiDisabled, setYoutubeApiDisabled] = useState(false);
 
   const loadVideos = useCallback(async () => {
     try {
       setIsLoadingVideos(true);
       setVideosError(null);
-      console.log("Loading educational videos from API...");
+      console.log("Loading videos from both YouTube and uploaded content...");
 
-      const educationalVideos = await getEducationalVideoFeed(10);
+      // Load both YouTube educational videos and uploaded videos
+      const [educationalVideos, uploadedVideosResponse] =
+        await Promise.allSettled([
+          getEducationalVideoFeed(10),
+          videosAPI.getFeed(1, 20), // Get more uploaded videos
+        ]);
 
-      if (educationalVideos && educationalVideos.length > 0) {
-        setVideos(educationalVideos);
-        console.log("Successfully loaded", educationalVideos.length, "videos");
+      let allVideos = [];
+
+      // Handle YouTube API failures gracefully
+      if (
+        educationalVideos.status === "fulfilled" &&
+        educationalVideos.value?.length > 0
+      ) {
+        allVideos = [...educationalVideos.value];
+        console.log(
+          "Successfully loaded",
+          educationalVideos.value.length,
+          "YouTube videos"
+        );
+      } else if (educationalVideos.status === "rejected") {
+        const error = educationalVideos.reason;
+        if (
+          error?.message?.includes("403") ||
+          error?.message?.includes("quota")
+        ) {
+          console.warn(
+            "YouTube API quota exceeded. Continuing with uploaded videos only."
+          );
+          setYoutubeApiDisabled(true);
+        } else {
+          console.warn("YouTube API failed:", error?.message);
+        }
+        console.log("Continuing with uploaded videos and fallback content...");
+      }
+
+      // Add uploaded videos
+      if (
+        uploadedVideosResponse.status === "fulfilled" &&
+        uploadedVideosResponse.value?.videos?.length > 0
+      ) {
+        // Fix video URLs for uploaded videos to include full backend URL
+        const backendURL = "http://localhost:5000"; // Direct backend URL without /api
+        const uploadedVideos = uploadedVideosResponse.value.videos.map(
+          (video) => {
+            // Remove /api prefix if it exists in the video URL for static file serving
+            let videoUrl = video.videoUrl;
+            let thumbnailUrl = video.thumbnailUrl;
+
+            console.log("[App] Processing uploaded video:", {
+              originalVideoUrl: video.videoUrl,
+              originalThumbnailUrl: video.thumbnailUrl,
+            });
+
+            if (!videoUrl.startsWith("http")) {
+              // Ensure we don't double-add /api prefix for static files
+              videoUrl = videoUrl.startsWith("/api/")
+                ? videoUrl.replace("/api/", "/")
+                : videoUrl;
+              videoUrl = `${backendURL}${videoUrl}`;
+            }
+
+            if (!thumbnailUrl.startsWith("http")) {
+              thumbnailUrl = thumbnailUrl.startsWith("/api/")
+                ? thumbnailUrl.replace("/api/", "/")
+                : thumbnailUrl;
+              thumbnailUrl = `${backendURL}${thumbnailUrl}`;
+            }
+
+            console.log("[App] Final video URLs:", {
+              finalVideoUrl: videoUrl,
+              finalThumbnailUrl: thumbnailUrl,
+            });
+
+            return {
+              ...video,
+              videoUrl,
+              thumbnailUrl,
+              videoType: "uploaded", // Mark as uploaded video for identification
+            };
+          }
+        );
+
+        allVideos = [...allVideos, ...uploadedVideos];
+        console.log(
+          "Successfully loaded",
+          uploadedVideos.length,
+          "uploaded videos"
+        );
+      }
+
+      if (allVideos.length > 0) {
+        setVideos(allVideos);
+        console.log("Total videos loaded:", allVideos.length);
+        console.log(
+          "All video IDs:",
+          allVideos.map((v) => ({
+            id: v._id,
+            title: v.title,
+            type: v.videoType || "youtube",
+          }))
+        );
       } else {
-        setVideos(getFallbackVideos());
+        // If no videos from either source, use fallback videos
+        const fallbackVideos = getFallbackVideos();
+        setVideos(fallbackVideos);
         console.warn(
-          "No videos returned from YouTube API, using fallback videos"
+          "No videos returned from any source, using",
+          fallbackVideos.length,
+          "fallback videos"
         );
       }
     } catch (err) {
@@ -57,7 +160,7 @@ function App() {
 
   const getFallbackVideos = () => [
     {
-      id: 1,
+      _id: 1,
       title: "Quick Math Tip: Mental Addition",
       creator: "@MathHacks",
       avatar: "https://via.placeholder.com/40x40?text=MH",
@@ -71,7 +174,7 @@ function App() {
       isVerified: true,
     },
     {
-      id: 2,
+      _id: 2,
       title: "Science Quick Fact: Why Sky is Blue",
       creator: "@ScienceSnacks",
       avatar: "https://via.placeholder.com/40x40?text=SS",
@@ -85,7 +188,7 @@ function App() {
       isVerified: true,
     },
     {
-      id: 3,
+      _id: 3,
       title: "Coding Tip: Your First Function",
       creator: "@CodeInSeconds",
       avatar: "https://via.placeholder.com/40x40?text=CS",
@@ -102,7 +205,7 @@ function App() {
 
   useEffect(() => {
     loadVideos();
-  }, [loadVideos]);
+  }, []); // Remove loadVideos dependency to prevent infinite loop
 
   const openModal = (modalName) => {
     setModals((prev) => ({ ...prev, [modalName]: true }));
