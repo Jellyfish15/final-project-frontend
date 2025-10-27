@@ -1,6 +1,6 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? "/api" : "http://localhost:5000/api");
+  (import.meta.env.DEV ? "/api" : "https://your-backend-app.herokuapp.com/api");
 
 // API utility class for handling HTTP requests
 class ApiService {

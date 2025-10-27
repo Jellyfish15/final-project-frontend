@@ -1,5 +1,6 @@
 import {
   searchEducationalVideos,
+  searchVideosByKeywords,
   getVideoDetails,
 } from "../utils/YouTubeApi.js";
 
@@ -20,7 +21,11 @@ export const formatVideoForApp = (youtubeVideo) => {
   return {
     id: youtubeVideo.id,
     title: snippet.title,
-    creator: `@${snippet.channelTitle}`,
+    creator: {
+      username: snippet.channelTitle,
+      displayName: snippet.channelTitle,
+      isVerified: true,
+    },
     avatar:
       snippet.thumbnails?.default?.url ||
       "https://via.placeholder.com/40x40?text=YT",
@@ -29,14 +34,61 @@ export const formatVideoForApp = (youtubeVideo) => {
     likes: "0",
     comments: "0",
     shares: "0",
-    description: "",
+    description: snippet.description || "",
     isVerified: true,
-    duration: parseDuration(youtubeVideo.contentDetails.duration),
+    duration: parseDuration(youtubeVideo.contentDetails?.duration || "PT0S"),
+    thumbnailUrl:
+      snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url,
     thumbnail:
       snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url,
     publishedAt: snippet.publishedAt,
-    viewCount: 0,
+    viewCount: youtubeVideo.statistics?.viewCount || 0,
+    views: youtubeVideo.statistics?.viewCount || "0",
   };
+};
+
+export const searchYouTubeVideos = async (query, count = 10) => {
+  try {
+    console.log(`Searching YouTube for: "${query}"`);
+
+    const searchData = await searchVideosByKeywords(query, count);
+    console.log("YouTube search response:", searchData);
+
+    if (!searchData.items || searchData.items.length === 0) {
+      console.log("No YouTube videos found for query:", query);
+      return [];
+    }
+
+    console.log(`Found ${searchData.items.length} videos from search`);
+    const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
+    console.log("Video IDs:", videoIds);
+
+    const detailsData = await getVideoDetails(videoIds);
+    console.log("Video details response:", detailsData);
+
+    if (!detailsData.items || detailsData.items.length === 0) {
+      console.log("No video details found");
+      return [];
+    }
+
+    const filteredVideos = detailsData.items.filter((video) => {
+      const duration = parseDuration(video.contentDetails?.duration || "PT0S");
+      return duration <= 600; // Allow up to 10 minutes for search results
+    });
+
+    console.log(`Filtered to ${filteredVideos.length} videos under 10 minutes`);
+    const formattedVideos = filteredVideos.map(formatVideoForApp);
+
+    console.log(
+      `Found ${formattedVideos.length} YouTube videos for: "${query}"`
+    );
+    console.log("Formatted videos:", formattedVideos);
+    return formattedVideos.slice(0, count);
+  } catch (error) {
+    console.error("Error searching YouTube videos:", error);
+    console.error("Error details:", error.message, error.stack);
+    return [];
+  }
 };
 
 export const getEducationalVideoFeed = async (count = 10) => {
@@ -93,4 +145,5 @@ export const getEducationalVideoFeed = async (count = 10) => {
 export default {
   formatVideoForApp,
   getEducationalVideoFeed,
+  searchYouTubeVideos,
 };

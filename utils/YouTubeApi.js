@@ -3,6 +3,39 @@ const BASE_URL =
   import.meta.env.VITE_YOUTUBE_API_BASE_URL ||
   "https://www.googleapis.com/youtube/v3";
 
+export const searchVideosByKeywords = async (
+  query,
+  maxResults = 10,
+  pageToken = ""
+) => {
+  const searchParams = new URLSearchParams({
+    part: "snippet",
+    q: query,
+    type: "video",
+    maxResults: maxResults.toString(),
+    order: "relevance",
+    videoDuration: "short",
+    videoDefinition: "high",
+    key: API_KEY,
+    safeSearch: "moderate",
+    relevanceLanguage: "en",
+    regionCode: "US",
+  });
+
+  if (pageToken) {
+    searchParams.append("pageToken", pageToken);
+  }
+
+  const searchResponse = await fetch(`${BASE_URL}/search?${searchParams}`);
+
+  if (!searchResponse.ok) {
+    throw new Error(`YouTube API search failed: ${searchResponse.status}`);
+  }
+
+  const searchData = await searchResponse.json();
+  return searchData;
+};
+
 export const searchEducationalVideos = async (
   maxResults = 10,
   pageToken = ""
@@ -75,5 +108,6 @@ export const getVideoDetails = async (videoIds) => {
 
 export default {
   searchEducationalVideos,
+  searchVideosByKeywords,
   getVideoDetails,
 };
