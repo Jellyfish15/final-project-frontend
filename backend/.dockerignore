@@ -1,0 +1,26 @@
+# Ignore node_modules
+node_modules/
+
+# Ignore local env files
+.env
+.env.local
+
+# Ignore logs
+*.log
+npm-debug.log*
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore uploads (will be stored in cloud storage)
+uploads/
+thumbnails/
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore IDE files
+.vscode/
+.idea/
