@@ -4,8 +4,11 @@ import { useVideo } from "../../contexts/VideoContext";
 import { useLocation } from "react-router-dom";
 import YouTubePlayer from "../YouTubePlayer/YouTubePlayer";
 import VideoLoader from "../VideoLoader/VideoLoader";
+import VideoSidebar from "../VideoSidebar/VideoSidebar";
+import CommentModal from "../CommentModal/CommentModal";
+import ShareModal from "../ShareModal/ShareModal";
 
-const Video = () => {
+const Video = ({ onOpenLogin, onOpenRegister }) => {
   const containerRef = useRef(null);
   const processingVideoChange = useRef(false); // Prevent multiple simultaneous video changes
   const location = useLocation();
@@ -19,6 +22,12 @@ const Video = () => {
     isLoading,
     isVideoSwitching,
     videoRef,
+    likeCount,
+    commentCount,
+    isCommentModalOpen,
+    setIsCommentModalOpen,
+    isShareModalOpen,
+    setIsShareModalOpen,
     scrollToVideo,
     setVideoById,
     resetToFullFeed,
@@ -96,6 +105,9 @@ const Video = () => {
 
   return (
     <div className="video-page">
+      {/* Sidebar Navigation for Desktop */}
+      <VideoSidebar onOpenLogin={onOpenLogin} onOpenRegister={onOpenRegister} />
+
       <div
         ref={containerRef}
         className="video-page__container"
@@ -144,7 +156,10 @@ const Video = () => {
                     muted={isMuted}
                     playsInline
                     controls={true}
-                    onClick={togglePlay}
+                    onClick={(e) => {
+                      // Click anywhere on video to toggle mute (TikTok/Instagram style)
+                      toggleMute();
+                    }}
                     onLoadStart={() =>
                       console.log("[Video] Load start:", currentVideo?.videoUrl)
                     }
@@ -260,22 +275,18 @@ const Video = () => {
                 <span className="video-page__action-icon">
                   {isLiked ? "❤️" : "🤍"}
                 </span>
-                <span className="video-page__action-count">
-                  {currentVideo.likes}
-                </span>
+                <span className="video-page__action-count">{likeCount}</span>
               </button>
 
               <button className="video-page__action" onClick={handleComment}>
                 <span className="video-page__action-icon">💬</span>
-                <span className="video-page__action-count">
-                  {currentVideo.comments}
-                </span>
+                <span className="video-page__action-count">{commentCount}</span>
               </button>
 
               <button className="video-page__action" onClick={handleShare}>
                 <span className="video-page__action-icon">↗</span>
                 <span className="video-page__action-count">
-                  {currentVideo.shares}
+                  {currentVideo.shares || 0}
                 </span>
               </button>
             </div>
@@ -316,6 +327,21 @@ const Video = () => {
           </button>
         </div>
       </div>
+
+      {/* Comment Modal */}
+      <CommentModal
+        isOpen={isCommentModalOpen}
+        onClose={() => setIsCommentModalOpen(false)}
+        video={currentVideo}
+        onOpenLogin={onOpenLogin}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        video={currentVideo}
+      />
     </div>
   );
 };

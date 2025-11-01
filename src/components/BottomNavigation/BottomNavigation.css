@@ -1,22 +1,6 @@
 .bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  padding: env(safe-area-inset-bottom) 0 0 0;
+  /* Hide on desktop - navigation is in header */
   display: none;
-  /* iPhone-specific touch optimization */
-  touch-action: manipulation;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
-  /* Ensure it captures its own touches */
-  pointer-events: auto;
 }
 
 .bottom-nav__container {
@@ -76,80 +60,21 @@
   text-align: center;
 }
 
-/* Show bottom navigation on mobile devices */
+/* Remove remaining old mobile styles */
 @media (max-width: 768px) {
   .bottom-nav {
-    display: block;
-    /* Make much more transparent and smaller */
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(0, 0, 0, 0.03);
+    /* BottomNavigation is now hidden - Header handles bottom navigation on mobile */
+    display: none !important;
   }
 
-  /* Black semi-transparent bottom navigation for videos page */
-  .bottom-nav--videos {
-    background: rgba(0, 0, 0, 0.6); /* Black semi-transparent */
-    backdrop-filter: blur(15px); /* Enhanced blur for better effect */
-    -webkit-backdrop-filter: blur(15px);
-    border-top: 1px solid rgba(255, 255, 255, 0.1); /* Light border for contrast */
-  }
-
-  /* White text and icons for videos page black background */
-  .bottom-nav--videos .bottom-nav__item {
-    color: rgba(255, 255, 255, 0.7); /* White semi-transparent text */
-  }
-
-  .bottom-nav--videos .bottom-nav__item--active {
-    color: #ffffff; /* Pure white for active item */
-  }
-
-  .bottom-nav--videos .bottom-nav__item--active::before {
-    background: rgba(
-      255,
-      255,
-      255,
-      0.15
-    ); /* White semi-transparent active background */
-  }
-
-  /* Hover/touch effects for videos page */
-  .bottom-nav--videos .bottom-nav__item:active {
-    color: rgba(255, 255, 255, 0.9); /* Brighter white on touch */
-  }
-
-  .bottom-nav__container {
-    padding: 2px 12px 4px 12px; /* Much smaller padding */
-  }
-
-  .bottom-nav__item {
-    padding: 2px 8px; /* Much smaller padding */
-    min-width: 40px; /* Smaller minimum width */
-  }
-
-  .bottom-nav__icon {
-    font-size: 16px; /* Smaller icons */
-    margin-bottom: 1px; /* Minimal margin */
-  }
-
-  .bottom-nav__label {
-    font-size: 8px; /* Much smaller text */
-  }
-
-  /* Add much less padding to main content for smaller bottom nav */
+  /* Add bottom padding to main content for header at bottom */
   .app__main {
-    padding-bottom: 35px; /* Much smaller - reduced from 50px */
+    padding-bottom: 70px;
   }
 
   /* No padding on videos page since header is hidden */
   .app__main--videos {
-    padding-bottom: 35px;
-    padding-top: 0; /* No top padding since header is hidden */
-  }
-
-  /* Hide regular header navigation on mobile */
-  .header__center {
-    display: none;
+    padding-bottom: 0;
   }
 }
 

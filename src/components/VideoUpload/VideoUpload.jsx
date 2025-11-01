@@ -57,9 +57,22 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
       "video/mpeg",
       "video/quicktime",
       "video/webm",
+      "video/x-msvideo", // AVI
+      "video/x-matroska", // MKV
+      "video/ogg",
+      "video/3gpp",
+      "video/x-m4v",
     ];
-    if (!allowedTypes.includes(file.type)) {
-      alert("Please select a valid video file (MP4, MPEG, MOV, or WebM)");
+
+    // Also check file extension for .mov files (sometimes browsers don't set the correct MIME type)
+    const fileName = file.name.toLowerCase();
+    const hasValidExtension =
+      /\.(mp4|mov|mpeg|mpg|webm|avi|mkv|ogg|3gp|m4v)$/.test(fileName);
+
+    if (!allowedTypes.includes(file.type) && !hasValidExtension) {
+      alert(
+        "Please select a valid video file (MP4, MOV, MPEG, WebM, AVI, MKV, etc.)"
+      );
       return;
     }
 
@@ -375,7 +388,7 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="video/mp4,video/mpeg,video/quicktime,video/webm"
+                  accept="video/mp4,video/mpeg,video/quicktime,video/webm,video/x-msvideo,video/x-matroska,video/ogg,video/3gpp,video/x-m4v,.mp4,.mov,.mpeg,.mpg,.webm,.avi,.mkv,.ogg,.3gp,.m4v"
                   onChange={handleFileSelect}
                   className="video-upload__file-input"
                   disabled={uploading}

@@ -4,9 +4,10 @@ import { useAuth } from "../AuthContext/AuthContext";
 import { usersAPI, videosAPI, uploadAPI } from "../../services/api";
 import LoadingSpinner from "../LoadingSpinner/LoadingSpinner";
 import VideoUploadModal from "../VideoUploadModal/VideoUploadModal";
+import VideoSidebar from "../VideoSidebar/VideoSidebar";
 import "./Profile.css";
 
-const Profile = () => {
+const Profile = ({ onOpenLogin, onOpenRegister }) => {
   const { user, isAuthenticated, updateUser } = useAuth();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
@@ -17,6 +18,12 @@ const Profile = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // Store video ID to delete
   const [deleting, setDeleting] = useState(false);
+  const [profileStats, setProfileStats] = useState({
+    videoCount: 0,
+    totalLikes: 0,
+    followersCount: 0,
+    followingCount: 0,
+  });
   const [profileData, setProfileData] = useState({
     username: "",
     displayName: "",
@@ -43,13 +50,47 @@ const Profile = () => {
     }
   }, [isAuthenticated, user]);
 
+  // Reload videos when user returns to the profile page
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isAuthenticated && user) {
+        loadUserVideos();
+      }
+    };
+
+    const handleFocus = () => {
+      if (isAuthenticated && user) {
+        loadUserVideos();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [isAuthenticated, user]);
+
   const loadUserVideos = async () => {
     try {
       setIsLoadingVideos(true);
-      const response = await uploadAPI.getMyVideos();
-      console.log("getMyVideos response:", response);
 
-      if (response.success) {
+      // Load videos and user stats in parallel
+      const [videosResponse, userStatsResponse] = await Promise.allSettled([
+        uploadAPI.getMyVideos(),
+        user?._id ? usersAPI.getProfile(user._id) : Promise.resolve(null),
+      ]);
+
+      // Process videos
+      if (
+        videosResponse.status === "fulfilled" &&
+        videosResponse.value?.success
+      ) {
+        const response = videosResponse.value;
+        console.log("getMyVideos response:", response);
+
         // Process thumbnail URLs similar to Search.jsx
         const processedVideos = response.videos.map((video) => {
           const processedVideo = { ...video };
@@ -81,6 +122,33 @@ const Profile = () => {
         });
 
         setUserVideos(processedVideos);
+
+        // Calculate stats from videos
+        const totalLikes = processedVideos.reduce(
+          (sum, video) => sum + (video.likes || 0),
+          0
+        );
+        const videoCount = processedVideos.length;
+
+        // Get follower/following counts from user profile
+        let followersCount = 0;
+        let followingCount = 0;
+
+        if (
+          userStatsResponse.status === "fulfilled" &&
+          userStatsResponse.value?.success
+        ) {
+          const userProfile = userStatsResponse.value.user;
+          followersCount = userProfile.followers?.length || 0;
+          followingCount = userProfile.following?.length || 0;
+        }
+
+        setProfileStats({
+          videoCount,
+          totalLikes,
+          followersCount,
+          followingCount,
+        });
       }
     } catch (error) {
       console.error("Error loading user videos:", error);
@@ -120,10 +188,16 @@ const Profile = () => {
 
       const response = await uploadAPI.uploadAvatar(formData);
       if (response.success) {
+        // Update local state
         setProfileData((prev) => ({
           ...prev,
           avatar: response.avatarUrl,
         }));
+
+        // Update global auth context
+        await updateUser({ avatar: response.avatarUrl });
+
+        alert("Avatar updated successfully!");
       }
     } catch (error) {
       console.error("Error uploading avatar:", error);
@@ -136,11 +210,31 @@ const Profile = () => {
   const handleSaveProfile = async () => {
     try {
       setUploading(true);
-      const result = await updateUser(profileData);
+
+      // Only send fields that can be updated and are not empty
+      const updateData = {};
+
+      if (profileData.displayName && profileData.displayName.trim()) {
+        updateData.displayName = profileData.displayName.trim();
+      }
+
+      if (profileData.description !== undefined) {
+        updateData.description = profileData.description.trim();
+      }
+
+      // Only include username if it's changed and not empty
+      if (profileData.username && profileData.username !== user.username) {
+        updateData.username = profileData.username.trim();
+      }
+
+      console.log("Sending profile update:", updateData);
+
+      const result = await updateUser(updateData);
       if (result.success) {
         setIsEditing(false);
         alert("Profile updated successfully!");
       } else {
+        console.error("Update failed:", result.message);
         alert(result.message || "Failed to update profile");
       }
     } catch (error) {
@@ -234,8 +328,28 @@ const Profile = () => {
           <div className="profile__no-auth">
             <h2>Please log in to view your profile</h2>
             <p>You need to be logged in to access profile features.</p>
+            <div className="profile__auth-buttons">
+              <button
+                className="profile__auth-btn profile__auth-btn--login"
+                onClick={onOpenLogin}
+              >
+                Log In
+              </button>
+              <button
+                className="profile__auth-btn profile__auth-btn--signup"
+                onClick={onOpenRegister}
+              >
+                Sign Up
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Bottom navigation for mobile */}
+        <VideoSidebar
+          onOpenLogin={onOpenLogin}
+          onOpenRegister={onOpenRegister}
+        />
       </div>
     );
   }
@@ -246,6 +360,12 @@ const Profile = () => {
         <div className="profile__container">
           <LoadingSpinner />
         </div>
+
+        {/* Bottom navigation for mobile */}
+        <VideoSidebar
+          onOpenLogin={onOpenLogin}
+          onOpenRegister={onOpenRegister}
+        />
       </div>
     );
   }
@@ -338,25 +458,25 @@ const Profile = () => {
         <div className="profile__stats">
           <div key="videos" className="profile__stat">
             <span className="profile__stat-number">
-              {formatNumber(user.videoCount || 0)}
+              {formatNumber(profileStats.videoCount)}
             </span>
             <span className="profile__stat-label">Videos</span>
           </div>
           <div key="followers" className="profile__stat">
             <span className="profile__stat-number">
-              {formatNumber(user.followersCount || 0)}
+              {formatNumber(profileStats.followersCount)}
             </span>
             <span className="profile__stat-label">Followers</span>
           </div>
           <div key="following" className="profile__stat">
             <span className="profile__stat-number">
-              {formatNumber(user.followingCount || 0)}
+              {formatNumber(profileStats.followingCount)}
             </span>
             <span className="profile__stat-label">Following</span>
           </div>
           <div key="likes" className="profile__stat">
             <span className="profile__stat-number">
-              {formatNumber(user.totalLikes || 0)}
+              {formatNumber(profileStats.totalLikes)}
             </span>
             <span className="profile__stat-label">Likes</span>
           </div>
@@ -445,6 +565,9 @@ const Profile = () => {
                             <div className="profile__video-stats">
                               <span>👁 {formatNumber(video.views || 0)}</span>
                               <span>❤️ {formatNumber(video.likes || 0)}</span>
+                              <span>
+                                💬 {formatNumber(video.comments || 0)}
+                              </span>
                             </div>
                             <div className="profile__video-play-icon">▶️</div>
                           </div>
@@ -547,6 +670,9 @@ const Profile = () => {
           </div>
         </div>
       )}
+
+      {/* Bottom navigation for mobile */}
+      <VideoSidebar onOpenLogin={onOpenLogin} onOpenRegister={onOpenRegister} />
     </div>
   );
 };

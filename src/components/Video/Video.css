@@ -8,12 +8,24 @@
   overflow: hidden;
 }
 
+/* Desktop with sidebar */
+@media (min-width: 769px) {
+  .video-page {
+    top: 0;
+    left: 240px; /* Width of sidebar */
+    width: calc(100% - 240px);
+    height: 100vh;
+  }
+}
+
 /* Mobile adjustments for fullscreen-like experience */
 @media (max-width: 768px) {
   .video-page {
     /* Position at the very top of the screen - no header on mobile */
     top: 0;
-    height: 100vh; /* Full viewport height */
+    left: 0;
+    width: 100%;
+    height: calc(100vh - 70px); /* Account for bottom navigation */
     /* Ensure video page doesn't interfere with bottom nav touches */
     z-index: 1;
     /* Remove any potential margins or padding that could cause white space */
@@ -55,11 +67,11 @@
 .video-page__video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   border: none;
-  /* Completely disable touch events on video element */
-  pointer-events: none;
-  touch-action: none;
+  /* Enable click events on video for mute/unmute */
+  pointer-events: auto;
+  touch-action: auto;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;

@@ -9,6 +9,7 @@ import React, {
 import { triggerSwipeHaptic } from "../utils/hapticFeedback";
 import { logTouchEvent, isSafari } from "../utils/touchDebug";
 import userInteractionService from "../services/userInteractionService";
+import { videosAPI } from "../services/api";
 
 const VideoContext = createContext();
 
@@ -30,11 +31,15 @@ export const VideoProvider = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
   const [focusedVideos, setFocusedVideos] = useState(null); // New state for focused feed
   const videoRef = useRef(null);
   const [watchTracker, setWatchTracker] = useState(null);
+  const [likeCount, setLikeCount] = useState(0);
+  const [commentCount, setCommentCount] = useState(0);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Initialize user interaction tracking on mount
   useEffect(() => {
@@ -63,6 +68,15 @@ export const VideoProvider = ({
   const error = videosError;
 
   const currentVideo = videos[currentIndex] || null;
+
+  // Sync like state and counts with current video
+  useEffect(() => {
+    if (currentVideo) {
+      setIsLiked(currentVideo.isLiked || false);
+      setLikeCount(currentVideo.likes || 0);
+      setCommentCount(currentVideo.comments || 0);
+    }
+  }, [currentVideo]);
 
   // Debug current video changes
   useEffect(() => {
@@ -287,40 +301,87 @@ export const VideoProvider = ({
     }
   };
 
-  const handleLike = () => {
+  const handleLike = async () => {
+    if (!currentVideo) return;
+
     const newLikedState = !isLiked;
+    const videoId = currentVideo._id || currentVideo.id;
+
+    // Optimistic update
     setIsLiked(newLikedState);
+    setLikeCount((prev) => (newLikedState ? prev + 1 : Math.max(0, prev - 1)));
 
     // Track engagement
-    if (currentVideo) {
-      userInteractionService.trackVideoEngagement(
-        currentVideo._id,
-        newLikedState ? "like" : "unlike",
-        { source: "video_player" }
+    userInteractionService.trackVideoEngagement(
+      videoId,
+      newLikedState ? "like" : "unlike",
+      { source: "video_player" }
+    );
+
+    // Call backend API
+    try {
+      if (newLikedState) {
+        await videosAPI.likeVideo(videoId);
+      } else {
+        await videosAPI.unlikeVideo(videoId);
+      }
+
+      // Update the video in the videos array
+      if (focusedVideos) {
+        setFocusedVideos((prev) =>
+          prev.map((v) =>
+            (v._id || v.id) === videoId
+              ? {
+                  ...v,
+                  isLiked: newLikedState,
+                  likes: newLikedState
+                    ? (v.likes || 0) + 1
+                    : Math.max(0, (v.likes || 0) - 1),
+                }
+              : v
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to update like:", error);
+      // Revert on error
+      setIsLiked(!newLikedState);
+      setLikeCount((prev) =>
+        newLikedState ? Math.max(0, prev - 1) : prev + 1
       );
     }
   };
 
   const handleShare = () => {
-    console.log("Sharing video:", currentVideo?.title);
+    if (!currentVideo) return;
+
+    setIsShareModalOpen(true);
 
     // Track engagement
-    if (currentVideo) {
-      userInteractionService.trackVideoEngagement(currentVideo._id, "share", {
-        source: "video_player",
-      });
-    }
+    userInteractionService.trackVideoEngagement(
+      currentVideo._id || currentVideo.id,
+      "share",
+      { source: "video_player" }
+    );
+
+    // Call backend API to increment share count
+    const videoId = currentVideo._id || currentVideo.id;
+    videosAPI.shareVideo(videoId).catch((error) => {
+      console.error("Failed to track share:", error);
+    });
   };
 
   const handleComment = () => {
-    console.log("Comment on video:", currentVideo?.title);
+    if (!currentVideo) return;
+
+    setIsCommentModalOpen(true);
 
     // Track engagement
-    if (currentVideo) {
-      userInteractionService.trackVideoEngagement(currentVideo._id, "comment", {
-        source: "video_player",
-      });
-    }
+    userInteractionService.trackVideoEngagement(
+      currentVideo._id || currentVideo.id,
+      "comment",
+      { source: "video_player" }
+    );
   };
 
   const handleWheel = (e) => {
@@ -517,6 +578,12 @@ export const VideoProvider = ({
     isVideoSwitching,
     error,
     videoRef,
+    likeCount,
+    commentCount,
+    isCommentModalOpen,
+    setIsCommentModalOpen,
+    isShareModalOpen,
+    setIsShareModalOpen,
     scrollToVideo,
     setVideoById,
     resetToFullFeed,
