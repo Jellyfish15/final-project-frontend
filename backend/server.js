@@ -34,7 +34,11 @@ app.use(
   cors({
     origin:
       process.env.NODE_ENV === "production"
-        ? ["https://jellyfish15.github.io", "https://your-custom-domain.com"]
+        ? [
+            "https://jellyfish15.github.io",
+            "https://your-custom-domain.com",
+            /\.github\.io$/,
+          ]
         : [
             "http://localhost:3000",
             "http://localhost:3001",
