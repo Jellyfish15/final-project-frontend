@@ -118,9 +118,9 @@ const Search = () => {
     try {
       // First try to get videos from the global videos context
       if (videos && videos.length > 0) {
-        // Take a random selection of 8 videos
+        // Take a random selection of 10 videos (2 complete rows of 5)
         const shuffled = [...videos].sort(() => 0.5 - Math.random());
-        const selectedVideos = shuffled.slice(0, 8);
+        const selectedVideos = shuffled.slice(0, 10);
 
         // Process thumbnail URLs for each video
         const processedVideos = selectedVideos.map((video) => {
@@ -164,7 +164,7 @@ const Search = () => {
       } else {
         // Fallback: try to load videos from API
         const { videosAPI } = await import("../../services/api");
-        const response = await videosAPI.getFeed(1, 8);
+        const response = await videosAPI.getFeed(1, 10);
         if (response.videos && response.videos.length > 0) {
           console.log("API videos data structure:", response.videos[0]);
           setFeaturedVideos(response.videos);
@@ -425,15 +425,9 @@ const Search = () => {
       await aiSearchAPI.recordSearchFeedback(searchTerm, video.id, "click");
     }
 
-    // Handle YouTube videos differently
-    if (video.source === "youtube" || video.videoType === "youtube") {
-      // For YouTube videos, open in a new tab or handle differently
-      window.open(video.videoUrl, "_blank");
-    } else {
-      // Navigate to video player with the selected video for local videos
-      setVideoById(video.id, true); // Create focused feed
-      navigate(`/videos?videoId=${video.id}`);
-    }
+    // Always navigate to Videos page and play the video, regardless of source
+    setVideoById(video.id, true); // Create focused feed
+    navigate(`/videos?videoId=${video.id}`);
   };
 
   const nextEducator = () => {
@@ -588,34 +582,55 @@ const Search = () => {
       ) : featuredVideos.length > 0 ? (
         <div className="search__featured-section">
           <h2 className="search__explore-title">Discover & Learn</h2>
-          <div className="search__featured-grid">
-            {featuredVideos.map((video) => (
-              <div
-                key={video._id || video.id}
-                className="search__featured-video"
-                onClick={() => handleVideoClick(video)}
-              >
-                <div className="search__featured-thumbnail">
-                  <img
-                    src={
-                      video.thumbnailUrl ||
-                      "https://via.placeholder.com/200x150?text=Video"
-                    }
-                    alt={video.title}
-                    onError={(e) => {
-                      e.target.src =
-                        "https://via.placeholder.com/200x150?text=Video";
-                    }}
-                  />
-                  <div className="search__featured-play-overlay">
-                    <div className="search__featured-play-button">▶</div>
+          <div className="search__featured-instagram-grid">
+            {featuredVideos.map((video, index) => {
+              // Pattern: 5 videos per logical row (4 squares + 1 vertical)
+              const positionInRow = index % 5;
+              const rowNumber = Math.floor(index / 5);
+              const isVertical = positionInRow === 4;
+
+              // Alternate vertical video position: left on even rows, right on odd rows
+              const verticalOnLeft = rowNumber % 2 === 0;
+
+              return (
+                <div
+                  key={video._id || video.id}
+                  className={`search__featured-video ${
+                    isVertical
+                      ? "search__featured-video--vertical"
+                      : "search__featured-video--square"
+                  } ${
+                    isVertical && verticalOnLeft
+                      ? "search__featured-video--vertical-left"
+                      : ""
+                  } ${
+                    isVertical && !verticalOnLeft
+                      ? "search__featured-video--vertical-right"
+                      : ""
+                  }`}
+                  data-position={positionInRow}
+                  data-row={rowNumber}
+                  onClick={() => handleVideoClick(video)}
+                >
+                  <div className="search__featured-thumbnail">
+                    <img
+                      src={
+                        video.thumbnailUrl ||
+                        "https://via.placeholder.com/200x150?text=Video"
+                      }
+                      alt={video.title}
+                      onError={(e) => {
+                        e.target.src =
+                          "https://via.placeholder.com/200x150?text=Video";
+                      }}
+                    />
+                    <div className="search__featured-play-overlay">
+                      <div className="search__featured-play-button">▶</div>
+                    </div>
                   </div>
                 </div>
-                <div className="search__featured-info">
-                  <h5 className="search__featured-title">{video.title}</h5>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}

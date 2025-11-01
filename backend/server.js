@@ -1,4 +1,7 @@
 const express = require("express");
+const multer = require("multer");
+const ffmpeg = require("fluent-ffmpeg");
+const fs = require("fs");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -8,6 +11,7 @@ const rateLimit = require("express-rate-limit");
 const path = require("path");
 require("dotenv").config();
 
+const upload = multer({ dest: "uploads/" });
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -55,6 +59,9 @@ app.use(morgan("combined"));
 // Static file serving for uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Static file serving for thumbnails
+app.use("/thumbnails", express.static(path.join(__dirname, "thumbnails")));
+
 // Database connection
 const connectDB = async () => {
   try {
@@ -70,6 +77,28 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
+
+app.post("/upload", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const thumbnailPath = `thumbnails/${req.file.filename}.png`;
+
+  ffmpeg(videoPath)
+    .on("end", () => {
+      // Save video and thumbnail info to DB here
+      res.json({ videoUrl: videoPath, thumbnailUrl: thumbnailPath });
+    })
+    .on("error", (err) => {
+      res
+        .status(500)
+        .json({ error: "Thumbnail generation failed", details: err.message });
+    })
+    .screenshots({
+      timestamps: ["00:00:01"],
+      filename: `${req.file.filename}.png`,
+      folder: "thumbnails",
+      size: "320x240",
+    });
+});
 
 // Routes
 app.use("/api/auth", require("./routes/auth"));

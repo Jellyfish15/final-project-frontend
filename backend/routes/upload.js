@@ -189,43 +189,103 @@ router.post(
       const videoUrl = `/uploads/videos/${req.file.filename}`;
       const fileSize = req.file.size;
 
-      // For now, create a simple placeholder thumbnail
-      // In production, you'd generate this from the video
-      const thumbnailUrl = `/uploads/thumbnails/placeholder-thumb.jpg`;
+      // Generate 3 thumbnails at different timestamps
+      const ffmpeg = require("fluent-ffmpeg");
+      const thumbFilenames = [
+        `${req.file.filename}-1.png`,
+        `${req.file.filename}-2.png`,
+        `${req.file.filename}-3.png`,
+      ];
+      const thumbPaths = thumbFilenames.map((f) => path.join(thumbnailsDir, f));
+      const thumbUrls = thumbFilenames.map((f) => `/uploads/thumbnails/${f}`);
 
-      // Create video record
-      const video = new Video({
-        title,
-        description: description || "",
-        videoUrl,
-        thumbnailUrl,
-        duration: 0, // You'd get this from video metadata
-        fileSize,
-        category,
-        tags: tags,
-        creator: req.user.userId,
-        isPrivate: isPrivate === "true" || isPrivate === true,
-        status: "approved", // Auto-approve for development
-        uploadedAt: new Date(),
-        publishedAt: new Date(),
-      });
-
-      await video.save();
-
-      res.status(201).json({
-        success: true,
-        message: "Video uploaded successfully",
-        video: {
-          id: video._id,
-          title: video.title,
-          description: video.description,
-          thumbnailUrl: video.thumbnailUrl,
-          category: video.category,
-          tags: video.tags,
-          status: video.status,
-          uploadedAt: video.uploadedAt,
-        },
-      });
+      console.log("Starting ffmpeg thumbnail generation for 3 images...");
+      ffmpeg(path.join(videosDir, req.file.filename))
+        .on("start", (cmd) => {
+          console.log("ffmpeg started with command:", cmd);
+        })
+        .on("end", async () => {
+          console.log("ffmpeg thumbnail generation finished.");
+          // Do not set thumbnail yet, let user select
+          const video = new Video({
+            title,
+            description: description || "",
+            videoUrl,
+            thumbnailUrl: thumbUrls[0], // Default to first, will update after selection
+            thumbnailOptions: thumbUrls, // Store all options for frontend
+            videoType: "uploaded",
+            duration: 0,
+            fileSize,
+            category,
+            tags: tags,
+            creator: req.user.userId,
+            isPrivate: isPrivate === "true" || isPrivate === true,
+            status: "approved",
+            uploadedAt: new Date(),
+            publishedAt: new Date(),
+          });
+          await video.save();
+          res.status(201).json({
+            success: true,
+            message: "Video uploaded successfully",
+            video: {
+              _id: video._id,
+              id: video._id,
+              title: video.title,
+              description: video.description,
+              thumbnailUrl: video.thumbnailUrl,
+              thumbnailOptions: video.thumbnailOptions,
+              category: video.category,
+              tags: video.tags,
+              status: video.status,
+              uploadedAt: video.uploadedAt,
+            },
+          });
+        })
+        .on("error", async (err) => {
+          console.error("Thumbnail generation failed:", err.message);
+          // Use placeholder if thumbnail generation fails
+          const video = new Video({
+            title,
+            description: description || "",
+            videoUrl,
+            thumbnailUrl: `/uploads/thumbnails/placeholder-thumb.jpg`,
+            thumbnailOptions: [],
+            videoType: "uploaded",
+            duration: 0,
+            fileSize,
+            category,
+            tags: tags,
+            creator: req.user.userId,
+            isPrivate: isPrivate === "true" || isPrivate === true,
+            status: "approved",
+            uploadedAt: new Date(),
+            publishedAt: new Date(),
+          });
+          await video.save();
+          res.status(201).json({
+            success: true,
+            message: "Video uploaded successfully (no thumbnails)",
+            video: {
+              _id: video._id,
+              id: video._id,
+              title: video.title,
+              description: video.description,
+              thumbnailUrl: video.thumbnailUrl,
+              thumbnailOptions: [],
+              category: video.category,
+              tags: video.tags,
+              status: video.status,
+              uploadedAt: video.uploadedAt,
+            },
+          });
+        })
+        .screenshots({
+          timestamps: ["00:00:01", "00:00:03", "00:00:05"],
+          filename: "%f",
+          folder: thumbnailsDir,
+          size: "320x240",
+        });
     } catch (error) {
       console.error("Video upload error:", error);
 

@@ -47,8 +47,40 @@ const Profile = () => {
     try {
       setIsLoadingVideos(true);
       const response = await uploadAPI.getMyVideos();
+      console.log("getMyVideos response:", response);
+
       if (response.success) {
-        setUserVideos(response.videos);
+        // Process thumbnail URLs similar to Search.jsx
+        const processedVideos = response.videos.map((video) => {
+          const processedVideo = { ...video };
+
+          // Process thumbnail URL
+          let thumbnailUrl = video.thumbnailUrl || video.thumbnail;
+
+          console.log(`Processing video "${video.title}":`, {
+            original: video.thumbnailUrl,
+            thumbnail: video.thumbnail,
+            final: thumbnailUrl,
+          });
+
+          if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
+            const backendURL = "http://localhost:5000";
+            thumbnailUrl = thumbnailUrl.startsWith("/api/")
+              ? thumbnailUrl.replace("/api/", "/")
+              : thumbnailUrl;
+            thumbnailUrl = `${backendURL}${thumbnailUrl}`;
+          }
+
+          processedVideo.thumbnailUrl = thumbnailUrl;
+          console.log(
+            `Final thumbnail URL for "${video.title}":`,
+            thumbnailUrl
+          );
+
+          return processedVideo;
+        });
+
+        setUserVideos(processedVideos);
       }
     } catch (error) {
       console.error("Error loading user videos:", error);
@@ -151,9 +183,30 @@ const Profile = () => {
   };
 
   const handleUploadSuccess = (video) => {
+    // Process thumbnail URL before adding to list
+    let thumbnailUrl = video.thumbnailUrl || video.thumbnail;
+
+    if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
+      const backendURL = "http://localhost:5000";
+      thumbnailUrl = thumbnailUrl.startsWith("/api/")
+        ? thumbnailUrl.replace("/api/", "/")
+        : thumbnailUrl;
+      thumbnailUrl = `${backendURL}${thumbnailUrl}`;
+    }
+
+    const processedVideo = {
+      ...video,
+      thumbnailUrl: thumbnailUrl,
+    };
+
     // Add the new video to the list
-    setUserVideos((prev) => [video, ...prev]);
+    setUserVideos((prev) => [processedVideo, ...prev]);
     setShowUploadModal(false);
+
+    // Reload videos from backend to ensure we have the latest data
+    setTimeout(() => {
+      loadUserVideos();
+    }, 1000);
   };
 
   const handleVideoClick = (video) => {
@@ -371,8 +424,11 @@ const Profile = () => {
                   <LoadingSpinner />
                 ) : userVideos.length > 0 ? (
                   <div className="profile__video-grid">
-                    {userVideos.map((video) => (
-                      <div key={video._id} className="profile__video-item">
+                    {userVideos.map((video, idx) => (
+                      <div
+                        key={video._id || video.id || idx}
+                        className="profile__video-item"
+                      >
                         <div
                           className="profile__video-thumbnail"
                           onClick={() => handleVideoClick(video)}
