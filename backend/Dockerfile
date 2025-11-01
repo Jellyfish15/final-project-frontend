@@ -1,6 +1,9 @@
 # Use Node.js LTS version
 FROM node:18-alpine
 
+# Install build dependencies for native modules (bcrypt, etc.)
+RUN apk add --no-cache python3 make g++
+
 # Set working directory
 WORKDIR /app
 
@@ -8,7 +11,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy application files
 COPY . .
@@ -17,7 +20,7 @@ COPY . .
 RUN mkdir -p uploads/videos uploads/thumbnails uploads/avatars
 
 # Expose port (Cloud Run will use PORT env variable)
-EXPOSE 5000
+EXPOSE 8080
 
 # Start the application
 CMD ["node", "server.js"]
