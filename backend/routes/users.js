@@ -6,6 +6,45 @@ const { auth, optionalAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
+// @route   GET /api/users/:id
+// @desc    Get user profile by ID
+// @access  Public
+router.get("/:id([0-9a-fA-F]{24})", optionalAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).select("-password -email");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        username: user.username,
+        displayName: user.displayName,
+        avatar: user.avatar,
+        description: user.description,
+        followers: user.followers,
+        following: user.following,
+        followersCount: user.followers?.length || 0,
+        followingCount: user.following?.length || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Get user error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
 // @route   GET /api/users/profile/:username
 // @desc    Get user profile by username
 // @access  Public

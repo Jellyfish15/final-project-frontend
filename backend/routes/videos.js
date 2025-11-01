@@ -427,12 +427,22 @@ router.post(
         text
       );
 
+      // Get user info for the response
+      const user = await User.findById(req.user.userId).select(
+        "username displayName avatar"
+      );
+
       res.json({
         success: true,
         message: "Comment added successfully",
         comment: {
-          id: comment._id,
-          username: comment.username,
+          _id: comment._id,
+          user: {
+            _id: user._id,
+            username: user.username,
+            displayName: user.displayName,
+            avatar: user.avatar,
+          },
           text: comment.text,
           createdAt: comment.createdAt,
         },
@@ -455,7 +465,11 @@ router.get("/:id/comments", async (req, res) => {
     const { id } = req.params;
     const { page = 1, limit = 20 } = req.query;
 
-    const video = await Video.findById(id);
+    const video = await Video.findById(id).populate({
+      path: "comments.user",
+      select: "username displayName avatar",
+    });
+
     if (!video) {
       return res.status(404).json({
         success: false,
@@ -471,8 +485,13 @@ router.get("/:id/comments", async (req, res) => {
     res.json({
       success: true,
       comments: comments.map((comment) => ({
-        id: comment._id,
-        username: comment.username,
+        _id: comment._id,
+        user: {
+          _id: comment.user?._id,
+          username: comment.user?.username || comment.username,
+          displayName: comment.user?.displayName,
+          avatar: comment.user?.avatar,
+        },
         text: comment.text,
         createdAt: comment.createdAt,
       })),

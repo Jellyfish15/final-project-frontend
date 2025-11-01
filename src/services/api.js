@@ -65,9 +65,15 @@ class ApiService {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message || `HTTP error! status: ${response.status}`
-        );
+        // Include validation errors if present
+        const errorMessage =
+          data.message || `HTTP error! status: ${response.status}`;
+        const error = new Error(errorMessage);
+        if (data.errors) {
+          error.validationErrors = data.errors;
+          console.error("Validation errors:", data.errors);
+        }
+        throw error;
       }
 
       return data;
@@ -262,7 +268,7 @@ export const videosAPI = {
 
   // Add comment
   addComment: (videoId, comment) =>
-    apiService.post(`/videos/${videoId}/comments`, { comment }),
+    apiService.post(`/videos/${videoId}/comment`, { text: comment }),
 
   // Delete comment
   deleteComment: (videoId, commentId) =>

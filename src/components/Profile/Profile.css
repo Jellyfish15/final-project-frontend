@@ -4,6 +4,7 @@
   padding: 20px;
   background-color: #fff;
   min-height: 100vh;
+  position: relative; /* Ensure it respects parent padding */
 }
 
 .profile__container {
@@ -463,6 +464,48 @@
 
 .profile__no-auth p {
   color: #8a8b9b;
+  margin-bottom: 24px;
+}
+
+.profile__auth-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.profile__auth-btn {
+  padding: 12px 32px;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile__auth-btn--login {
+  background-color: #8b5cf6;
+  color: white;
+}
+
+.profile__auth-btn--login:hover {
+  background-color: #7c3aed;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.profile__auth-btn--signup {
+  background-color: transparent;
+  color: black;
+  border: 2px solid black;
+}
+
+.profile__auth-btn--signup:hover {
+  background-color: rgba(139, 92, 246, 0.05);
+  border-color: #7c3aed;
+  color: #7c3aed;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
 }
 
 /* Tab content styles */

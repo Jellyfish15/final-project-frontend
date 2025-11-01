@@ -37,6 +37,13 @@
   padding-right: env(safe-area-inset-right);
 }
 
+/* Desktop - add left padding for sidebar */
+@media (min-width: 769px) {
+  .app {
+    padding-left: 240px; /* Width of sidebar */
+  }
+}
+
 .app__main {
   flex: 1;
   background-color: white; /* Default white background */
@@ -69,12 +76,13 @@
 
   .app__main {
     padding-bottom: 70px; /* Space for bottom navigation */
+    padding-top: 0;
   }
 
-  /* Videos page gets fullscreen treatment */
+  /* Videos page same padding */
   .app__main--videos {
-    padding-top: 0; /* No top padding since header is hidden */
-    padding-bottom: 35px; /* Less bottom padding for smaller nav */
+    padding-top: 0;
+    padding-bottom: 70px; /* Same padding for bottom navigation */
   }
 
   /* Improve touch targets */

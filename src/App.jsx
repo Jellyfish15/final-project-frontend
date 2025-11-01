@@ -9,7 +9,7 @@ import {
 import Profile from "./components/Profile/Profile";
 import Search from "./components/Search/Search";
 import Video from "./components/Video/Video";
-import Header from "./components/Header/Header";
+import Sidebar from "./components/Sidebar/Sidebar";
 import Footer from "./components/Footer/Footer";
 import BottomNavigation from "./components/BottomNavigation/BottomNavigation";
 import LoginModal from "./components/LoginModal/LoginModal";
@@ -87,6 +87,8 @@ function App() {
             let thumbnailUrl = video.thumbnailUrl;
 
             console.log("[App] Processing uploaded video:", {
+              id: video.id || video._id,
+              title: video.title,
               originalVideoUrl: video.videoUrl,
               originalThumbnailUrl: video.thumbnailUrl,
             });
@@ -113,9 +115,15 @@ function App() {
 
             return {
               ...video,
+              _id: video.id || video._id, // Normalize id field
               videoUrl,
               thumbnailUrl,
               videoType: "uploaded", // Mark as uploaded video for identification
+              creator: video.creator?.username || video.creator || "Unknown",
+              avatar:
+                video.creator?.avatar ||
+                "https://via.placeholder.com/40x40?text=U",
+              isVerified: video.creator?.isVerified || false,
             };
           }
         );
@@ -273,23 +281,49 @@ function App() {
 
     return (
       <div className={`app ${isVideosPage ? "app--videos" : ""}`}>
-        {/* Hide header on mobile for videos page */}
-        <Header
-          onOpenLogin={() => openModal("login")}
-          onOpenRegister={() => openModal("register")}
-          className={isVideosPage ? "header--mobile-hidden" : ""}
-        />
+        {/* Hide sidebar on videos page */}
+        {!isVideosPage && (
+          <Sidebar
+            onOpenLogin={() => openModal("login")}
+            onOpenRegister={() => openModal("register")}
+          />
+        )}
         <main
           className={`app__main ${isVideosPage ? "app__main--videos" : ""}`}
         >
           <Routes>
             <Route path="/" element={<Navigate to="/videos" replace />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/videos" element={<Video />} />
+            <Route
+              path="/search"
+              element={
+                <Search
+                  onOpenLogin={() => openModal("login")}
+                  onOpenRegister={() => openModal("register")}
+                />
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <Profile
+                  onOpenLogin={() => openModal("login")}
+                  onOpenRegister={() => openModal("register")}
+                />
+              }
+            />
+            <Route
+              path="/videos"
+              element={
+                <Video
+                  onOpenLogin={() => openModal("login")}
+                  onOpenRegister={() => openModal("register")}
+                />
+              }
+            />
           </Routes>
         </main>
-        <Footer />
+        {/* Hide footer on videos page */}
+        {!isVideosPage && <Footer />}
         <BottomNavigation />
 
         <LoginModal

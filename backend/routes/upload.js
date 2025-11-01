@@ -431,14 +431,30 @@ router.get("/my-videos", auth, async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit))
       .select(
-        "title description thumbnailUrl duration category status views uploadedAt publishedAt"
+        "title description thumbnailUrl duration category status views uploadedAt publishedAt likes comments"
       );
+
+    // Format videos to include counts
+    const formattedVideos = videos.map((video) => ({
+      _id: video._id,
+      title: video.title,
+      description: video.description,
+      thumbnailUrl: video.thumbnailUrl,
+      duration: video.duration,
+      category: video.category,
+      status: video.status,
+      views: video.views,
+      likes: video.likes?.length || 0,
+      comments: video.comments?.length || 0,
+      uploadedAt: video.uploadedAt,
+      publishedAt: video.publishedAt,
+    }));
 
     const total = await Video.countDocuments(query);
 
     res.json({
       success: true,
-      videos,
+      videos: formattedVideos,
       pagination: {
         current: parseInt(page),
         pages: Math.ceil(total / parseInt(limit)),

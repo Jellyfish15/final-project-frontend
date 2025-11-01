@@ -5,9 +5,10 @@ import { useAuth } from "../AuthContext/AuthContext";
 import aiSearchAPI from "../../services/aiSearchAPI";
 import { searchYouTubeVideos } from "../../../services/youtubeService";
 import SearchIcon from "../../images/search.svg";
+import VideoSidebar from "../VideoSidebar/VideoSidebar";
 import "./Search.css";
 
-const Search = () => {
+const Search = ({ onOpenLogin, onOpenRegister }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -116,60 +117,88 @@ const Search = () => {
   const loadFeaturedVideos = async () => {
     setIsLoadingFeatured(true);
     try {
-      // First try to get videos from the global videos context
-      if (videos && videos.length > 0) {
-        // Take a random selection of 10 videos (2 complete rows of 5)
-        const shuffled = [...videos].sort(() => 0.5 - Math.random());
-        const selectedVideos = shuffled.slice(0, 10);
+      console.log("Total videos available in context:", videos?.length || 0);
 
-        // Process thumbnail URLs for each video
-        const processedVideos = selectedVideos.map((video) => {
-          const processedVideo = { ...video };
+      let selectedVideos = [];
 
-          // Process thumbnail URL similar to App.jsx logic
-          let thumbnailUrl = video.thumbnailUrl;
+      // Start with uploaded videos from context
+      const uploadedVideos = videos || [];
+      const uploadedCount = uploadedVideos.length;
 
-          if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
-            const backendURL = "http://localhost:5000";
-            thumbnailUrl = thumbnailUrl.startsWith("/api/")
-              ? thumbnailUrl.replace("/api/", "/")
-              : thumbnailUrl;
-            thumbnailUrl = `${backendURL}${thumbnailUrl}`;
+      // Calculate how many YouTube videos we need
+      const youtubeNeeded = Math.max(0, 20 - uploadedCount);
+
+      console.log(
+        `Using ${uploadedCount} uploaded videos, loading ${youtubeNeeded} from YouTube...`
+      );
+
+      // Load additional videos from YouTube if needed
+      if (youtubeNeeded > 0) {
+        try {
+          const youtubeResults = await searchYouTubeVideos(
+            "educational tutorial",
+            youtubeNeeded
+          );
+
+          if (youtubeResults && youtubeResults.length > 0) {
+            console.log("Loaded videos from YouTube:", youtubeResults.length);
+            // Combine uploaded videos first, then YouTube videos
+            selectedVideos = [...uploadedVideos, ...youtubeResults];
+          } else {
+            // If YouTube fails, just use uploaded videos
+            console.log("YouTube load failed, using only uploaded videos");
+            selectedVideos = uploadedVideos;
           }
-
-          // Also try other possible thumbnail properties
-          if (!thumbnailUrl) {
-            thumbnailUrl =
-              video.thumbnail ||
-              video.thumbnails?.medium?.url ||
-              video.thumbnails?.default?.url ||
-              video.snippet?.thumbnails?.medium?.url ||
-              video.snippet?.thumbnails?.default?.url;
-          }
-
-          processedVideo.thumbnailUrl = thumbnailUrl;
-
-          return processedVideo;
-        });
-
-        // Debug: Log the video structure to see available thumbnail properties
-        console.log("Featured videos data structure:", processedVideos[0]);
-        console.log(
-          "Available properties:",
-          Object.keys(processedVideos[0] || {})
-        );
-        console.log("Final thumbnail URL:", processedVideos[0]?.thumbnailUrl);
-
-        setFeaturedVideos(processedVideos);
-      } else {
-        // Fallback: try to load videos from API
-        const { videosAPI } = await import("../../services/api");
-        const response = await videosAPI.getFeed(1, 10);
-        if (response.videos && response.videos.length > 0) {
-          console.log("API videos data structure:", response.videos[0]);
-          setFeaturedVideos(response.videos);
+        } catch (youtubeError) {
+          console.error("Failed to load from YouTube:", youtubeError);
+          // Fallback to uploaded videos only
+          selectedVideos = uploadedVideos;
         }
+      } else {
+        // We have 20 or more uploaded videos, just use those
+        selectedVideos = uploadedVideos.slice(0, 20);
       }
+
+      // Process thumbnail URLs for each video
+      const processedVideos = selectedVideos.map((video) => {
+        const processedVideo = { ...video };
+
+        // Process thumbnail URL similar to App.jsx logic
+        let thumbnailUrl = video.thumbnailUrl;
+
+        if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
+          const backendURL = "http://localhost:5000";
+          thumbnailUrl = thumbnailUrl.startsWith("/api/")
+            ? thumbnailUrl.replace("/api/", "/")
+            : thumbnailUrl;
+          thumbnailUrl = `${backendURL}${thumbnailUrl}`;
+        }
+
+        // Also try other possible thumbnail properties
+        if (!thumbnailUrl) {
+          thumbnailUrl =
+            video.thumbnail ||
+            video.thumbnails?.medium?.url ||
+            video.thumbnails?.default?.url ||
+            video.snippet?.thumbnails?.medium?.url ||
+            video.snippet?.thumbnails?.default?.url;
+        }
+
+        processedVideo.thumbnailUrl = thumbnailUrl;
+
+        return processedVideo;
+      });
+
+      // Debug: Log the video structure to see available thumbnail properties
+      console.log("Featured videos data structure:", processedVideos[0]);
+      console.log(
+        "Available properties:",
+        Object.keys(processedVideos[0] || {})
+      );
+      console.log("Final thumbnail URL:", processedVideos[0]?.thumbnailUrl);
+      console.log("Total featured videos loaded:", processedVideos.length);
+
+      setFeaturedVideos(processedVideos);
     } catch (error) {
       console.error("Failed to load featured videos:", error);
       // If all else fails, use some sample videos from context
@@ -582,6 +611,7 @@ const Search = () => {
       ) : featuredVideos.length > 0 ? (
         <div className="search__featured-section">
           <h2 className="search__explore-title">Discover & Learn</h2>
+          {console.log("Rendering grid with videos:", featuredVideos.length)}
           <div className="search__featured-instagram-grid">
             {featuredVideos.map((video, index) => {
               // Pattern: 5 videos per logical row (4 squares + 1 vertical)
@@ -594,7 +624,7 @@ const Search = () => {
 
               return (
                 <div
-                  key={video._id || video.id}
+                  key={video._uniqueKey || video._id || video.id}
                   className={`search__featured-video ${
                     isVertical
                       ? "search__featured-video--vertical"
@@ -635,7 +665,7 @@ const Search = () => {
         </div>
       ) : null}
 
-      {/* Popular Educators Carousel */}
+      {/* Popular Educators Carousel - Hidden for now
       <div className="search__educators-section">
         <h2 className="search__educators-title">Popular Educators</h2>
         <div className="search__educators-carousel">
@@ -702,6 +732,7 @@ const Search = () => {
           </button>
         </div>
       </div>
+      */}
     </div>
   );
 
@@ -767,7 +798,18 @@ const Search = () => {
                     <span className="search__youtube-badge">📺 YouTube</span>
                   )}
                 </div>
-                <p className="search__video-creator">
+                <p
+                  className="search__video-creator"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (video.creator._id || video.creator.id) {
+                      navigate(
+                        `/profile/${video.creator._id || video.creator.id}`
+                      );
+                    }
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
                   {video.creator.displayName ||
                     video.creator.username ||
                     video.creator}
@@ -843,6 +885,9 @@ const Search = () => {
           {!searchTerm.trim() ? renderEmptyState() : renderSearchResults()}
         </div>
       </div>
+
+      {/* Bottom navigation for mobile */}
+      <VideoSidebar onOpenLogin={onOpenLogin} onOpenRegister={onOpenRegister} />
     </div>
   );
 };
