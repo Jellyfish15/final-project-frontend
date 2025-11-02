@@ -91,7 +91,7 @@ const Sidebar = ({ onOpenLogin, onOpenRegister, className = "" }) => {
               </button>
             </div>
           )}
-          
+
           {/* Copyright */}
           <p className="sidebar__copyright">
             © 2025 Nudl. All rights reserved.
