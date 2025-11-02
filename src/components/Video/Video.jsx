@@ -7,7 +7,10 @@ import VideoLoader from "../VideoLoader/VideoLoader";
 import VideoSidebar from "../VideoSidebar/VideoSidebar";
 import CommentModal from "../CommentModal/CommentModal";
 import ShareModal from "../ShareModal/ShareModal";
-import { useVideoEngagement, useRecommendations } from "../../hooks/useEngagement";
+import {
+  useVideoEngagement,
+  useRecommendations,
+} from "../../hooks/useEngagement";
 
 const Video = ({ onOpenLogin, onOpenRegister }) => {
   const containerRef = useRef(null);
@@ -46,7 +49,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   } = useVideo();
 
   // Initialize engagement tracking and recommendations
-  const { recommendations, sessionId, disengagement, fetchRecommendations } = useRecommendations();
+  const { recommendations, sessionId, disengagement, fetchRecommendations } =
+    useRecommendations();
   const { engagementData, trackEngagement, handleSkip } = useVideoEngagement(
     videoRef,
     currentVideo,
@@ -134,7 +138,10 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   // Log disengagement status
   useEffect(() => {
     if (disengagement?.isDisengaging) {
-      console.log(`[Engagement] User disengaging - Severity: ${disengagement.severity}%`, disengagement.reason);
+      console.log(
+        `[Engagement] User disengaging - Severity: ${disengagement.severity}%`,
+        disengagement.reason
+      );
     }
   }, [disengagement]);
 

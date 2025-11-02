@@ -98,7 +98,9 @@ router.get("/preferences", auth, async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const preferences = await RecommendationAlgorithm.getUserPreferences(userId);
+    const preferences = await RecommendationAlgorithm.getUserPreferences(
+      userId
+    );
     const categoryStats = await Engagement.getCategoryPreferences(userId);
 
     res.json({

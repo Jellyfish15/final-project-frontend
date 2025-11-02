@@ -6,25 +6,28 @@ class RecommendationAlgorithm {
   // Calculate engagement score for a video based on user behavior
   static calculateEngagementScore(engagement) {
     let score = 0;
-    
+
     // Completion rate (40 points max)
     score += engagement.completionRate * 0.4;
-    
+
     // Interactions
     if (engagement.liked) score += 15;
     if (engagement.commented) score += 20;
     if (engagement.shared) score += 25;
-    
+
     // Replay value
     score += Math.min(engagement.replays * 3, 10);
-    
+
     // Penalties
     if (engagement.pauseCount > 3) score -= 5;
     if (engagement.seekCount > 5) score -= 10;
-    if (engagement.skippedAt && engagement.skippedAt < engagement.totalDuration * 0.3) {
+    if (
+      engagement.skippedAt &&
+      engagement.skippedAt < engagement.totalDuration * 0.3
+    ) {
       score -= 15;
     }
-    
+
     return Math.max(0, Math.min(100, score));
   }
 
@@ -99,7 +102,9 @@ class RecommendationAlgorithm {
     const avgEngagement =
       recentEngagements.reduce((sum, e) => sum + e.engagementScore, 0) /
       recentEngagements.length;
-    const recentSkips = recentEngagements.filter((e) => e.skippedAt !== null).length;
+    const recentSkips = recentEngagements.filter(
+      (e) => e.skippedAt !== null
+    ).length;
     const skipRate = recentSkips / recentEngagements.length;
 
     let severity = 0;
@@ -127,8 +132,10 @@ class RecommendationAlgorithm {
     // Check for rapid scrolling pattern
     const avgTimeBetweenVideos =
       recentEngagements.length > 1
-        ? (recentEngagements[0].createdAt - recentEngagements[recentEngagements.length - 1].createdAt) /
-          (recentEngagements.length - 1) / 1000 // in seconds
+        ? (recentEngagements[0].createdAt -
+            recentEngagements[recentEngagements.length - 1].createdAt) /
+          (recentEngagements.length - 1) /
+          1000 // in seconds
         : 0;
 
     if (avgTimeBetweenVideos > 0 && avgTimeBetweenVideos < 10) {
@@ -176,8 +183,10 @@ class RecommendationAlgorithm {
 
     if (disengagement.isDisengaging) {
       // User is losing interest - show more entertaining/easier content
-      console.log(`User ${userId} is disengaging (severity: ${disengagement.severity})`);
-      
+      console.log(
+        `User ${userId} is disengaging (severity: ${disengagement.severity})`
+      );
+
       // Strategy: Mix of entertaining content and lighter educational material
       const entertainmentRatio = Math.min(disengagement.severity / 100, 0.7);
       const entertainmentCount = Math.floor(limit * entertainmentRatio);
@@ -221,7 +230,7 @@ class RecommendationAlgorithm {
           ...query,
           category,
         })
-          .sort({ 
+          .sort({
             createdAt: -1,
             likes: -1,
             views: -1,

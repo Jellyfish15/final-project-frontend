@@ -291,11 +291,15 @@ export const videosAPI = {
 
   // Get personalized recommendations
   getRecommendations: (sessionId, limit = 20) =>
-    apiService.get(`/recommendations/feed?sessionId=${sessionId}&limit=${limit}`),
+    apiService.get(
+      `/recommendations/feed?sessionId=${sessionId}&limit=${limit}`
+    ),
 
   // Check disengagement status
   checkDisengagement: (sessionId) =>
-    apiService.get(`/recommendations/disengagement-check?sessionId=${sessionId}`),
+    apiService.get(
+      `/recommendations/disengagement-check?sessionId=${sessionId}`
+    ),
 
   // Get user preferences
   getUserPreferences: () => apiService.get("/recommendations/preferences"),

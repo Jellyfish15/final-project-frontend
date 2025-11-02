@@ -14,7 +14,7 @@ const engagementSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    
+
     // Engagement metrics
     watchTime: {
       type: Number, // seconds watched
@@ -28,7 +28,7 @@ const engagementSchema = new mongoose.Schema(
       type: Number, // percentage watched (0-100)
       default: 0,
     },
-    
+
     // Interaction tracking
     liked: {
       type: Boolean,
@@ -42,7 +42,7 @@ const engagementSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    
+
     // Attention metrics
     replays: {
       type: Number, // how many times rewatched
@@ -56,7 +56,7 @@ const engagementSchema = new mongoose.Schema(
       type: Number, // how many times seeked/skipped
       default: 0,
     },
-    
+
     // Skip behavior
     skippedAt: {
       type: Number, // at what second user skipped (if skipped)
@@ -67,25 +67,25 @@ const engagementSchema = new mongoose.Schema(
       enum: ["bored", "too-hard", "not-interested", "seen-before", null],
       default: null,
     },
-    
+
     // Engagement score (calculated)
     engagementScore: {
       type: Number, // 0-100 score
       default: 0,
     },
-    
+
     // Category interest
     category: {
       type: String,
       index: true,
     },
-    
+
     // Session tracking
     sessionId: {
       type: String,
       index: true,
     },
-    
+
     // Timestamps
     startedAt: {
       type: Date,
@@ -111,24 +111,24 @@ engagementSchema.index({ sessionId: 1, createdAt: -1 });
 engagementSchema.pre("save", function (next) {
   // Base score from completion rate (0-40 points)
   let score = this.completionRate * 0.4;
-  
+
   // Interaction bonuses
   if (this.liked) score += 15;
   if (this.commented) score += 20;
   if (this.shared) score += 25;
-  
+
   // Replay bonus (up to 10 points)
   score += Math.min(this.replays * 3, 10);
-  
+
   // Penalties for disengagement
   if (this.pauseCount > 3) score -= 5;
   if (this.seekCount > 5) score -= 10;
-  
+
   // Early skip penalty
   if (this.skippedAt && this.skippedAt < this.totalDuration * 0.3) {
     score -= 15;
   }
-  
+
   this.engagementScore = Math.max(0, Math.min(100, score));
   next();
 });
@@ -147,7 +147,7 @@ engagementSchema.statics.getCategoryPreferences = async function (userId) {
     },
     { $sort: { avgEngagement: -1 } },
   ]);
-  
+
   return preferences;
 };
 
@@ -162,15 +162,16 @@ engagementSchema.statics.detectDisengagement = async function (
   })
     .sort({ createdAt: -1 })
     .limit(5);
-  
+
   if (recentEngagements.length < 3) return false;
-  
+
   const avgCompletionRate =
     recentEngagements.reduce((sum, e) => sum + e.completionRate, 0) /
     recentEngagements.length;
-  const recentSkips = recentEngagements.filter((e) => e.skippedAt !== null)
-    .length;
-  
+  const recentSkips = recentEngagements.filter(
+    (e) => e.skippedAt !== null
+  ).length;
+
   // User is disengaging if:
   // - Average completion rate < 30%
   // - More than 50% of recent videos were skipped

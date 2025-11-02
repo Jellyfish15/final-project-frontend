@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { videosAPI } from "../services/api";
+import { useAuth } from "../components/AuthContext/AuthContext";
 
 /**
  * Custom hook to track video engagement and adapt content recommendations
  * Tracks: watch time, completion rate, skips, pauses, seeks, interactions
  */
 export const useVideoEngagement = (videoRef, videoData, sessionId) => {
+  const { isAuthenticated } = useAuth();
   const [engagementData, setEngagementData] = useState({
     watchTime: 0,
     pauseCount: 0,
@@ -72,7 +74,8 @@ export const useVideoEngagement = (videoRef, videoData, sessionId) => {
   // Send engagement data to backend
   const trackEngagement = useCallback(
     async (additionalData = {}) => {
-      if (!videoData || !sessionId) return;
+      // Only track if user is authenticated
+      if (!isAuthenticated || !videoData || !sessionId) return;
 
       try {
         const payload = {
@@ -96,7 +99,7 @@ export const useVideoEngagement = (videoRef, videoData, sessionId) => {
         console.error("Failed to track engagement:", error);
       }
     },
-    [videoData, engagementData, sessionId, videoRef]
+    [isAuthenticated, videoData, engagementData, sessionId, videoRef]
   );
 
   // Set up event listeners
@@ -141,6 +144,7 @@ export const useVideoEngagement = (videoRef, videoData, sessionId) => {
  * Hook to get personalized video recommendations
  */
 export const useRecommendations = () => {
+  const { isAuthenticated } = useAuth();
   const [recommendations, setRecommendations] = useState([]);
   const [sessionId, setSessionId] = useState(null);
   const [disengagement, setDisengagement] = useState(null);
@@ -156,7 +160,8 @@ export const useRecommendations = () => {
   // Fetch recommendations
   const fetchRecommendations = useCallback(
     async (limit = 20) => {
-      if (!sessionId) return;
+      // Only fetch if user is authenticated
+      if (!isAuthenticated || !sessionId) return;
 
       setLoading(true);
       try {
@@ -172,12 +177,13 @@ export const useRecommendations = () => {
         setLoading(false);
       }
     },
-    [sessionId]
+    [isAuthenticated, sessionId]
   );
 
   // Check disengagement status
   const checkDisengagement = useCallback(async () => {
-    if (!sessionId) return;
+    // Only check if user is authenticated
+    if (!isAuthenticated || !sessionId) return;
 
     try {
       const response = await videosAPI.checkDisengagement(sessionId);
@@ -187,15 +193,15 @@ export const useRecommendations = () => {
     } catch (error) {
       console.error("Failed to check disengagement:", error);
     }
-  }, [sessionId]);
+  }, [isAuthenticated, sessionId]);
 
   // Refresh recommendations when user shows disengagement
   useEffect(() => {
-    if (disengagement?.isDisengaging) {
+    if (isAuthenticated && disengagement?.isDisengaging) {
       console.log("User disengaging, refreshing recommendations...");
       fetchRecommendations();
     }
-  }, [disengagement, fetchRecommendations]);
+  }, [isAuthenticated, disengagement, fetchRecommendations]);
 
   return {
     recommendations,
