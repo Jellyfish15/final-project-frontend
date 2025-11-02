@@ -308,22 +308,27 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
         {currentVideo && (
           <>
             <div className="video-page__actions">
-              <button
-                className={`video-page__action ${
-                  isLiked ? "video-page__action--liked" : ""
-                }`}
-                onClick={handleLike}
-              >
-                <span className="video-page__action-icon">
-                  {isLiked ? "❤️" : "🤍"}
-                </span>
-                <span className="video-page__action-count">{likeCount}</span>
-              </button>
+              {/* Only show like/comment buttons for uploaded videos, not YouTube videos */}
+              {currentVideo.videoType !== "youtube" && (
+                <>
+                  <button
+                    className={`video-page__action ${
+                      isLiked ? "video-page__action--liked" : ""
+                    }`}
+                    onClick={handleLike}
+                  >
+                    <span className="video-page__action-icon">
+                      {isLiked ? "❤️" : "🤍"}
+                    </span>
+                    <span className="video-page__action-count">{likeCount}</span>
+                  </button>
 
-              <button className="video-page__action" onClick={handleComment}>
-                <span className="video-page__action-icon">💬</span>
-                <span className="video-page__action-count">{commentCount}</span>
-              </button>
+                  <button className="video-page__action" onClick={handleComment}>
+                    <span className="video-page__action-icon">💬</span>
+                    <span className="video-page__action-count">{commentCount}</span>
+                  </button>
+                </>
+              )}
 
               <button className="video-page__action" onClick={handleShare}>
                 <span className="video-page__action-icon">↗</span>
