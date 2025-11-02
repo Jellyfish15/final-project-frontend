@@ -282,7 +282,11 @@ export const VideoProvider = ({
   }, []);
 
   const togglePlay = () => {
-    if (videoRef.current && currentVideo?.videoType !== "youtube") {
+    if (currentVideo?.videoType === "youtube") {
+      // For YouTube videos, just toggle the state - YouTubePlayer will handle it
+      setIsPlaying(!isPlaying);
+    } else if (videoRef.current) {
+      // For uploaded videos, control the video element directly
       if (isPlaying) {
         videoRef.current.pause();
       } else {
@@ -303,7 +307,7 @@ export const VideoProvider = ({
 
   const handleLike = async () => {
     if (!currentVideo) return;
-    
+
     // Don't allow liking YouTube videos (they're not in our database)
     if (currentVideo.videoType === "youtube") {
       console.log("Cannot like YouTube videos");
@@ -385,7 +389,7 @@ export const VideoProvider = ({
 
   const handleComment = () => {
     if (!currentVideo) return;
-    
+
     // Don't allow commenting on YouTube videos (they're not in our database)
     if (currentVideo.videoType === "youtube") {
       console.log("Cannot comment on YouTube videos");

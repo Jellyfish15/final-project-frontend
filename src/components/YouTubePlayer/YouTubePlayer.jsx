@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import VideoLoader from "../VideoLoader/VideoLoader";
 
-const YouTubePlayer = ({ videoId, isMuted, className }) => {
+const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
   const playerRef = useRef(null);
   const playerInstanceRef = useRef(null);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -77,6 +77,17 @@ const YouTubePlayer = ({ videoId, isMuted, className }) => {
       }
     }
   }, [isMuted]);
+
+  // Handle play/pause state changes
+  useEffect(() => {
+    if (playerInstanceRef.current && isPlayerReady) {
+      if (isPlaying) {
+        playerInstanceRef.current.playVideo();
+      } else {
+        playerInstanceRef.current.pauseVideo();
+      }
+    }
+  }, [isPlaying, isPlayerReady]);
 
   return (
     <div className={className} style={{ position: "relative" }}>

@@ -183,11 +183,18 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
               </button>
 
               {currentVideo.videoType === "youtube" ? (
-                <YouTubePlayer
-                  videoId={currentVideo.videoUrl.split("/").pop()}
-                  isMuted={isMuted}
-                  className="video-page__video"
-                />
+                <div 
+                  className="video-page__youtube-wrapper"
+                  onClick={togglePlay}
+                  style={{ position: 'relative', width: '100%', height: '100%', cursor: 'pointer' }}
+                >
+                  <YouTubePlayer
+                    videoId={currentVideo.videoUrl.split("/").pop()}
+                    isMuted={isMuted}
+                    isPlaying={isPlaying}
+                    className="video-page__video"
+                  />
+                </div>
               ) : (
                 <>
                   <video
@@ -197,11 +204,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     autoPlay
                     muted={isMuted}
                     playsInline
-                    controls={true}
-                    onClick={(e) => {
-                      // Click anywhere on video to toggle mute (TikTok/Instagram style)
-                      toggleMute();
-                    }}
+                    controls={false}
+                    onClick={togglePlay}
                     onLoadStart={() =>
                       console.log("[Video] Load start:", currentVideo?.videoUrl)
                     }
@@ -296,7 +300,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                 </>
               )}
 
-              {!isPlaying && currentVideo.videoType !== "youtube" && (
+              {/* Show play button overlay when paused for both video types */}
+              {!isPlaying && (
                 <div className="video-page__play-overlay" onClick={togglePlay}>
                   <div className="video-page__play-button">▶</div>
                 </div>
@@ -320,12 +325,19 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     <span className="video-page__action-icon">
                       {isLiked ? "❤️" : "🤍"}
                     </span>
-                    <span className="video-page__action-count">{likeCount}</span>
+                    <span className="video-page__action-count">
+                      {likeCount}
+                    </span>
                   </button>
 
-                  <button className="video-page__action" onClick={handleComment}>
+                  <button
+                    className="video-page__action"
+                    onClick={handleComment}
+                  >
                     <span className="video-page__action-icon">💬</span>
-                    <span className="video-page__action-count">{commentCount}</span>
+                    <span className="video-page__action-count">
+                      {commentCount}
+                    </span>
                   </button>
                 </>
               )}
