@@ -303,6 +303,12 @@ export const VideoProvider = ({
 
   const handleLike = async () => {
     if (!currentVideo) return;
+    
+    // Don't allow liking YouTube videos (they're not in our database)
+    if (currentVideo.videoType === "youtube") {
+      console.log("Cannot like YouTube videos");
+      return;
+    }
 
     const newLikedState = !isLiked;
     const videoId = currentVideo._id || currentVideo.id;
@@ -357,6 +363,12 @@ export const VideoProvider = ({
 
     setIsShareModalOpen(true);
 
+    // Don't track shares for YouTube videos in our database
+    if (currentVideo.videoType === "youtube") {
+      console.log("Sharing YouTube video (not tracked in database)");
+      return;
+    }
+
     // Track engagement
     userInteractionService.trackVideoEngagement(
       currentVideo._id || currentVideo.id,
@@ -373,6 +385,12 @@ export const VideoProvider = ({
 
   const handleComment = () => {
     if (!currentVideo) return;
+    
+    // Don't allow commenting on YouTube videos (they're not in our database)
+    if (currentVideo.videoType === "youtube") {
+      console.log("Cannot comment on YouTube videos");
+      return;
+    }
 
     setIsCommentModalOpen(true);
 

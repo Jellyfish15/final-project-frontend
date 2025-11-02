@@ -74,8 +74,12 @@ export const useVideoEngagement = (videoRef, videoData, sessionId) => {
   // Send engagement data to backend
   const trackEngagement = useCallback(
     async (additionalData = {}) => {
-      // Only track if user is authenticated
+      // Only track if user is authenticated and has a token
       if (!isAuthenticated || !videoData || !sessionId) return;
+
+      // Check if token exists before making request
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
       try {
         const payload = {
@@ -96,7 +100,16 @@ export const useVideoEngagement = (videoRef, videoData, sessionId) => {
         await videosAPI.trackEngagement(payload);
         hasTrackedRef.current = true;
       } catch (error) {
-        console.error("Failed to track engagement:", error);
+        // Silently fail for engagement tracking - don't disrupt user experience
+        if (
+          error.message?.includes("401") ||
+          error.message?.includes("token")
+        ) {
+          // Token expired or invalid - stop tracking
+          if (trackingIntervalRef.current) {
+            clearInterval(trackingIntervalRef.current);
+          }
+        }
       }
     },
     [isAuthenticated, videoData, engagementData, sessionId, videoRef]
@@ -153,15 +166,20 @@ export const useRecommendations = () => {
 
   // Generate session ID on mount
   useEffect(() => {
-    const id = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `session-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
     setSessionId(id);
   }, []);
 
   // Fetch recommendations
   const fetchRecommendations = useCallback(
     async (limit = 20) => {
-      // Only fetch if user is authenticated
+      // Only fetch if user is authenticated and has a token
       if (!isAuthenticated || !sessionId) return;
+
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
       setLoading(true);
       try {
@@ -172,7 +190,7 @@ export const useRecommendations = () => {
           setPreferences(response.preferences);
         }
       } catch (error) {
-        console.error("Failed to fetch recommendations:", error);
+        // Silently fail - recommendations are optional
       } finally {
         setLoading(false);
       }
@@ -182,8 +200,11 @@ export const useRecommendations = () => {
 
   // Check disengagement status
   const checkDisengagement = useCallback(async () => {
-    // Only check if user is authenticated
+    // Only check if user is authenticated and has a token
     if (!isAuthenticated || !sessionId) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
     try {
       const response = await videosAPI.checkDisengagement(sessionId);
@@ -191,7 +212,7 @@ export const useRecommendations = () => {
         setDisengagement(response);
       }
     } catch (error) {
-      console.error("Failed to check disengagement:", error);
+      // Silently fail - disengagement check is optional
     }
   }, [isAuthenticated, sessionId]);
 
