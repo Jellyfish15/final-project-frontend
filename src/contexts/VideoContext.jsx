@@ -287,8 +287,29 @@ export const VideoProvider = ({
       videoCount: videos.length,
       startIndex: startIndex,
       firstVideo: videos[0]?.title,
+      allVideoIds: videos.map(v => v._id || v.id),
     });
-    setFocusedVideos(videos);
+    
+    // Deduplicate videos by ID
+    const uniqueVideos = [];
+    const seenIds = new Set();
+    
+    for (const video of videos) {
+      const videoId = video._id || video.id;
+      if (!seenIds.has(videoId)) {
+        seenIds.add(videoId);
+        uniqueVideos.push(video);
+      } else {
+        console.log("[VideoContext] Removing duplicate video:", video.title, videoId);
+      }
+    }
+    
+    console.log("[VideoContext] After deduplication:", {
+      originalCount: videos.length,
+      uniqueCount: uniqueVideos.length,
+    });
+    
+    setFocusedVideos(uniqueVideos);
     setCurrentIndex(startIndex);
     setIsVideoSwitching(true);
     setTimeout(() => {

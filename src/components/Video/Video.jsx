@@ -16,6 +16,7 @@ import { videosAPI } from "../../services/api";
 const Video = ({ onOpenLogin, onOpenRegister }) => {
   const containerRef = useRef(null);
   const processingVideoChange = useRef(false); // Prevent multiple simultaneous video changes
+  const loadedFeedRef = useRef(null); // Track which custom feed has been loaded
   const location = useLocation();
   const {
     currentVideo,
@@ -65,40 +66,55 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     const feedType = searchParams.get("feedType");
     const videoId = searchParams.get("videoId");
     const username = searchParams.get("username");
+    
+    // Create a unique key for this feed
+    const feedKey = `${feedType}-${videoId}-${username}`;
 
     const loadCustomFeed = async () => {
-      if (!feedType || processingVideoChange.current) return;
+      // Skip if no feedType or already processing or already loaded this exact feed
+      if (!feedType || processingVideoChange.current || loadedFeedRef.current === feedKey) {
+        console.log("[Video] Skipping custom feed load:", {
+          feedType,
+          processing: processingVideoChange.current,
+          alreadyLoaded: loadedFeedRef.current === feedKey,
+        });
+        return;
+      }
 
       processingVideoChange.current = true;
-      
+      loadedFeedRef.current = feedKey;
+
       try {
         if (feedType === "profile" && username) {
           // Load profile feed
           console.log("[Video] Loading profile feed for:", username);
           const response = await videosAPI.getProfileFeed(username, 10);
-          
+
           if (response.success && response.videos) {
             console.log("[Video] Profile feed loaded:", {
               total: response.videos.length,
               userVideos: response.feedInfo.userVideos,
               similarVideos: response.feedInfo.similarVideos,
             });
-            
+
             // Find the clicked video's index
             const startIndex = response.videos.findIndex(
-              v => (v.id || v._id) === videoId
+              (v) => (v.id || v._id) === videoId
             );
-            
+
             setCustomFeed(response.videos, Math.max(0, startIndex));
           }
         } else if (feedType === "similar" && videoId) {
           // Load similar videos feed
           console.log("[Video] Loading similar videos for:", videoId);
           const response = await videosAPI.getSimilarVideos(videoId, 20);
-          
+
           if (response.success && response.videos) {
-            console.log("[Video] Similar videos loaded:", response.videos.length);
-            
+            console.log(
+              "[Video] Similar videos loaded:",
+              response.videos.length
+            );
+
             // Fetch the source video and add it to the beginning
             try {
               const sourceResponse = await videosAPI.getVideo(videoId);
@@ -114,6 +130,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
         }
       } catch (error) {
         console.error("[Video] Error loading custom feed:", error);
+        loadedFeedRef.current = null; // Reset on error
       } finally {
         setTimeout(() => {
           processingVideoChange.current = false;
@@ -132,6 +149,12 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
     // Skip if it's a custom feed (handled by previous useEffect)
     if (feedType) return;
+    
+    // Reset loaded feed ref when switching to non-custom feed
+    if (loadedFeedRef.current) {
+      console.log("[Video] Resetting custom feed tracking");
+      loadedFeedRef.current = null;
+    }
 
     console.log("[Video] URL changed:", location.search);
     console.log("[Video] Extracted videoId:", videoId);
