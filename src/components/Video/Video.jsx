@@ -183,16 +183,32 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
               </button>
 
               {currentVideo.videoType === "youtube" ? (
-                <div 
+                <div
                   className="video-page__youtube-wrapper"
-                  onClick={togglePlay}
-                  style={{ position: 'relative', width: '100%', height: '100%', cursor: 'pointer' }}
+                  style={{
+                    position: "relative",
+                    width: "100%",
+                    height: "100%",
+                  }}
                 >
                   <YouTubePlayer
                     videoId={currentVideo.videoUrl.split("/").pop()}
                     isMuted={isMuted}
                     isPlaying={isPlaying}
                     className="video-page__video"
+                  />
+                  {/* Transparent overlay to capture clicks on YouTube iframe */}
+                  <div
+                    onClick={togglePlay}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      cursor: "pointer",
+                      zIndex: 1,
+                    }}
                   />
                 </div>
               ) : (
@@ -302,7 +318,11 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
               {/* Show play button overlay when paused for both video types */}
               {!isPlaying && (
-                <div className="video-page__play-overlay" onClick={togglePlay}>
+                <div 
+                  className="video-page__play-overlay" 
+                  onClick={togglePlay}
+                  style={{ zIndex: 2, position: 'absolute' }}
+                >
                   <div className="video-page__play-button">▶</div>
                 </div>
               )}
