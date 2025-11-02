@@ -97,25 +97,33 @@ export const VideoProvider = ({
         newIndex = currentIndex + 1;
       } else if (direction === "previous" && currentIndex > 0) {
         newIndex = currentIndex - 1;
-      } else if (direction === "next" && currentIndex === videos.length - 1 && focusedVideos) {
+      } else if (
+        direction === "next" &&
+        currentIndex === videos.length - 1 &&
+        focusedVideos
+      ) {
         // Reached end of custom feed, append more videos from full feed
-        console.log("[VideoContext] End of custom feed reached, appending full feed videos");
-        
+        console.log(
+          "[VideoContext] End of custom feed reached, appending full feed videos"
+        );
+
         // Get videos from full feed that aren't already in the custom feed
-        const customFeedIds = new Set(focusedVideos.map(v => v._id || v.id));
-        const additionalVideos = initialVideos.filter(v => !customFeedIds.has(v._id || v.id));
-        
+        const customFeedIds = new Set(focusedVideos.map((v) => v._id || v.id));
+        const additionalVideos = initialVideos.filter(
+          (v) => !customFeedIds.has(v._id || v.id)
+        );
+
         if (additionalVideos.length > 0) {
           // Append the first batch (e.g., 10 videos) to the custom feed
           const videosToAdd = additionalVideos.slice(0, 10);
           const expandedFeed = [...focusedVideos, ...videosToAdd];
-          
+
           console.log("[VideoContext] Appending videos:", {
             currentFeedSize: focusedVideos.length,
             videosAdded: videosToAdd.length,
             newFeedSize: expandedFeed.length,
           });
-          
+
           setFocusedVideos(expandedFeed);
           newIndex = currentIndex + 1; // Move to the first newly added video
         } else {

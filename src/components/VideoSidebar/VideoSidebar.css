@@ -120,6 +120,15 @@
   margin-top: auto;
 }
 
+.video-sidebar__copyright {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
 .video-sidebar__auth-buttons {
   display: flex;
   flex-direction: column;

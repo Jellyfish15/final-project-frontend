@@ -113,6 +113,11 @@ const VideoSidebar = ({ onOpenLogin, onOpenRegister }) => {
               </button>
             </div>
           )}
+          
+          {/* Copyright */}
+          <p className="video-sidebar__copyright">
+            © 2025 Nudl. All rights reserved.
+          </p>
         </div>
       </div>
     </aside>
