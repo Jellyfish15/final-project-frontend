@@ -303,13 +303,39 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
     }, 1000);
   };
 
-  const handleVideoClick = (video) => {
+  const handleVideoClick = async (video) => {
     console.log("[Profile] Video clicked:", {
       id: video._id,
       title: video.title,
     });
-    // Navigate to videos page with the video ID as a query parameter
-    navigate(`/videos?videoId=${video._id}`);
+    
+    try {
+      // Fetch the profile feed (all profile videos + 10 similar videos)
+      const response = await videosAPI.getProfileFeed(user.username, 10);
+      
+      if (response.success && response.videos) {
+        console.log("[Profile] Loaded profile feed:", {
+          totalVideos: response.videos.length,
+          userVideos: response.feedInfo.userVideos,
+          similarVideos: response.feedInfo.similarVideos,
+        });
+        
+        // Find the clicked video's index in the feed
+        const videoIndex = response.videos.findIndex(
+          v => (v.id || v._id) === video._id
+        );
+        
+        // Navigate to videos page with custom feed
+        navigate(`/videos?videoId=${video._id}&feedType=profile&username=${user.username}`);
+      } else {
+        // Fallback to simple navigation if feed fetch fails
+        navigate(`/videos?videoId=${video._id}`);
+      }
+    } catch (error) {
+      console.error("[Profile] Error loading profile feed:", error);
+      // Fallback to simple navigation
+      navigate(`/videos?videoId=${video._id}`);
+    }
   };
 
   const formatNumber = (num) => {

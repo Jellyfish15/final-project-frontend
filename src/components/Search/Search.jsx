@@ -454,9 +454,14 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
       await aiSearchAPI.recordSearchFeedback(searchTerm, video.id, "click");
     }
 
-    // Always navigate to Videos page and play the video, regardless of source
-    setVideoById(video.id, true); // Create focused feed
-    navigate(`/videos?videoId=${video.id}`);
+    // Navigate with similar videos feed for uploaded videos
+    if (video.videoType === "uploaded") {
+      navigate(`/videos?videoId=${video.id}&feedType=similar`);
+    } else {
+      // For YouTube videos, use regular navigation
+      setVideoById(video.id, true);
+      navigate(`/videos?videoId=${video.id}`);
+    }
   };
 
   const nextEducator = () => {

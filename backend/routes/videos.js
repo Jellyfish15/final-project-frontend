@@ -632,4 +632,204 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/videos/:id/similar
+// @desc    Get videos similar to a specific video
+// @access  Public
+router.get("/:id/similar", optionalAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 10 } = req.query;
+
+    // Get the source video
+    const sourceVideo = await Video.findById(id);
+    if (!sourceVideo) {
+      return res.status(404).json({
+        success: false,
+        message: "Video not found",
+      });
+    }
+
+    // Find similar videos based on category and tags
+    const similarVideos = await Video.find({
+      _id: { $ne: id }, // Exclude the source video
+      status: "approved",
+      isPrivate: false,
+      $or: [
+        { category: sourceVideo.category }, // Same category
+        { tags: { $in: sourceVideo.tags } }, // Shared tags
+      ],
+    })
+      .populate("creator", "username displayName avatar isVerified")
+      .sort({ engagementRate: -1, views: -1 }) // Prioritize engaging content
+      .limit(parseInt(limit))
+      .lean();
+
+    // Format videos for response
+    const formattedVideos = similarVideos.map((video) => ({
+      id: video._id,
+      title: video.title,
+      description: video.description,
+      videoUrl: video.videoUrl,
+      thumbnailUrl: video.thumbnailUrl,
+      duration: video.duration,
+      category: video.category,
+      tags: video.tags,
+      creator: {
+        username: video.creator?.username || "unknown",
+        displayName: video.creator?.displayName || "Unknown Creator",
+        avatar:
+          video.creator?.avatar || "https://via.placeholder.com/40x40?text=U",
+        isVerified: video.creator?.isVerified || false,
+      },
+      views: video.views,
+      likes: video.likes?.length || 0,
+      comments: video.comments?.length || 0,
+      shares: video.shares,
+      engagementRate: video.engagementRate,
+      publishedAt: video.publishedAt,
+      isLiked: req.user
+        ? video.likes?.some((like) => like.user.toString() === req.user.userId)
+        : false,
+      videoType: "uploaded",
+    }));
+
+    res.json({
+      success: true,
+      videos: formattedVideos,
+      sourceVideo: {
+        id: sourceVideo._id,
+        title: sourceVideo.title,
+        category: sourceVideo.category,
+      },
+    });
+  } catch (error) {
+    console.error("Get similar videos error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+// @route   GET /api/videos/profile/:username/feed
+// @desc    Get profile feed: all user videos + similar videos based on most engaged
+// @access  Public
+router.get("/profile/:username/feed", optionalAuth, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { similarLimit = 10 } = req.query;
+
+    // Find the user
+    const user = await User.findOne({ username, isActive: true });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Get all user's videos
+    const userVideos = await Video.find({
+      creator: user._id,
+      status: "approved",
+      isPrivate: false,
+    })
+      .populate("creator", "username displayName avatar isVerified")
+      .sort({ publishedAt: -1 })
+      .lean();
+
+    if (userVideos.length === 0) {
+      return res.json({
+        success: true,
+        videos: [],
+        feedInfo: {
+          userVideos: 0,
+          similarVideos: 0,
+        },
+      });
+    }
+
+    // Find the most engaged video from user's videos
+    const mostEngagedVideo = userVideos.reduce((max, video) => {
+      const engagement =
+        (video.likes?.length || 0) * 2 +
+        (video.comments?.length || 0) * 3 +
+        (video.shares || 0) * 4 +
+        video.views;
+      const maxEngagement =
+        (max.likes?.length || 0) * 2 +
+        (max.comments?.length || 0) * 3 +
+        (max.shares || 0) * 4 +
+        max.views;
+      return engagement > maxEngagement ? video : max;
+    }, userVideos[0]);
+
+    // Get similar videos based on the most engaged video
+    const similarVideos = await Video.find({
+      creator: { $ne: user._id }, // Exclude user's own videos
+      status: "approved",
+      isPrivate: false,
+      $or: [
+        { category: mostEngagedVideo.category },
+        { tags: { $in: mostEngagedVideo.tags } },
+      ],
+    })
+      .populate("creator", "username displayName avatar isVerified")
+      .sort({ engagementRate: -1, views: -1 })
+      .limit(parseInt(similarLimit))
+      .lean();
+
+    // Combine: all user videos first, then similar videos
+    const combinedFeed = [...userVideos, ...similarVideos];
+
+    // Format videos for response
+    const formattedVideos = combinedFeed.map((video) => ({
+      id: video._id,
+      title: video.title,
+      description: video.description,
+      videoUrl: video.videoUrl,
+      thumbnailUrl: video.thumbnailUrl,
+      duration: video.duration,
+      category: video.category,
+      tags: video.tags,
+      creator: {
+        username: video.creator?.username || "unknown",
+        displayName: video.creator?.displayName || "Unknown Creator",
+        avatar:
+          video.creator?.avatar || "https://via.placeholder.com/40x40?text=U",
+        isVerified: video.creator?.isVerified || false,
+      },
+      views: video.views,
+      likes: video.likes?.length || 0,
+      comments: video.comments?.length || 0,
+      shares: video.shares,
+      engagementRate: video.engagementRate,
+      publishedAt: video.publishedAt,
+      isLiked: req.user
+        ? video.likes?.some((like) => like.user.toString() === req.user.userId)
+        : false,
+      videoType: "uploaded",
+    }));
+
+    res.json({
+      success: true,
+      videos: formattedVideos,
+      feedInfo: {
+        userVideos: userVideos.length,
+        similarVideos: similarVideos.length,
+        mostEngagedVideo: {
+          id: mostEngagedVideo._id,
+          title: mostEngagedVideo.title,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get profile feed error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
 module.exports = router;

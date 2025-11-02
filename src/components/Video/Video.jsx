@@ -11,6 +11,7 @@ import {
   useVideoEngagement,
   useRecommendations,
 } from "../../hooks/useEngagement";
+import { videosAPI } from "../../services/api";
 
 const Video = ({ onOpenLogin, onOpenRegister }) => {
   const containerRef = useRef(null);
@@ -34,6 +35,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     setIsShareModalOpen,
     scrollToVideo,
     setVideoById,
+    setCustomFeed,
     resetToFullFeed,
     isFocusedFeed,
     togglePlay,
@@ -57,10 +59,79 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     sessionId
   );
 
-  // Handle video ID from URL parameters
+  // Handle custom feed types (profile or similar)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const feedType = searchParams.get("feedType");
+    const videoId = searchParams.get("videoId");
+    const username = searchParams.get("username");
+
+    const loadCustomFeed = async () => {
+      if (!feedType || processingVideoChange.current) return;
+
+      processingVideoChange.current = true;
+      
+      try {
+        if (feedType === "profile" && username) {
+          // Load profile feed
+          console.log("[Video] Loading profile feed for:", username);
+          const response = await videosAPI.getProfileFeed(username, 10);
+          
+          if (response.success && response.videos) {
+            console.log("[Video] Profile feed loaded:", {
+              total: response.videos.length,
+              userVideos: response.feedInfo.userVideos,
+              similarVideos: response.feedInfo.similarVideos,
+            });
+            
+            // Find the clicked video's index
+            const startIndex = response.videos.findIndex(
+              v => (v.id || v._id) === videoId
+            );
+            
+            setCustomFeed(response.videos, Math.max(0, startIndex));
+          }
+        } else if (feedType === "similar" && videoId) {
+          // Load similar videos feed
+          console.log("[Video] Loading similar videos for:", videoId);
+          const response = await videosAPI.getSimilarVideos(videoId, 20);
+          
+          if (response.success && response.videos) {
+            console.log("[Video] Similar videos loaded:", response.videos.length);
+            
+            // Fetch the source video and add it to the beginning
+            try {
+              const sourceResponse = await videosAPI.getVideo(videoId);
+              if (sourceResponse.success) {
+                const feedVideos = [sourceResponse.video, ...response.videos];
+                setCustomFeed(feedVideos, 0);
+              }
+            } catch (error) {
+              // If source video fetch fails, just use similar videos
+              setCustomFeed(response.videos, 0);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[Video] Error loading custom feed:", error);
+      } finally {
+        setTimeout(() => {
+          processingVideoChange.current = false;
+        }, 1000);
+      }
+    };
+
+    loadCustomFeed();
+  }, [location.search, setCustomFeed]);
+
+  // Handle video ID from URL parameters (for non-custom feeds)
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const videoId = searchParams.get("videoId");
+    const feedType = searchParams.get("feedType");
+
+    // Skip if it's a custom feed (handled by previous useEffect)
+    if (feedType) return;
 
     console.log("[Video] URL changed:", location.search);
     console.log("[Video] Extracted videoId:", videoId);
@@ -92,7 +163,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     } else if (videoId && videos.length === 0) {
       console.log("[Video] VideoId found but no videos loaded yet");
     }
-  }, [location.search, setVideoById, videos.length]); // Removed currentIndex and currentVideo to prevent infinite loop
+  }, [location.search, setVideoById, videos.length, currentVideo]); // Removed currentIndex and currentVideo to prevent infinite loop
 
   // Debug current video changes
   useEffect(() => {
@@ -318,10 +389,10 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
               {/* Show play button overlay when paused for both video types */}
               {!isPlaying && (
-                <div 
-                  className="video-page__play-overlay" 
+                <div
+                  className="video-page__play-overlay"
                   onClick={togglePlay}
-                  style={{ zIndex: 2, position: 'absolute' }}
+                  style={{ zIndex: 2, position: "absolute" }}
                 >
                   <div className="video-page__play-button">▶</div>
                 </div>

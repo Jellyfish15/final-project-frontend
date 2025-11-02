@@ -306,6 +306,16 @@ export const videosAPI = {
 
   // Get engagement stats
   getEngagementStats: () => apiService.get("/recommendations/stats"),
+
+  // Get similar videos
+  getSimilarVideos: (videoId, limit = 10) =>
+    apiService.get(`/videos/${videoId}/similar?limit=${limit}`),
+
+  // Get profile feed (all user videos + similar based on most engaged)
+  getProfileFeed: (username, similarLimit = 10) =>
+    apiService.get(
+      `/videos/profile/${username}/feed?similarLimit=${similarLimit}`
+    ),
 };
 
 // Upload API

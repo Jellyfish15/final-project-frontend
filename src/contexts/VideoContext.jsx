@@ -281,6 +281,21 @@ export const VideoProvider = ({
     setCurrentIndex(0);
   }, []);
 
+  // New function to set a custom feed of videos
+  const setCustomFeed = useCallback((videos, startIndex = 0) => {
+    console.log("[VideoContext] Setting custom feed:", {
+      videoCount: videos.length,
+      startIndex: startIndex,
+      firstVideo: videos[0]?.title,
+    });
+    setFocusedVideos(videos);
+    setCurrentIndex(startIndex);
+    setIsVideoSwitching(true);
+    setTimeout(() => {
+      setIsVideoSwitching(false);
+    }, 300);
+  }, []);
+
   const togglePlay = () => {
     if (currentVideo?.videoType === "youtube") {
       // For YouTube videos, just toggle the state - YouTubePlayer will handle it
@@ -608,6 +623,7 @@ export const VideoProvider = ({
     setIsShareModalOpen,
     scrollToVideo,
     setVideoById,
+    setCustomFeed,
     resetToFullFeed,
     isFocusedFeed: focusedVideos !== null,
     togglePlay,
