@@ -97,6 +97,31 @@ export const VideoProvider = ({
         newIndex = currentIndex + 1;
       } else if (direction === "previous" && currentIndex > 0) {
         newIndex = currentIndex - 1;
+      } else if (direction === "next" && currentIndex === videos.length - 1 && focusedVideos) {
+        // Reached end of custom feed, append more videos from full feed
+        console.log("[VideoContext] End of custom feed reached, appending full feed videos");
+        
+        // Get videos from full feed that aren't already in the custom feed
+        const customFeedIds = new Set(focusedVideos.map(v => v._id || v.id));
+        const additionalVideos = initialVideos.filter(v => !customFeedIds.has(v._id || v.id));
+        
+        if (additionalVideos.length > 0) {
+          // Append the first batch (e.g., 10 videos) to the custom feed
+          const videosToAdd = additionalVideos.slice(0, 10);
+          const expandedFeed = [...focusedVideos, ...videosToAdd];
+          
+          console.log("[VideoContext] Appending videos:", {
+            currentFeedSize: focusedVideos.length,
+            videosAdded: videosToAdd.length,
+            newFeedSize: expandedFeed.length,
+          });
+          
+          setFocusedVideos(expandedFeed);
+          newIndex = currentIndex + 1; // Move to the first newly added video
+        } else {
+          console.log("[VideoContext] No more videos to append from full feed");
+          return; // Can't scroll further
+        }
       }
 
       if (newIndex !== currentIndex) {
@@ -119,7 +144,7 @@ export const VideoProvider = ({
         );
       }
     },
-    [currentIndex, videos.length, watchTracker]
+    [currentIndex, videos.length, watchTracker, focusedVideos, initialVideos]
   );
 
   const setVideoById = useCallback(
@@ -287,28 +312,32 @@ export const VideoProvider = ({
       videoCount: videos.length,
       startIndex: startIndex,
       firstVideo: videos[0]?.title,
-      allVideoIds: videos.map(v => v._id || v.id),
+      allVideoIds: videos.map((v) => v._id || v.id),
     });
-    
+
     // Deduplicate videos by ID
     const uniqueVideos = [];
     const seenIds = new Set();
-    
+
     for (const video of videos) {
       const videoId = video._id || video.id;
       if (!seenIds.has(videoId)) {
         seenIds.add(videoId);
         uniqueVideos.push(video);
       } else {
-        console.log("[VideoContext] Removing duplicate video:", video.title, videoId);
+        console.log(
+          "[VideoContext] Removing duplicate video:",
+          video.title,
+          videoId
+        );
       }
     }
-    
+
     console.log("[VideoContext] After deduplication:", {
       originalCount: videos.length,
       uniqueCount: uniqueVideos.length,
     });
-    
+
     setFocusedVideos(uniqueVideos);
     setCurrentIndex(startIndex);
     setIsVideoSwitching(true);

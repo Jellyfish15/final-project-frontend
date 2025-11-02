@@ -66,13 +66,17 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     const feedType = searchParams.get("feedType");
     const videoId = searchParams.get("videoId");
     const username = searchParams.get("username");
-    
+
     // Create a unique key for this feed
     const feedKey = `${feedType}-${videoId}-${username}`;
 
     const loadCustomFeed = async () => {
       // Skip if no feedType or already processing or already loaded this exact feed
-      if (!feedType || processingVideoChange.current || loadedFeedRef.current === feedKey) {
+      if (
+        !feedType ||
+        processingVideoChange.current ||
+        loadedFeedRef.current === feedKey
+      ) {
         console.log("[Video] Skipping custom feed load:", {
           feedType,
           processing: processingVideoChange.current,
@@ -149,7 +153,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
     // Skip if it's a custom feed (handled by previous useEffect)
     if (feedType) return;
-    
+
     // Reset loaded feed ref when switching to non-custom feed
     if (loadedFeedRef.current) {
       console.log("[Video] Resetting custom feed tracking");
@@ -466,19 +470,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
             <div className="video-page__bottom-info">
               <h3 className="video-page__video-title">{currentVideo.title}</h3>
-              {isFocusedFeed && (
-                <div className="video-page__focused-indicator">
-                  <p className="video-page__focused-text">
-                    🎯 Your Video Feed ({videos.length} videos)
-                  </p>
-                  <button
-                    className="video-page__return-btn"
-                    onClick={resetToFullFeed}
-                  >
-                    🔄 Return to Full Feed
-                  </button>
-                </div>
-              )}
             </div>
           </>
         )}
