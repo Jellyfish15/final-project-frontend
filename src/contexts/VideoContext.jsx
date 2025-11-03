@@ -97,6 +97,39 @@ export const VideoProvider = ({
         newIndex = currentIndex + 1;
       } else if (direction === "previous" && currentIndex > 0) {
         newIndex = currentIndex - 1;
+      } else if (
+        direction === "next" &&
+        currentIndex === videos.length - 1 &&
+        focusedVideos
+      ) {
+        // Reached end of custom feed, append more videos from full feed
+        console.log(
+          "[VideoContext] End of custom feed reached, appending full feed videos"
+        );
+
+        // Get videos from full feed that aren't already in the custom feed
+        const customFeedIds = new Set(focusedVideos.map((v) => v._id || v.id));
+        const additionalVideos = initialVideos.filter(
+          (v) => !customFeedIds.has(v._id || v.id)
+        );
+
+        if (additionalVideos.length > 0) {
+          // Append the first batch (e.g., 10 videos) to the custom feed
+          const videosToAdd = additionalVideos.slice(0, 10);
+          const expandedFeed = [...focusedVideos, ...videosToAdd];
+
+          console.log("[VideoContext] Appending videos:", {
+            currentFeedSize: focusedVideos.length,
+            videosAdded: videosToAdd.length,
+            newFeedSize: expandedFeed.length,
+          });
+
+          setFocusedVideos(expandedFeed);
+          newIndex = currentIndex + 1; // Move to the first newly added video
+        } else {
+          console.log("[VideoContext] No more videos to append from full feed");
+          return; // Can't scroll further
+        }
       }
 
       if (newIndex !== currentIndex) {
@@ -119,7 +152,7 @@ export const VideoProvider = ({
         );
       }
     },
-    [currentIndex, videos.length, watchTracker]
+    [currentIndex, videos.length, watchTracker, focusedVideos, initialVideos]
   );
 
   const setVideoById = useCallback(
@@ -281,8 +314,52 @@ export const VideoProvider = ({
     setCurrentIndex(0);
   }, []);
 
+  // New function to set a custom feed of videos
+  const setCustomFeed = useCallback((videos, startIndex = 0) => {
+    console.log("[VideoContext] Setting custom feed:", {
+      videoCount: videos.length,
+      startIndex: startIndex,
+      firstVideo: videos[0]?.title,
+      allVideoIds: videos.map((v) => v._id || v.id),
+    });
+
+    // Deduplicate videos by ID
+    const uniqueVideos = [];
+    const seenIds = new Set();
+
+    for (const video of videos) {
+      const videoId = video._id || video.id;
+      if (!seenIds.has(videoId)) {
+        seenIds.add(videoId);
+        uniqueVideos.push(video);
+      } else {
+        console.log(
+          "[VideoContext] Removing duplicate video:",
+          video.title,
+          videoId
+        );
+      }
+    }
+
+    console.log("[VideoContext] After deduplication:", {
+      originalCount: videos.length,
+      uniqueCount: uniqueVideos.length,
+    });
+
+    setFocusedVideos(uniqueVideos);
+    setCurrentIndex(startIndex);
+    setIsVideoSwitching(true);
+    setTimeout(() => {
+      setIsVideoSwitching(false);
+    }, 300);
+  }, []);
+
   const togglePlay = () => {
-    if (videoRef.current && currentVideo?.videoType !== "youtube") {
+    if (currentVideo?.videoType === "youtube") {
+      // For YouTube videos, just toggle the state - YouTubePlayer will handle it
+      setIsPlaying(!isPlaying);
+    } else if (videoRef.current) {
+      // For uploaded videos, control the video element directly
       if (isPlaying) {
         videoRef.current.pause();
       } else {
@@ -303,6 +380,12 @@ export const VideoProvider = ({
 
   const handleLike = async () => {
     if (!currentVideo) return;
+
+    // Don't allow liking YouTube videos (they're not in our database)
+    if (currentVideo.videoType === "youtube") {
+      console.log("Cannot like YouTube videos");
+      return;
+    }
 
     const newLikedState = !isLiked;
     const videoId = currentVideo._id || currentVideo.id;
@@ -357,6 +440,12 @@ export const VideoProvider = ({
 
     setIsShareModalOpen(true);
 
+    // Don't track shares for YouTube videos in our database
+    if (currentVideo.videoType === "youtube") {
+      console.log("Sharing YouTube video (not tracked in database)");
+      return;
+    }
+
     // Track engagement
     userInteractionService.trackVideoEngagement(
       currentVideo._id || currentVideo.id,
@@ -373,6 +462,12 @@ export const VideoProvider = ({
 
   const handleComment = () => {
     if (!currentVideo) return;
+
+    // Don't allow commenting on YouTube videos (they're not in our database)
+    if (currentVideo.videoType === "youtube") {
+      console.log("Cannot comment on YouTube videos");
+      return;
+    }
 
     setIsCommentModalOpen(true);
 
@@ -586,6 +681,7 @@ export const VideoProvider = ({
     setIsShareModalOpen,
     scrollToVideo,
     setVideoById,
+    setCustomFeed,
     resetToFullFeed,
     isFocusedFeed: focusedVideos !== null,
     togglePlay,

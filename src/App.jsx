@@ -10,7 +10,6 @@ import Profile from "./components/Profile/Profile";
 import Search from "./components/Search/Search";
 import Video from "./components/Video/Video";
 import Sidebar from "./components/Sidebar/Sidebar";
-import Footer from "./components/Footer/Footer";
 import BottomNavigation from "./components/BottomNavigation/BottomNavigation";
 import LoginModal from "./components/LoginModal/LoginModal";
 import RegisterModal from "./components/RegisterModal/RegisterModal";
@@ -322,8 +321,6 @@ function App() {
             />
           </Routes>
         </main>
-        {/* Hide footer on videos page */}
-        {!isVideosPage && <Footer />}
         <BottomNavigation />
 
         <LoginModal
