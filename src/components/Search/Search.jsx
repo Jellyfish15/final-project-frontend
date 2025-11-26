@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVideo } from "../../contexts/VideoContext";
 import { useAuth } from "../AuthContext/AuthContext";
-import aiSearchAPI from "../../services/aiSearchAPI";
 import { searchYouTubeVideos } from "../../../services/youtubeService";
 import SearchIcon from "../../images/search.svg";
 import VideoSidebar from "../VideoSidebar/VideoSidebar";
@@ -11,12 +10,7 @@ import "./Search.css";
 const Search = ({ onOpenLogin, onOpenRegister }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searchMode, setSearchMode] = useState("ai"); // Always use AI mode
-  const [queryAnalysis, setQueryAnalysis] = useState(null);
-  const [trendingSearches, setTrendingSearches] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
   const [featuredVideos, setFeaturedVideos] = useState([]);
   const [isLoadingFeatured, setIsLoadingFeatured] = useState(false);
@@ -232,23 +226,16 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     };
   }, [searchTerm]);
 
-  // Analyze query in real-time
-  useEffect(() => {
-    if (searchTerm.trim().length > 2) {
-      const analysis = aiSearchAPI.analyzeQuery(searchTerm);
-      setQueryAnalysis(analysis);
-    } else {
-      setQueryAnalysis(null);
-    }
-  }, [searchTerm]);
-
-  const loadTrendingSearches = async () => {
-    try {
-      const trending = await aiSearchAPI.getTrendingSearches();
-      setTrendingSearches(trending);
-    } catch (error) {
-      console.error("Failed to load trending searches:", error);
-    }
+  // Basic text search helper
+  const basicSearch = (query, videoList) => {
+    const searchLower = query.toLowerCase();
+    return videoList.filter(video => {
+      const titleMatch = video.title?.toLowerCase().includes(searchLower);
+      const descMatch = video.description?.toLowerCase().includes(searchLower);
+      const categoryMatch = video.category?.toLowerCase().includes(searchLower);
+      const tagsMatch = video.tags?.some(tag => tag.toLowerCase().includes(searchLower));
+      return titleMatch || descMatch || categoryMatch || tagsMatch;
+    });
   };
 
   const loadRecentSearches = () => {
@@ -267,156 +254,39 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     setRecentSearches(updated.slice(0, 5));
   };
 
-  const loadSuggestions = async (query) => {
-    try {
-      const response = await aiSearchAPI.getSearchSuggestions(query);
-      setSuggestions(response.suggestions || []);
-      setShowSuggestions(response.suggestions?.length > 0);
-    } catch (error) {
-      console.error("Failed to load suggestions:", error);
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  };
+
 
   const performSearch = useCallback(
     async (query) => {
-      console.log("performSearch called with query:", query);
-
       if (!query || query.trim().length < 2) {
-        console.log("Query too short, clearing results");
         setSearchResults([]);
         return;
       }
 
-      console.log("Starting search for:", query);
       setIsSearching(true);
       saveRecentSearch(query);
 
       try {
-        let results = [];
+        // Search local uploaded videos with basic text matching
+        const localResults = basicSearch(query, videos);
+        console.log("Local search results:", localResults.length);
+
+        // Search YouTube videos
         let youtubeResults = [];
-
-        // Perform AI analysis of the search query
-        let enhancedQuery = query;
         try {
-          console.log("Analyzing query with AI...");
-          const analysis = await aiSearchAPI.analyzeQuery(query);
-          setQueryAnalysis(analysis);
-          console.log("AI analysis result:", analysis);
-
-          // Use AI suggestions to enhance the search query
-          if (
-            analysis &&
-            analysis.suggestions &&
-            analysis.suggestions.length > 0
-          ) {
-            enhancedQuery = analysis.suggestions[0]; // Use the top AI suggestion
-            console.log("AI enhanced query:", enhancedQuery);
-          }
-        } catch (analysisError) {
-          console.warn("Query analysis failed:", analysisError);
+          youtubeResults = await searchYouTubeVideos(query, 10);
+          console.log("YouTube search results:", youtubeResults.length);
+        } catch (youtubeError) {
+          console.warn("YouTube search failed:", youtubeError);
         }
 
-        if (searchMode === "ai") {
-          // Try AI-powered search first with local videos
-          try {
-            console.log("Starting AI search with query:", query);
-            console.log("Available videos for search:", videos?.length || 0);
-            const aiResponse = await aiSearchAPI.smartSearch(query, {
-              limit: 15, // Reduced to make room for YouTube results
-            });
-            results = aiResponse.results || [];
-            console.log(
-              "AI Search results:",
-              results.length,
-              "local videos found"
-            );
-            console.log("AI Search response:", aiResponse);
-          } catch (aiError) {
-            console.warn(
-              "AI search failed, falling back to basic search:",
-              aiError
-            );
-            // Fallback to basic search
-            try {
-              console.log("Trying basic search fallback");
-              results = await aiSearchAPI.basicSearch(query, videos);
-              console.log("Basic search results:", results.length);
-            } catch (basicError) {
-              console.error("Basic search also failed:", basicError);
-              results = [];
-            }
-          }
-
-          // Search YouTube using the enhanced query
-          try {
-            console.log(
-              "Searching YouTube with enhanced query:",
-              enhancedQuery
-            );
-            youtubeResults = await searchYouTubeVideos(enhancedQuery, 10);
-            console.log(
-              "YouTube Search results:",
-              youtubeResults.length,
-              "YouTube videos found"
-            );
-            console.log("YouTube results:", youtubeResults);
-          } catch (youtubeError) {
-            console.warn("YouTube search failed:", youtubeError);
-            // Try with original query if enhanced query fails
-            try {
-              console.log(
-                "Retrying YouTube search with original query:",
-                query
-              );
-              youtubeResults = await searchYouTubeVideos(query, 10);
-              console.log(
-                "YouTube retry results:",
-                youtubeResults.length,
-                "videos"
-              );
-            } catch (originalError) {
-              console.warn(
-                "YouTube search with original query failed:",
-                originalError
-              );
-            }
-          }
-        } else {
-          // Use basic search for local videos
-          results = await aiSearchAPI.basicSearch(query, videos);
-
-          // Still search YouTube for additional results
-          try {
-            youtubeResults = await searchYouTubeVideos(query, 10);
-          } catch (youtubeError) {
-            console.warn("YouTube search failed:", youtubeError);
-          }
-        }
-
-        // Combine and sort results - prioritize local videos, then YouTube
-        console.log(
-          "Combining results - Local:",
-          results.length,
-          "YouTube:",
-          youtubeResults.length
-        );
+        // Combine results - local videos first, then YouTube
         const combinedResults = [
-          ...results,
+          ...localResults,
           ...youtubeResults.map((video) => ({ ...video, source: "youtube" })),
         ];
 
-        // If using AI mode, sort by relevance (AI results first, then YouTube)
-        if (searchMode === "ai" && combinedResults.length > 0) {
-          console.log(
-            `Combined results: ${results.length} local + ${youtubeResults.length} YouTube = ${combinedResults.length} total`
-          );
-        }
-
-        console.log("Final combined results:", combinedResults);
         setSearchResults(combinedResults);
-        setShowSuggestions(false);
       } catch (error) {
         console.error("Search failed:", error);
         // Final fallback to local filtering
@@ -449,11 +319,6 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
   };
 
   const handleVideoClick = async (video) => {
-    // Record search feedback
-    if (isAuthenticated) {
-      await aiSearchAPI.recordSearchFeedback(searchTerm, video.id, "click");
-    }
-
     // Navigate with similar videos feed for uploaded videos
     if (video.videoType === "uploaded") {
       navigate(`/videos?videoId=${video.id}&feedType=similar`);

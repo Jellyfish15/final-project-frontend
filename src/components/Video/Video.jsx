@@ -7,10 +7,6 @@ import VideoLoader from "../VideoLoader/VideoLoader";
 import VideoSidebar from "../VideoSidebar/VideoSidebar";
 import CommentModal from "../CommentModal/CommentModal";
 import ShareModal from "../ShareModal/ShareModal";
-import {
-  useVideoEngagement,
-  useRecommendations,
-} from "../../hooks/useEngagement";
 import { videosAPI } from "../../services/api";
 
 const Video = ({ onOpenLogin, onOpenRegister }) => {
@@ -50,15 +46,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     handleTouchEnd,
     handleTouchCancel,
   } = useVideo();
-
-  // Initialize engagement tracking and recommendations
-  const { recommendations, sessionId, disengagement, fetchRecommendations } =
-    useRecommendations();
-  const { engagementData, trackEngagement, handleSkip } = useVideoEngagement(
-    videoRef,
-    currentVideo,
-    sessionId
-  );
 
   // Handle custom feed types (profile or similar)
   useEffect(() => {
@@ -213,35 +200,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       });
     }
   }, [currentVideo, currentIndex, isFocusedFeed, videos]);
-
-  // Fetch personalized recommendations on mount
-  useEffect(() => {
-    if (sessionId && !isFocusedFeed) {
-      console.log("[Recommendations] Fetching personalized feed");
-      fetchRecommendations(20);
-    }
-  }, [sessionId, fetchRecommendations, isFocusedFeed]);
-
-  // Track interactions (likes, comments, shares)
-  useEffect(() => {
-    if (isLiked || isCommentModalOpen || isShareModalOpen) {
-      trackEngagement({
-        liked: isLiked,
-        commented: isCommentModalOpen,
-        shared: isShareModalOpen,
-      });
-    }
-  }, [isLiked, isCommentModalOpen, isShareModalOpen, trackEngagement]);
-
-  // Log disengagement status
-  useEffect(() => {
-    if (disengagement?.isDisengaging) {
-      console.log(
-        `[Engagement] User disengaging - Severity: ${disengagement.severity}%`,
-        disengagement.reason
-      );
-    }
-  }, [disengagement]);
 
   return (
     <div className="video-page">

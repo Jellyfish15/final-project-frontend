@@ -285,28 +285,6 @@ export const videosAPI = {
     return apiService.get(url);
   },
 
-  // Track engagement
-  trackEngagement: (engagementData) =>
-    apiService.post("/recommendations/track", engagementData),
-
-  // Get personalized recommendations
-  getRecommendations: (sessionId, limit = 20) =>
-    apiService.get(
-      `/recommendations/feed?sessionId=${sessionId}&limit=${limit}`
-    ),
-
-  // Check disengagement status
-  checkDisengagement: (sessionId) =>
-    apiService.get(
-      `/recommendations/disengagement-check?sessionId=${sessionId}`
-    ),
-
-  // Get user preferences
-  getUserPreferences: () => apiService.get("/recommendations/preferences"),
-
-  // Get engagement stats
-  getEngagementStats: () => apiService.get("/recommendations/stats"),
-
   // Get similar videos
   getSimilarVideos: (videoId, limit = 10) =>
     apiService.get(`/videos/${videoId}/similar?limit=${limit}`),
