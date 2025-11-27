@@ -234,8 +234,12 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
         const searchLower = query.toLowerCase();
         const localResults = videos.filter((video) => {
           const titleMatch = video.title?.toLowerCase().includes(searchLower);
-          const descMatch = video.description?.toLowerCase().includes(searchLower);
-          const categoryMatch = video.category?.toLowerCase().includes(searchLower);
+          const descMatch = video.description
+            ?.toLowerCase()
+            .includes(searchLower);
+          const categoryMatch = video.category
+            ?.toLowerCase()
+            .includes(searchLower);
           const tagsMatch = video.tags?.some((tag) =>
             tag.toLowerCase().includes(searchLower)
           );
@@ -610,7 +614,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
           <form onSubmit={handleSearch} className="search__form">
             <div
               className={`search__input-container ${
-                showDropdown || showSuggestions
+                showDropdown
                   ? "search__input-container--dropdown-active"
                   : ""
               }`}
