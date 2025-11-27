@@ -203,28 +203,12 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     }
   };
 
-
-
-  // Basic text search helper
-  const basicSearch = (query, videoList) => {
-    const searchLower = query.toLowerCase();
-    return videoList.filter((video) => {
-      const titleMatch = video.title?.toLowerCase().includes(searchLower);
-      const descMatch = video.description?.toLowerCase().includes(searchLower);
-      const categoryMatch = video.category?.toLowerCase().includes(searchLower);
-      const tagsMatch = video.tags?.some((tag) =>
-        tag.toLowerCase().includes(searchLower)
-      );
-      return titleMatch || descMatch || categoryMatch || tagsMatch;
-    });
-  };
-
   const loadRecentSearches = () => {
     const recent = JSON.parse(localStorage.getItem("recentSearches") || "[]");
     setRecentSearches(recent.slice(0, 5));
   };
 
-  const saveRecentSearch = (query) => {
+  const saveRecentSearch = useCallback((query) => {
     if (query.trim().length < 2) return;
 
     const recent = JSON.parse(localStorage.getItem("recentSearches") || "[]");
@@ -233,7 +217,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
 
     localStorage.setItem("recentSearches", JSON.stringify(updated));
     setRecentSearches(updated.slice(0, 5));
-  };
+  }, []);
 
   const performSearch = useCallback(
     async (query) => {
@@ -247,7 +231,16 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
 
       try {
         // Search local uploaded videos with basic text matching
-        const localResults = basicSearch(query, videos);
+        const searchLower = query.toLowerCase();
+        const localResults = videos.filter((video) => {
+          const titleMatch = video.title?.toLowerCase().includes(searchLower);
+          const descMatch = video.description?.toLowerCase().includes(searchLower);
+          const categoryMatch = video.category?.toLowerCase().includes(searchLower);
+          const tagsMatch = video.tags?.some((tag) =>
+            tag.toLowerCase().includes(searchLower)
+          );
+          return titleMatch || descMatch || categoryMatch || tagsMatch;
+        });
         console.log("Local search results:", localResults.length);
 
         // Search YouTube videos
@@ -283,7 +276,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
         setIsSearching(false);
       }
     },
-    [videos, searchMode]
+    [videos, saveRecentSearch]
   );
 
   const handleSearch = (e) => {
@@ -335,10 +328,6 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
   const getSearchPlaceholder = () => {
     return "Search videos...";
   };
-
-
-
-
 
   const renderSearchDropdown = () => {
     if (!showDropdown || searchTerm.trim().length > 0) return null;
