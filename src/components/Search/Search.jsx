@@ -100,9 +100,8 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
   const searchInputRef = useRef(null);
   const suggestionsTimeoutRef = useRef(null);
 
-  // Load trending searches and recent searches on component mount
+  // Load recent searches and featured videos on component mount
   useEffect(() => {
-    loadTrendingSearches();
     loadRecentSearches();
     loadFeaturedVideos();
   }, []);
@@ -204,36 +203,18 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     }
   };
 
-  // Debounced suggestions
-  useEffect(() => {
-    if (suggestionsTimeoutRef.current) {
-      clearTimeout(suggestionsTimeoutRef.current);
-    }
 
-    if (searchTerm.trim().length > 0) {
-      suggestionsTimeoutRef.current = setTimeout(() => {
-        loadSuggestions(searchTerm);
-      }, 300);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-
-    return () => {
-      if (suggestionsTimeoutRef.current) {
-        clearTimeout(suggestionsTimeoutRef.current);
-      }
-    };
-  }, [searchTerm]);
 
   // Basic text search helper
   const basicSearch = (query, videoList) => {
     const searchLower = query.toLowerCase();
-    return videoList.filter(video => {
+    return videoList.filter((video) => {
       const titleMatch = video.title?.toLowerCase().includes(searchLower);
       const descMatch = video.description?.toLowerCase().includes(searchLower);
       const categoryMatch = video.category?.toLowerCase().includes(searchLower);
-      const tagsMatch = video.tags?.some(tag => tag.toLowerCase().includes(searchLower));
+      const tagsMatch = video.tags?.some((tag) =>
+        tag.toLowerCase().includes(searchLower)
+      );
       return titleMatch || descMatch || categoryMatch || tagsMatch;
     });
   };
@@ -253,8 +234,6 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     localStorage.setItem("recentSearches", JSON.stringify(updated));
     setRecentSearches(updated.slice(0, 5));
   };
-
-
 
   const performSearch = useCallback(
     async (query) => {
@@ -314,7 +293,6 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
 
   const handleSuggestionClick = (suggestion) => {
     setSearchTerm(suggestion);
-    setShowSuggestions(false);
     performSearch(suggestion);
   };
 
@@ -344,75 +322,23 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
   const handleInputFocus = () => {
     setIsInputFocused(true);
     setShowDropdown(true);
-    if (suggestions.length > 0) {
-      setShowSuggestions(true);
-    }
   };
 
   const handleInputBlur = () => {
-    // Delay hiding suggestions to allow clicks
+    // Delay hiding dropdown to allow clicks
     setTimeout(() => {
-      setShowSuggestions(false);
       setIsInputFocused(false);
       setShowDropdown(false);
     }, 200);
   };
 
   const getSearchPlaceholder = () => {
-    return "Search videos using AI...";
+    return "Search videos...";
   };
 
-  const renderSearchAnalysis = () => {
-    if (!queryAnalysis) return null;
 
-    return (
-      <div className="search__analysis">
-        <div className="search__analysis-tags">
-          {queryAnalysis.isQuestion && (
-            <span className="search__tag search__tag--question">
-              ❓ Question
-            </span>
-          )}
-          {queryAnalysis.intent && (
-            <span className="search__tag search__tag--intent">
-              🎯 {queryAnalysis.intent.replace("_", " ")}
-            </span>
-          )}
-          {queryAnalysis.category && (
-            <span className="search__tag search__tag--category">
-              📂 {queryAnalysis.category}
-            </span>
-          )}
-          {queryAnalysis.difficulty && (
-            <span className="search__tag search__tag--difficulty">
-              📊 {queryAnalysis.difficulty}
-            </span>
-          )}
-        </div>
-      </div>
-    );
-  };
 
-  const renderSuggestions = () => {
-    if (!showSuggestions || suggestions.length === 0) return null;
 
-    return (
-      <div className="search__suggestions">
-        <div className="search__suggestions-content">
-          {suggestions.map((suggestion, index) => (
-            <div
-              key={index}
-              className="search__suggestion"
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              <SearchIcon className="search__suggestion-icon" />
-              <span>{suggestion}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   const renderSearchDropdown = () => {
     if (!showDropdown || searchTerm.trim().length > 0) return null;
@@ -420,27 +346,8 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     return (
       <div className="search__dropdown">
         <div className="search__dropdown-content">
-          {/* Trending Searches */}
-          {trendingSearches.length > 0 && (
-            <div className="search__dropdown-section">
-              <h4 className="search__dropdown-title">Trending Searches</h4>
-              <div className="search__dropdown-list">
-                {trendingSearches.map((trend, index) => (
-                  <div
-                    key={index}
-                    className="search__dropdown-item search__dropdown-item--trending"
-                    onClick={() => handleSuggestionClick(trend)}
-                  >
-                    <span className="search__dropdown-icon">🔥</span>
-                    <span>{trend}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Recent Searches */}
-          {recentSearches.length > 0 && (
+          {recentSearches.length > 0 ? (
             <div className="search__dropdown-section">
               <h4 className="search__dropdown-title">Recent Searches</h4>
               <div className="search__dropdown-list">
@@ -456,10 +363,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
                 ))}
               </div>
             </div>
-          )}
-
-          {/* Show message if no trending or recent searches */}
-          {trendingSearches.length === 0 && recentSearches.length === 0 && (
+          ) : (
             <div className="search__dropdown-empty">
               <span className="search__dropdown-icon">🔍</span>
               <span>Start typing to search for videos...</span>
@@ -743,12 +647,9 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
                   <img src={SearchIcon} alt="Search" className="search__icon" />
                 )}
               </button>
-              {renderSuggestions()}
               {renderSearchDropdown()}
             </div>
           </form>
-
-          {renderSearchAnalysis()}
         </div>
 
         <div className="search__results">
