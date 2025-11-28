@@ -5,7 +5,6 @@
   bottom: 0;
   width: 240px;
   background-color: #fff;
-  border-right: 1px solid #e1e1e1;
   z-index: 100;
   transition: all 0.3s ease;
 }
@@ -26,7 +25,6 @@
 
 .sidebar--transparent {
   background-color: #000;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sidebar--transparent .sidebar__logo {

@@ -614,9 +614,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
           <form onSubmit={handleSearch} className="search__form">
             <div
               className={`search__input-container ${
-                showDropdown
-                  ? "search__input-container--dropdown-active"
-                  : ""
+                showDropdown ? "search__input-container--dropdown-active" : ""
               }`}
             >
               <input
