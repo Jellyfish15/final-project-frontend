@@ -100,12 +100,7 @@
   align-items: center;
   flex-shrink: 0;
   padding: 0 20px 30px;
-  border-bottom: 1px solid #e1e1e1;
   margin-bottom: 10px;
-}
-
-.sidebar--transparent .sidebar__brand {
-  border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
 .sidebar__logo {
@@ -205,25 +200,18 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
-  border-top: 1px solid #e1e1e1;
   margin-top: auto;
-}
-
-.sidebar--transparent .sidebar__auth {
-  border-top-color: rgba(255, 255, 255, 0.1);
 }
 
 .sidebar__copyright {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #e1e1e1;
   font-size: 11px;
   color: rgba(22, 24, 35, 0.5);
   text-align: center;
 }
 
 .sidebar--transparent .sidebar__copyright {
-  border-top-color: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.4);
 }
 
