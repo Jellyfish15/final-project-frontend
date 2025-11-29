@@ -20,6 +20,7 @@ export const searchVideosByKeywords = async (
     safeSearch: "moderate",
     relevanceLanguage: "en",
     regionCode: "US",
+    videoCategoryId: "27", // Education category
   });
 
   if (pageToken) {
@@ -41,21 +42,34 @@ export const searchEducationalVideos = async (
   pageToken = ""
 ) => {
   const educationalQueries = [
-    "educational tutorial short",
-    "quick learning tips",
-    "science facts",
-    "math tutorial",
-    "how to learn",
-    "educational content",
-    "learning tutorial",
-    "knowledge sharing",
-    "skill tutorial",
-    "educational shorts",
-    "quick facts",
-    "learning tips",
-    "tutorial basics",
-    "educational guide",
-    "learning technique",
+    "mathematics lesson",
+    "science explained",
+    "physics tutorial",
+    "chemistry basics",
+    "biology lecture",
+    "history documentary",
+    "literature analysis",
+    "geography lesson",
+    "computer science tutorial",
+    "programming fundamentals",
+    "algebra tutorial",
+    "calculus explained",
+    "statistics lesson",
+    "economics basics",
+    "philosophy introduction",
+    "psychology concepts",
+    "sociology explained",
+    "political science",
+    "engineering basics",
+    "medical education",
+    "anatomy lesson",
+    "astronomy explained",
+    "language learning",
+    "grammar tutorial",
+    "writing skills",
+    "academic research",
+    "study techniques",
+    "test preparation",
   ];
 
   const randomQuery =
@@ -73,6 +87,7 @@ export const searchEducationalVideos = async (
     safeSearch: "moderate",
     relevanceLanguage: "en",
     regionCode: "US",
+    videoCategoryId: "27", // Education category
   });
 
   if (pageToken) {
