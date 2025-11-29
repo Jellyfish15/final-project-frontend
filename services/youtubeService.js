@@ -2,6 +2,7 @@ import {
   searchEducationalVideos,
   searchVideosByKeywords,
   getVideoDetails,
+  getDiverseEducationalFeed,
 } from "../utils/YouTubeApi.js";
 
 const parseDuration = (duration) => {
@@ -93,49 +94,38 @@ export const searchYouTubeVideos = async (query, count = 10) => {
 
 export const getEducationalVideoFeed = async (count = 10) => {
   try {
-    const searchData = await searchEducationalVideos(count);
-
-    if (!searchData.items || searchData.items.length === 0) {
-      return [];
-    }
-
-    const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
-    const detailsData = await getVideoDetails(videoIds);
-
-    const filteredVideos = detailsData.items.filter((video) => {
-      const duration = parseDuration(video.contentDetails.duration);
-      return duration <= 300; // Increased to 5 minutes (300 seconds)
-    });
-
-    const formattedVideos = filteredVideos.map(formatVideoForApp);
-
-    if (formattedVideos.length < count && searchData.nextPageToken) {
-      try {
-        const additionalSearchData = await searchEducationalVideos(
-          count - formattedVideos.length,
-          searchData.nextPageToken
-        );
-        const additionalVideoIds = additionalSearchData.items
-          .map((item) => item.id.videoId)
-          .join(",");
-        const additionalDetailsData = await getVideoDetails(additionalVideoIds);
-
-        const additionalFilteredVideos = additionalDetailsData.items.filter(
-          (video) => {
-            const duration = parseDuration(video.contentDetails.duration);
-            return duration <= 300; // Increased to 5 minutes (300 seconds)
-          }
-        );
-
-        const additionalVideos =
-          additionalFilteredVideos.map(formatVideoForApp);
-        formattedVideos.push(...additionalVideos);
-      } catch (error) {
-        console.warn("Additional search failed:", error);
+    console.log(`Fetching diverse educational feed with ${count} videos...`);
+    
+    // Use the new diverse feed function to get one video per keyword
+    const diverseVideos = await getDiverseEducationalFeed(count);
+    
+    if (!diverseVideos || diverseVideos.length === 0) {
+      console.warn("Diverse feed returned no videos, falling back to regular search");
+      // Fallback to old method if diverse feed fails
+      const searchData = await searchEducationalVideos(count);
+      
+      if (!searchData.items || searchData.items.length === 0) {
+        return [];
       }
+
+      const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
+      const detailsData = await getVideoDetails(videoIds);
+
+      const filteredVideos = detailsData.items.filter((video) => {
+        const duration = parseDuration(video.contentDetails.duration);
+        return duration <= 300;
+      });
+
+      return filteredVideos.map(formatVideoForApp).slice(0, count);
     }
 
-    return formattedVideos.slice(0, count);
+    // Format the diverse videos for the app
+    const formattedVideos = diverseVideos.map(formatVideoForApp);
+    
+    console.log(`Successfully loaded ${formattedVideos.length} diverse educational videos`);
+    console.log('Topics covered:', formattedVideos.map(v => v.title).join(', '));
+    
+    return formattedVideos;
   } catch (error) {
     console.error("Error getting educational video feed:", error);
     return [];
