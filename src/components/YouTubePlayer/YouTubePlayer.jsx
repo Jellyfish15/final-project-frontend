@@ -30,10 +30,13 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
             loop: 1,
             playlist: videoId,
             mute: isMuted ? 1 : 0,
+            preload: "auto",
           },
           events: {
             onReady: (event) => {
               setIsPlayerReady(true);
+              // Preload the video
+              event.target.cueVideoById(videoId);
               if (isMuted) {
                 event.target.mute();
               } else {

@@ -276,6 +276,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     autoPlay
                     muted={isMuted}
                     playsInline
+                    preload="auto"
                     controls={false}
                     onClick={togglePlay}
                     onLoadStart={() =>

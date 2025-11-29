@@ -95,20 +95,24 @@ export const searchYouTubeVideos = async (query, count = 10) => {
 export const getEducationalVideoFeed = async (count = 10) => {
   try {
     console.log(`Fetching diverse educational feed with ${count} videos...`);
-    
+
     // Use the new diverse feed function to get one video per keyword
     const diverseVideos = await getDiverseEducationalFeed(count);
-    
+
     if (!diverseVideos || diverseVideos.length === 0) {
-      console.warn("Diverse feed returned no videos, falling back to regular search");
+      console.warn(
+        "Diverse feed returned no videos, falling back to regular search"
+      );
       // Fallback to old method if diverse feed fails
       const searchData = await searchEducationalVideos(count);
-      
+
       if (!searchData.items || searchData.items.length === 0) {
         return [];
       }
 
-      const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
+      const videoIds = searchData.items
+        .map((item) => item.id.videoId)
+        .join(",");
       const detailsData = await getVideoDetails(videoIds);
 
       const filteredVideos = detailsData.items.filter((video) => {
@@ -121,10 +125,15 @@ export const getEducationalVideoFeed = async (count = 10) => {
 
     // Format the diverse videos for the app
     const formattedVideos = diverseVideos.map(formatVideoForApp);
-    
-    console.log(`Successfully loaded ${formattedVideos.length} diverse educational videos`);
-    console.log('Topics covered:', formattedVideos.map(v => v.title).join(', '));
-    
+
+    console.log(
+      `Successfully loaded ${formattedVideos.length} diverse educational videos`
+    );
+    console.log(
+      "Topics covered:",
+      formattedVideos.map((v) => v.title).join(", ")
+    );
+
     return formattedVideos;
   } catch (error) {
     console.error("Error getting educational video feed:", error);
