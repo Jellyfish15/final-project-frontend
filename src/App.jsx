@@ -34,42 +34,60 @@ function App() {
     try {
       setIsLoadingVideos(true);
       setVideosError(null);
-      console.log("Loading videos from both YouTube and uploaded content...");
+      console.log("Loading videos from cache and uploaded content...");
 
-      // Load both YouTube educational videos and uploaded videos
-      const [educationalVideos, uploadedVideosResponse] =
+      // Try to load cached YouTube videos first, then fall back to API if needed
+      const [cachedVideos, uploadedVideosResponse] =
         await Promise.allSettled([
-          getEducationalVideoFeed(10),
-          videosAPI.getFeed(1, 20), // Get more uploaded videos
+          // Try cached videos from backend
+          videosAPI.get("/youtube-cache/diverse?count=10").catch((err) => {
+            console.log("Cache unavailable, will try YouTube API:", err.message);
+            return { videos: [], count: 0 };
+          }),
+          videosAPI.getFeed(1, 20), // Get uploaded videos
         ]);
 
       let allVideos = [];
+      let usedCache = false;
 
-      // Handle YouTube API failures gracefully
+      // Try cached videos first
       if (
-        educationalVideos.status === "fulfilled" &&
-        educationalVideos.value?.length > 0
+        cachedVideos.status === "fulfilled" &&
+        cachedVideos.value?.videos?.length > 0
       ) {
-        allVideos = [...educationalVideos.value];
+        allVideos = [...cachedVideos.value.videos];
+        usedCache = true;
         console.log(
           "Successfully loaded",
-          educationalVideos.value.length,
-          "YouTube videos"
+          cachedVideos.value.videos.length,
+          "cached YouTube videos"
         );
-      } else if (educationalVideos.status === "rejected") {
-        const error = educationalVideos.reason;
-        if (
-          error?.message?.includes("403") ||
-          error?.message?.includes("quota")
-        ) {
-          console.warn(
-            "YouTube API quota exceeded. Continuing with uploaded videos only."
-          );
-          setYoutubeApiDisabled(true);
-        } else {
-          console.warn("YouTube API failed:", error?.message);
+      } else {
+        // Fall back to YouTube API if cache is empty
+        console.log("No cached videos available, trying YouTube API...");
+        try {
+          const educationalVideos = await getEducationalVideoFeed(10);
+          if (educationalVideos && educationalVideos.length > 0) {
+            allVideos = [...educationalVideos];
+            console.log(
+              "Successfully loaded",
+              educationalVideos.length,
+              "YouTube videos from API"
+            );
+          }
+        } catch (error) {
+          if (
+            error?.message?.includes("403") ||
+            error?.message?.includes("quota")
+          ) {
+            console.warn(
+              "YouTube API quota exceeded. Using uploaded videos only."
+            );
+            setYoutubeApiDisabled(true);
+          } else {
+            console.warn("YouTube API failed:", error?.message);
+          }
         }
-        console.log("Continuing with uploaded videos and fallback content...");
       }
 
       // Add uploaded videos
