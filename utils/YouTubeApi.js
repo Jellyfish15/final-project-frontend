@@ -43,33 +43,33 @@ export const searchEducationalVideos = async (
 ) => {
   const educationalQueries = [
     "mathematics lesson",
-    "science explained",
-    "physics tutorial",
-    "chemistry basics",
+    "physics explained",
+    "chemistry tutorial",
     "biology lecture",
-    "history documentary",
+    "world history",
     "literature analysis",
-    "geography lesson",
-    "computer science tutorial",
-    "programming fundamentals",
-    "algebra tutorial",
-    "calculus explained",
-    "statistics lesson",
-    "economics basics",
-    "philosophy introduction",
-    "psychology concepts",
-    "sociology explained",
-    "political science",
-    "engineering basics",
-    "medical education",
-    "anatomy lesson",
-    "astronomy explained",
-    "language learning",
-    "grammar tutorial",
-    "writing skills",
-    "academic research",
-    "study techniques",
-    "test preparation",
+    "geography explained",
+    "computer science lesson",
+    "programming tutorial",
+    "algebra explained",
+    "calculus lesson",
+    "statistics explained",
+    "economics lesson",
+    "philosophy explained",
+    "psychology lecture",
+    "sociology lesson",
+    "political science explained",
+    "engineering tutorial",
+    "anatomy explained",
+    "astronomy lesson",
+    "foreign language lesson",
+    "grammar explained",
+    "trigonometry tutorial",
+    "geometry lesson",
+    "organic chemistry",
+    "cell biology",
+    "ancient history",
+    "english literature",
   ];
 
   const randomQuery =
@@ -108,33 +108,33 @@ export const searchEducationalVideos = async (
 export const getDiverseEducationalFeed = async (count = 10) => {
   const educationalQueries = [
     "mathematics lesson",
-    "science explained",
-    "physics tutorial",
-    "chemistry basics",
+    "physics explained",
+    "chemistry tutorial",
     "biology lecture",
-    "history documentary",
+    "world history",
     "literature analysis",
-    "geography lesson",
-    "computer science tutorial",
-    "programming fundamentals",
-    "algebra tutorial",
-    "calculus explained",
-    "statistics lesson",
-    "economics basics",
-    "philosophy introduction",
-    "psychology concepts",
-    "sociology explained",
-    "political science",
-    "engineering basics",
-    "medical education",
-    "anatomy lesson",
-    "astronomy explained",
-    "language learning",
-    "grammar tutorial",
-    "writing skills",
-    "academic research",
-    "study techniques",
-    "test preparation",
+    "geography explained",
+    "computer science lesson",
+    "programming tutorial",
+    "algebra explained",
+    "calculus lesson",
+    "statistics explained",
+    "economics lesson",
+    "philosophy explained",
+    "psychology lecture",
+    "sociology lesson",
+    "political science explained",
+    "engineering tutorial",
+    "anatomy explained",
+    "astronomy lesson",
+    "foreign language lesson",
+    "grammar explained",
+    "trigonometry tutorial",
+    "geometry lesson",
+    "organic chemistry",
+    "cell biology",
+    "ancient history",
+    "english literature",
   ];
 
   // Shuffle the queries to get random variety
@@ -161,7 +161,9 @@ export const getDiverseEducationalFeed = async (count = 10) => {
           videoCategoryId: "27", // Education category
         });
 
-        const searchResponse = await fetch(`${BASE_URL}/search?${searchParams}`);
+        const searchResponse = await fetch(
+          `${BASE_URL}/search?${searchParams}`
+        );
 
         if (!searchResponse.ok) {
           console.warn(`Search failed for "${query}"`);
@@ -169,13 +171,15 @@ export const getDiverseEducationalFeed = async (count = 10) => {
         }
 
         const searchData = await searchResponse.json();
-        
+
         if (!searchData.items || searchData.items.length === 0) {
           return null;
         }
 
         // Get video details to filter by duration
-        const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
+        const videoIds = searchData.items
+          .map((item) => item.id.videoId)
+          .join(",");
         const detailsData = await getVideoDetails(videoIds);
 
         // Find first video under 5 minutes
