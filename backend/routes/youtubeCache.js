@@ -36,7 +36,7 @@ router.get("/videos", async (req, res) => {
 // @access  Public
 router.get("/diverse", async (req, res) => {
   try {
-    const { count = 10 } = req.query;
+    const { count = 1000 } = req.query;
 
     const videos = await youtubeCacheService.getDiverseCachedVideos(
       parseInt(count)

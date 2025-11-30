@@ -33,7 +33,7 @@ class YouTubeCacheService {
    * @param {number} count - Number of videos to return
    * @returns {Array} Diverse cached videos
    */
-  async getDiverseCachedVideos(count = 10) {
+  async getDiverseCachedVideos(count = 1000) {
     try {
       // Get all active videos grouped by subject
       const videos = await YouTubeVideo.find({ isActive: true })
