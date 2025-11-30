@@ -294,6 +294,10 @@ export const videosAPI = {
     apiService.get(
       `/videos/profile/${username}/feed?similarLimit=${similarLimit}`
     ),
+
+  // Get cached YouTube videos
+  getCachedVideos: (count = 10) =>
+    apiService.get(`/youtube-cache/diverse?count=${count}`),
 };
 
 // Upload API

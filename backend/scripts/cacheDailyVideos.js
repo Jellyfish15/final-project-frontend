@@ -3,10 +3,10 @@
 /**
  * Daily YouTube Video Caching Script
  * Run this script once per day to cache new educational videos
- * 
+ *
  * Usage:
  *   node backend/scripts/cacheDailyVideos.js [count]
- *   
+ *
  * Example:
  *   node backend/scripts/cacheDailyVideos.js 28
  */
@@ -61,7 +61,7 @@ async function main() {
     if (result.success) {
       console.log(`✅ Success: Cached ${result.cachedCount} new videos`);
       console.log(`   Total fetched from API: ${result.totalFetched}`);
-      
+
       if (result.errors && result.errors.length > 0) {
         console.log(`\n⚠️  Errors encountered: ${result.errors.length}`);
         result.errors.forEach((err, i) => {
@@ -78,7 +78,11 @@ async function main() {
     const statsAfter = await youtubeCacheService.getCacheStats();
     if (statsAfter) {
       console.log(`  Total active videos: ${statsAfter.totalActive}`);
-      console.log(`  Growth: +${statsAfter.totalActive - (statsBefore?.totalActive || 0)} videos`);
+      console.log(
+        `  Growth: +${
+          statsAfter.totalActive - (statsBefore?.totalActive || 0)
+        } videos`
+      );
       console.log(`  Last cached: ${statsAfter.lastCached}`);
     }
 
@@ -87,7 +91,9 @@ async function main() {
     if (cleanupOldVideos) {
       const daysToKeep = parseInt(process.env.DAYS_TO_KEEP_VIDEOS) || 30;
       console.log(`\nCleaning up videos older than ${daysToKeep} days...`);
-      const removedCount = await youtubeCacheService.removeOldVideos(daysToKeep);
+      const removedCount = await youtubeCacheService.removeOldVideos(
+        daysToKeep
+      );
       console.log(`✅ Removed ${removedCount} old videos`);
     }
 
@@ -98,18 +104,18 @@ async function main() {
     // Close MongoDB connection
     await mongoose.connection.close();
     console.log("MongoDB connection closed");
-    
+
     process.exit(0);
   } catch (error) {
     console.error("\n" + "=".repeat(60));
     console.error("❌ FATAL ERROR");
     console.error("=".repeat(60));
     console.error(error);
-    
+
     if (mongoose.connection.readyState === 1) {
       await mongoose.connection.close();
     }
-    
+
     process.exit(1);
   }
 }

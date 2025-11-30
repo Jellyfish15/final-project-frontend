@@ -160,7 +160,9 @@ const getDiverseEducationalFeed = async (count = 10) => {
           videoCategoryId: "27", // Education category
         });
 
-        const searchResponse = await fetch(`${BASE_URL}/search?${searchParams}`);
+        const searchResponse = await fetch(
+          `${BASE_URL}/search?${searchParams}`
+        );
 
         if (!searchResponse.ok) {
           console.warn(`Search failed for "${query}"`);
@@ -174,7 +176,9 @@ const getDiverseEducationalFeed = async (count = 10) => {
         }
 
         // Get video details to filter by duration
-        const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
+        const videoIds = searchData.items
+          .map((item) => item.id.videoId)
+          .join(",");
         const detailsData = await getVideoDetails(videoIds);
 
         // Find first video under 5 minutes

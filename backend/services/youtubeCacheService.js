@@ -1,7 +1,5 @@
 const YouTubeVideo = require("../models/YouTubeVideo");
-const {
-  getDiverseEducationalFeed,
-} = require("../utils/youtubeApi");
+const { getDiverseEducationalFeed } = require("../utils/youtubeApi");
 
 class YouTubeCacheService {
   /**
@@ -58,13 +56,13 @@ class YouTubeCacheService {
       // Select one random video from each subject
       const diverseVideos = [];
       const subjects = Object.keys(videosBySubject);
-      
+
       // Shuffle subjects to add randomness
       const shuffledSubjects = subjects.sort(() => Math.random() - 0.5);
 
       for (const subject of shuffledSubjects) {
         if (diverseVideos.length >= count) break;
-        
+
         const subjectVideos = videosBySubject[subject];
         const randomVideo =
           subjectVideos[Math.floor(Math.random() * subjectVideos.length)];
@@ -75,12 +73,12 @@ class YouTubeCacheService {
       if (diverseVideos.length < count && videos.length > 0) {
         const remaining = count - diverseVideos.length;
         const usedIds = new Set(diverseVideos.map((v) => v.videoId));
-        const availableVideos = videos.filter(
-          (v) => !usedIds.has(v.videoId)
-        );
+        const availableVideos = videos.filter((v) => !usedIds.has(v.videoId));
 
         for (let i = 0; i < remaining && i < availableVideos.length; i++) {
-          const randomIndex = Math.floor(Math.random() * availableVideos.length);
+          const randomIndex = Math.floor(
+            Math.random() * availableVideos.length
+          );
           diverseVideos.push(availableVideos[randomIndex]);
           availableVideos.splice(randomIndex, 1);
         }
@@ -140,7 +138,9 @@ class YouTubeCacheService {
               ytVideo.snippet.thumbnails?.default?.url,
             channelTitle: ytVideo.snippet.channelTitle,
             subject: subject,
-            duration: this.parseDuration(ytVideo.contentDetails?.duration || "PT0S"),
+            duration: this.parseDuration(
+              ytVideo.contentDetails?.duration || "PT0S"
+            ),
             viewCount: parseInt(ytVideo.statistics?.viewCount || 0),
             publishedAt: new Date(ytVideo.snippet.publishedAt),
             videoUrl: `https://www.youtube.com/embed/${ytVideo.id}`,
@@ -151,10 +151,7 @@ class YouTubeCacheService {
           cachedCount++;
           console.log(`Cached video: ${ytVideo.snippet.title}`);
         } catch (error) {
-          console.error(
-            `Error caching video ${ytVideo.id}:`,
-            error.message
-          );
+          console.error(`Error caching video ${ytVideo.id}:`, error.message);
           errors.push({ videoId: ytVideo.id, error: error.message });
         }
       }
@@ -317,14 +314,28 @@ class YouTubeCacheService {
 
     // Map of keywords to subjects (based on your educational queries)
     const subjectMap = {
-      mathematics: ["math", "algebra", "calculus", "geometry", "trigonometry", "statistics"],
+      mathematics: [
+        "math",
+        "algebra",
+        "calculus",
+        "geometry",
+        "trigonometry",
+        "statistics",
+      ],
       physics: ["physics", "mechanics", "quantum"],
       chemistry: ["chemistry", "organic", "chemical"],
       biology: ["biology", "cell", "anatomy", "genetics"],
       history: ["history", "ancient", "civilization"],
       literature: ["literature", "poetry", "novel", "shakespeare"],
       geography: ["geography", "earth", "climate", "continent"],
-      "computer science": ["programming", "computer science", "coding", "algorithm", "javascript", "python"],
+      "computer science": [
+        "programming",
+        "computer science",
+        "coding",
+        "algorithm",
+        "javascript",
+        "python",
+      ],
       economics: ["economics", "economy", "market", "finance"],
       philosophy: ["philosophy", "logic", "ethics"],
       psychology: ["psychology", "behavior", "mind"],
@@ -332,7 +343,13 @@ class YouTubeCacheService {
       "political science": ["political", "politics", "government"],
       engineering: ["engineering", "mechanical", "electrical"],
       astronomy: ["astronomy", "space", "planet", "star"],
-      language: ["language", "grammar", "foreign language", "spanish", "french"],
+      language: [
+        "language",
+        "grammar",
+        "foreign language",
+        "spanish",
+        "french",
+      ],
     };
 
     // Check which subject matches the most keywords

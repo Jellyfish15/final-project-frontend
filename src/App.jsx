@@ -37,15 +37,14 @@ function App() {
       console.log("Loading videos from cache and uploaded content...");
 
       // Try to load cached YouTube videos first, then fall back to API if needed
-      const [cachedVideos, uploadedVideosResponse] =
-        await Promise.allSettled([
-          // Try cached videos from backend
-          videosAPI.get("/youtube-cache/diverse?count=10").catch((err) => {
-            console.log("Cache unavailable, will try YouTube API:", err.message);
-            return { videos: [], count: 0 };
-          }),
-          videosAPI.getFeed(1, 20), // Get uploaded videos
-        ]);
+      const [cachedVideos, uploadedVideosResponse] = await Promise.allSettled([
+        // Try cached videos from backend
+        videosAPI.getCachedVideos(10).catch((err) => {
+          console.log("Cache unavailable, will try YouTube API:", err.message);
+          return { videos: [], count: 0 };
+        }),
+        videosAPI.getFeed(1, 20), // Get uploaded videos
+      ]);
 
       let allVideos = [];
       let usedCache = false;
