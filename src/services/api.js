@@ -297,7 +297,7 @@ export const videosAPI = {
 
   // Get cached YouTube videos
   getCachedVideos: (count = null) =>
-    apiService.get(`/youtube-cache/diverse?count=${count}`),
+    apiService.get(`/youtube-cache/diverse${count !== null ? `?count=${count}` : ""}`),
 };
 
 // Upload API
