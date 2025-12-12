@@ -29,25 +29,36 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
             showinfo: 0,
             loop: 1,
             playlist: videoId,
-            mute: isMuted ? 1 : 0,
+            mute: 1, // Start muted to allow autoplay
             preload: "auto",
           },
           events: {
             onReady: (event) => {
               setIsPlayerReady(true);
-              // Preload the video
-              event.target.cueVideoById(videoId);
-              if (isMuted) {
-                event.target.mute();
-              } else {
-                event.target.unMute();
-              }
+              // Start muted to allow autoplay, then unmute after playing
+              event.target.mute();
+              event.target.loadVideoById(videoId);
             },
             onStateChange: (event) => {
+              console.log("[YouTubePlayer] State changed:", {
+                state: event.data,
+                UNSTARTED: window.YT.PlayerState.UNSTARTED,
+                ENDED: window.YT.PlayerState.ENDED,
+                PLAYING: window.YT.PlayerState.PLAYING,
+                PAUSED: window.YT.PlayerState.PAUSED,
+                BUFFERING: window.YT.PlayerState.BUFFERING,
+                CUED: window.YT.PlayerState.CUED,
+              });
+
               const isLoading =
-                event.data === window.YT.PlayerState.UNSTARTED ||
-                event.data === window.YT.PlayerState.CUED;
+                event.data === window.YT.PlayerState.BUFFERING ||
+                event.data === window.YT.PlayerState.UNSTARTED;
               setIsVideoLoading(isLoading);
+
+              // Unmute once video starts playing (if not muted by user)
+              if (event.data === window.YT.PlayerState.PLAYING && !isMuted) {
+                event.target.unMute();
+              }
             },
           },
         });

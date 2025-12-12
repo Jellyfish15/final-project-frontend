@@ -34,59 +34,50 @@ function App() {
     try {
       setIsLoadingVideos(true);
       setVideosError(null);
-      console.log("Loading videos from cache and uploaded content...");
+      console.log("Loading videos with opportunistic caching...");
 
-      // Try to load cached YouTube videos first, then fall back to API if needed
-      const [cachedVideos, uploadedVideosResponse] = await Promise.allSettled([
-        // Try cached videos from backend
-        videosAPI.getCachedVideos().catch((err) => {
-          console.log("Cache unavailable, will try YouTube API:", err.message);
-          return { videos: [], count: 0 };
+      // Try to fetch and cache new videos, or fall back to existing cache
+      const [feedResponse, uploadedVideosResponse] = await Promise.allSettled([
+        // Try opportunistic caching (attempts to fetch new videos, falls back to cache)
+        videosAPI.getFeedWithCaching(28).catch((err) => {
+          console.log("Feed with caching unavailable:", err.message);
+          // Fall back to just getting cached videos
+          return videosAPI
+            .getCachedVideos()
+            .catch(() => ({ videos: [], count: 0 }));
         }),
         videosAPI.getFeed(1, 20), // Get uploaded videos
       ]);
 
       let allVideos = [];
-      let usedCache = false;
 
-      // Try cached videos first
+      // Handle YouTube videos (either newly cached or from existing cache)
       if (
-        cachedVideos.status === "fulfilled" &&
-        cachedVideos.value?.videos?.length > 0
+        feedResponse.status === "fulfilled" &&
+        feedResponse.value?.videos?.length > 0
       ) {
-        allVideos = [...cachedVideos.value.videos];
-        usedCache = true;
+        allVideos = [...feedResponse.value.videos];
+
+        // Log the caching status
+        if (feedResponse.value.newlyCached > 0) {
+          console.log(
+            `✅ Successfully cached ${feedResponse.value.newlyCached} new YouTube videos`
+          );
+        }
+        if (feedResponse.value.quotaExceeded) {
+          console.log(
+            "⚠️ YouTube API quota exceeded. Using cached videos only."
+          );
+          setYoutubeApiDisabled(true);
+        }
+
         console.log(
           "Successfully loaded",
-          cachedVideos.value.videos.length,
-          "cached YouTube videos"
+          feedResponse.value.videos.length,
+          "YouTube videos"
         );
       } else {
-        // Fall back to YouTube API if cache is empty
-        console.log("No cached videos available, trying YouTube API...");
-        try {
-          const educationalVideos = await getEducationalVideoFeed(10);
-          if (educationalVideos && educationalVideos.length > 0) {
-            allVideos = [...educationalVideos];
-            console.log(
-              "Successfully loaded",
-              educationalVideos.length,
-              "YouTube videos from API"
-            );
-          }
-        } catch (error) {
-          if (
-            error?.message?.includes("403") ||
-            error?.message?.includes("quota")
-          ) {
-            console.warn(
-              "YouTube API quota exceeded. Using uploaded videos only."
-            );
-            setYoutubeApiDisabled(true);
-          } else {
-            console.warn("YouTube API failed:", error?.message);
-          }
-        }
+        console.log("No YouTube videos available");
       }
 
       // Add uploaded videos

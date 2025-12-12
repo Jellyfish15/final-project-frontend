@@ -29,6 +29,27 @@ class YouTubeCacheService {
   }
 
   /**
+   * Get random cached videos
+   * @param {number} limit - Number of videos to return
+   * @returns {Array} Random cached videos
+   */
+  async getRandomCachedVideos(limit = 50) {
+    try {
+      // Use MongoDB aggregation to get random videos
+      const cachedVideos = await YouTubeVideo.aggregate([
+        { $match: { isActive: true } },
+        { $sample: { size: limit } },
+      ]);
+
+      // Convert to app format
+      return cachedVideos.map((video) => this.formatCachedVideoForApp(video));
+    } catch (error) {
+      console.error("Error fetching random cached videos:", error);
+      return [];
+    }
+  }
+
+  /**
    * Get diverse cached videos (one per subject)
    * @param {number} count - Number of videos to return
    * @returns {Array} Diverse cached videos
@@ -362,6 +383,90 @@ class YouTubeCacheService {
     }
 
     return "general education"; // Default fallback
+  }
+
+  /**
+   * Get videos with opportunistic caching
+   * Try to fetch new videos from YouTube API and cache them
+   * If quota exceeded, fall back to cached videos
+   * @param {number} count - Number of videos to return
+   * @returns {Object} Result with videos and metadata
+   */
+  async getVideosWithOpportunisticCaching(count = 28) {
+    try {
+      console.log(
+        "Attempting to fetch and cache new videos from YouTube API..."
+      );
+
+      // Try to fetch new videos from YouTube
+      const cacheResult = await this.cacheNewVideos(count);
+
+      if (cacheResult.success && cacheResult.cachedCount > 0) {
+        // Successfully cached new videos, return them
+        console.log(
+          `✅ Successfully cached ${cacheResult.cachedCount} new videos`
+        );
+
+        // Get diverse cached videos (including the newly cached ones)
+        const videos = await this.getDiverseCachedVideos(count);
+
+        return {
+          success: true,
+          videos,
+          count: videos.length,
+          cached: true,
+          newlyCached: cacheResult.cachedCount,
+          quotaExceeded: false,
+          message: `Fetched ${cacheResult.cachedCount} new videos and added to cache`,
+        };
+      } else if (cacheResult.quotaExceeded) {
+        // Quota exceeded, fall back to cached videos
+        console.log("⚠️ YouTube API quota exceeded. Using cached videos only.");
+
+        const videos = await this.getDiverseCachedVideos(count);
+
+        return {
+          success: true,
+          videos,
+          count: videos.length,
+          cached: true,
+          newlyCached: 0,
+          quotaExceeded: true,
+          message: "API quota exceeded. Serving from cache until quota resets.",
+        };
+      } else {
+        // Some other error, still try to return cached videos
+        console.log("⚠️ Error fetching new videos. Using cached videos.");
+
+        const videos = await this.getDiverseCachedVideos(count);
+
+        return {
+          success: true,
+          videos,
+          count: videos.length,
+          cached: true,
+          newlyCached: 0,
+          quotaExceeded: false,
+          message: "Error fetching new videos. Serving from cache.",
+        };
+      }
+    } catch (error) {
+      console.error("Error in opportunistic caching:", error);
+
+      // Last resort: return whatever cached videos we have
+      const videos = await this.getDiverseCachedVideos(count);
+
+      return {
+        success: videos.length > 0,
+        videos,
+        count: videos.length,
+        cached: true,
+        newlyCached: 0,
+        quotaExceeded: false,
+        message: "Serving from cache due to error",
+        error: error.message,
+      };
+    }
   }
 }
 

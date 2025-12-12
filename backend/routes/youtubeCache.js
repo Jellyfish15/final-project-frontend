@@ -31,6 +31,33 @@ router.get("/videos", async (req, res) => {
   }
 });
 
+// @route   GET /api/youtube-cache/random
+// @desc    Get random cached YouTube videos
+// @access  Public
+router.get("/random", async (req, res) => {
+  try {
+    const { limit = 50 } = req.query;
+
+    const videos = await youtubeCacheService.getRandomCachedVideos(
+      parseInt(limit)
+    );
+
+    res.json({
+      success: true,
+      videos,
+      count: videos.length,
+      cached: true,
+    });
+  } catch (error) {
+    console.error("Error fetching random cached videos:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch random cached videos",
+      error: error.message,
+    });
+  }
+});
+
 // @route   GET /api/youtube-cache/diverse
 // @desc    Get diverse cached YouTube videos (one per subject)
 // @access  Public
@@ -53,6 +80,28 @@ router.get("/diverse", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch diverse cached videos",
+      error: error.message,
+    });
+  }
+});
+
+// @route   GET /api/youtube-cache/feed
+// @desc    Get videos with opportunistic caching (tries to cache new videos first)
+// @access  Public
+router.get("/feed", async (req, res) => {
+  try {
+    const { count = 28 } = req.query;
+
+    const result = await youtubeCacheService.getVideosWithOpportunisticCaching(
+      parseInt(count)
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching feed with opportunistic caching:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch feed",
       error: error.message,
     });
   }

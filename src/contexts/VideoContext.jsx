@@ -31,7 +31,7 @@ export const VideoProvider = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(false); // Start unmuted
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
   const [focusedVideos, setFocusedVideos] = useState(null); // New state for focused feed
   const videoRef = useRef(null);
@@ -90,7 +90,7 @@ export const VideoProvider = ({
   }, [currentIndex, currentVideo]);
 
   const scrollToVideo = useCallback(
-    (direction) => {
+    async (direction) => {
       let newIndex = currentIndex;
 
       if (direction === "next" && currentIndex < videos.length - 1) {
@@ -102,9 +102,9 @@ export const VideoProvider = ({
         currentIndex === videos.length - 1 &&
         focusedVideos
       ) {
-        // Reached end of custom feed, append more videos from full feed
+        // Reached end of custom feed, append more videos from cache
         console.log(
-          "[VideoContext] End of custom feed reached, appending full feed videos"
+          "[VideoContext] End of custom feed reached, fetching more cached videos"
         );
 
         // Get videos from full feed that aren't already in the custom feed
@@ -118,7 +118,7 @@ export const VideoProvider = ({
           const videosToAdd = additionalVideos.slice(0, 10);
           const expandedFeed = [...focusedVideos, ...videosToAdd];
 
-          console.log("[VideoContext] Appending videos:", {
+          console.log("[VideoContext] Appending videos from initialVideos:", {
             currentFeedSize: focusedVideos.length,
             videosAdded: videosToAdd.length,
             newFeedSize: expandedFeed.length,
@@ -127,8 +127,75 @@ export const VideoProvider = ({
           setFocusedVideos(expandedFeed);
           newIndex = currentIndex + 1; // Move to the first newly added video
         } else {
-          console.log("[VideoContext] No more videos to append from full feed");
-          return; // Can't scroll further
+          // No more videos in initialVideos, try fetching more from cache
+          console.log(
+            "[VideoContext] No more videos in initialVideos, fetching random videos from cache..."
+          );
+
+          try {
+            const response = await videosAPI.getRandomCachedVideos(50);
+            if (response?.videos && response.videos.length > 0) {
+              // Filter out videos already in the focused feed
+              const newVideos = response.videos.filter(
+                (v) => !customFeedIds.has(v._id || v.id)
+              );
+
+              if (newVideos.length > 0) {
+                const expandedFeed = [...focusedVideos, ...newVideos];
+
+                console.log(
+                  "[VideoContext] Appending random videos from cache:",
+                  {
+                    currentFeedSize: focusedVideos.length,
+                    fetchedFromCache: response.videos.length,
+                    afterFiltering: newVideos.length,
+                    newFeedSize: expandedFeed.length,
+                  }
+                );
+
+                setFocusedVideos(expandedFeed);
+                newIndex = currentIndex + 1;
+              } else {
+                console.log(
+                  "[VideoContext] All cached videos already in feed, fetching more..."
+                );
+                // All 50 videos were duplicates, try fetching more
+                const response2 = await videosAPI.getRandomCachedVideos(50);
+                if (response2?.videos && response2.videos.length > 0) {
+                  const newVideos2 = response2.videos.filter(
+                    (v) => !customFeedIds.has(v._id || v.id)
+                  );
+
+                  if (newVideos2.length > 0) {
+                    const expandedFeed = [...focusedVideos, ...newVideos2];
+                    console.log(
+                      "[VideoContext] Second attempt - added",
+                      newVideos2.length,
+                      "videos"
+                    );
+                    setFocusedVideos(expandedFeed);
+                    newIndex = currentIndex + 1;
+                  } else {
+                    console.log(
+                      "[VideoContext] All cached videos have been shown"
+                    );
+                    return;
+                  }
+                } else {
+                  return;
+                }
+              }
+            } else {
+              console.log("[VideoContext] No more videos available");
+              return;
+            }
+          } catch (error) {
+            console.error(
+              "[VideoContext] Error fetching more cached videos:",
+              error
+            );
+            return;
+          }
         }
       }
 
@@ -156,7 +223,7 @@ export const VideoProvider = ({
   );
 
   const setVideoById = useCallback(
-    (videoId, createFocusedFeed = false) => {
+    async (videoId, createFocusedFeed = false) => {
       console.log(
         "[VideoContext] setVideoById called with:",
         videoId,
@@ -172,47 +239,53 @@ export const VideoProvider = ({
 
       if (videoIndex !== -1) {
         if (createFocusedFeed) {
-          // Create a focused feed where the target video appears FIRST (index 0)
-          const focusedFeedSize = 10;
-          const targetVideoPosition = 0; // Put target video at index 0 (first position) for immediate visibility
-
-          // Calculate start and end indices for the focused feed
-          let startIndex = Math.max(0, videoIndex - targetVideoPosition);
-          let endIndex = Math.min(
-            initialVideos.length,
-            startIndex + focusedFeedSize
+          // Create a focused feed starting with the clicked video, then add random cached videos
+          const clickedVideo = initialVideos[videoIndex];
+          console.log(
+            "[VideoContext] Creating focused feed starting with:",
+            clickedVideo.title
           );
 
-          // Adjust if we don't have enough videos after our target
-          if (endIndex - startIndex < focusedFeedSize && startIndex > 0) {
-            startIndex = Math.max(0, endIndex - focusedFeedSize);
+          // Start with just the clicked video
+          let focusedVideosFeed = [clickedVideo];
+
+          // Fetch random videos from cache to fill the feed
+          try {
+            console.log(
+              "[VideoContext] Fetching random videos to populate feed..."
+            );
+            const response = await videosAPI.getRandomCachedVideos(50);
+
+            if (response?.videos && response.videos.length > 0) {
+              // Filter out the clicked video
+              const additionalVideos = response.videos.filter(
+                (v) => (v._id || v.id) !== videoId
+              );
+
+              // Add the random videos after the clicked video
+              focusedVideosFeed = [clickedVideo, ...additionalVideos];
+
+              console.log("[VideoContext] Focused feed created:", {
+                totalVideos: focusedVideosFeed.length,
+                firstVideo: focusedVideosFeed[0]?.title,
+                videosFromCache: additionalVideos.length,
+              });
+            } else {
+              console.log(
+                "[VideoContext] No cached videos available, using only clicked video"
+              );
+            }
+          } catch (error) {
+            console.error(
+              "[VideoContext] Error fetching random videos:",
+              error
+            );
+            // Continue with just the clicked video if fetch fails
           }
 
-          const focusedVideosFeed = initialVideos.slice(startIndex, endIndex);
-          const newCurrentIndex = videoIndex - startIndex;
-
-          console.log("[VideoContext] Creating focused feed:", {
-            originalIndex: videoIndex,
-            totalVideos: initialVideos.length,
-            targetVideoPosition: targetVideoPosition,
-            feedStart: startIndex,
-            feedEnd: endIndex,
-            focusedFeedSize: focusedVideosFeed.length,
-            newCurrentIndex: newCurrentIndex,
-            targetVideoInFeed: focusedVideosFeed[newCurrentIndex]?._id,
-            targetVideoTitle: focusedVideosFeed[newCurrentIndex]?.title,
-            targetVideoUrl: focusedVideosFeed[newCurrentIndex]?.videoUrl,
-            targetVideoType: focusedVideosFeed[newCurrentIndex]?.videoType,
-            allFeedVideos: focusedVideosFeed.map((v) => ({
-              id: v._id,
-              title: v.title,
-              type: v.videoType,
-            })),
-          });
-
-          // Set the focused feed and current index to the target video
+          // Set the focused feed with clicked video at index 0
           setFocusedVideos(focusedVideosFeed);
-          setCurrentIndex(newCurrentIndex);
+          setCurrentIndex(0);
         } else {
           // Clear focused feed and use full list
           setFocusedVideos(null);
