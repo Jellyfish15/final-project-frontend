@@ -1,0 +1,39 @@
+services:
+  # Backend API Service
+  - type: web
+    name: nudl-backend
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false # Set this in Render dashboard (use MongoDB Atlas connection string)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: VITE_YOUTUBE_API_KEY
+        sync: false # Set this in Render dashboard
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # Frontend Static Site (optional - you can keep using GitHub Pages)
+  # - type: static
+  #   name: nudl-frontend
+  #   runtime: static
+  #   buildCommand: npm install && npm run build
+  #   staticPublishPath: dist
+  #   envVars:
+  #     - key: VITE_API_URL
+  #       fromService:
+  #         type: web
+  #         name: nudl-backend
+  #         envVarKey: RENDER_EXTERNAL_URL
+  #   routes:
+  #     - type: rewrite
+  #       source: /*
+  #       destination: /index.html

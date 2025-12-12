@@ -116,7 +116,15 @@ app.use("/api/videos", require("./routes/videos"));
 app.use("/api/upload", require("./routes/upload"));
 app.use("/api/youtube-cache", require("./routes/youtubeCache"));
 
-// Health check endpoint
+// Health check endpoint (for Render and monitoring)
+app.get("/health", (req, res) => {
+  res.json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
+  });
+});
+
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",

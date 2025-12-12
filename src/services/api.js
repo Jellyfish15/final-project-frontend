@@ -1,6 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? "/api" : "https://your-backend-app.herokuapp.com/api");
+  import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "/api" : "/api"); // Fallback to /api for both dev and prod
 
 // API utility class for handling HTTP requests
 class ApiService {
@@ -297,7 +296,23 @@ export const videosAPI = {
 
   // Get cached YouTube videos
   getCachedVideos: (count = null) =>
-    apiService.get(`/youtube-cache/diverse${count !== null ? `?count=${count}` : ""}`),
+    apiService.get(
+      `/youtube-cache/diverse${count !== null ? `?count=${count}` : ""}`
+    ),
+
+  // Get all cached videos (not just diverse)
+  getAllCachedVideos: (limit = 20) =>
+    apiService.get(`/youtube-cache/videos?limit=${limit}`),
+
+  // Get random cached videos
+  getRandomCachedVideos: (limit = 50) =>
+    apiService.get(`/youtube-cache/random?limit=${limit}`),
+
+  // Get videos with opportunistic caching (tries to fetch new videos first)
+  getFeedWithCaching: (count = 28) =>
+    apiService.get(
+      `/youtube-cache/feed${count !== null ? `?count=${count}` : ""}`
+    ),
 };
 
 // Upload API
