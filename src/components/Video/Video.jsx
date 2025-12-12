@@ -248,7 +248,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                   }}
                 >
                   <YouTubePlayer
-                    videoId={currentVideo.videoUrl.split("/").pop()}
+                    videoId={currentVideo.id || currentVideo.videoUrl.split("/").pop().split("?")[0]}
                     isMuted={isMuted}
                     isPlaying={isPlaying}
                     className="video-page__video"
