@@ -9,8 +9,8 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
 
   useEffect(() => {
     // Validate videoId before attempting to load
-    if (!videoId || typeof videoId !== 'string' || videoId.length < 5) {
-      console.error('[YouTubePlayer] Invalid video ID:', videoId);
+    if (!videoId || typeof videoId !== "string" || videoId.length < 5) {
+      console.error("[YouTubePlayer] Invalid video ID:", videoId);
       setIsVideoLoading(false);
       return;
     }
@@ -65,6 +65,24 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
               // Unmute once video starts playing (if not muted by user)
               if (event.data === window.YT.PlayerState.PLAYING && !isMuted) {
                 event.target.unMute();
+              }
+            },
+            onError: (event) => {
+              console.error("[YouTubePlayer] Error:", event.data);
+              // Error codes:
+              // 2 - Invalid parameter (bad video ID)
+              // 5 - HTML5 player error
+              // 100 - Video not found or private
+              // 101 - Video owner doesn't allow embedding
+              // 150 - Same as 101
+              
+              if (event.data === 101 || event.data === 150) {
+                console.log("[YouTubePlayer] Video playback disabled on other sites, skipping...");
+                // Trigger skip to next video
+                window.dispatchEvent(new CustomEvent('skipUnplayableVideo', { detail: { videoId } }));
+              } else if (event.data === 100) {
+                console.log("[YouTubePlayer] Video not found or private, skipping...");
+                window.dispatchEvent(new CustomEvent('skipUnplayableVideo', { detail: { videoId } }));
               }
             },
           },

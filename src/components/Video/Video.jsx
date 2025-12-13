@@ -47,6 +47,18 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     handleTouchCancel,
   } = useVideo();
 
+  // Handle unplayable videos (embedding disabled, not found, etc.)
+  useEffect(() => {
+    const handleSkipVideo = (event) => {
+      console.log("[Video] Skipping unplayable video:", event.detail.videoId);
+      // Automatically move to next video
+      scrollToVideo("next");
+    };
+
+    window.addEventListener('skipUnplayableVideo', handleSkipVideo);
+    return () => window.removeEventListener('skipUnplayableVideo', handleSkipVideo);
+  }, [scrollToVideo]);
+
   // Handle custom feed types (profile or similar)
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -240,12 +252,14 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
               {currentVideo.videoType === "youtube" ? (
                 (() => {
-                  const extractedVideoId = currentVideo.id || currentVideo.videoUrl?.split("/").pop().split("?")[0];
+                  const extractedVideoId =
+                    currentVideo.id ||
+                    currentVideo.videoUrl?.split("/").pop().split("?")[0];
                   console.log("[Video] YouTube video ID:", {
                     id: currentVideo.id,
                     videoUrl: currentVideo.videoUrl,
                     extracted: extractedVideoId,
-                    title: currentVideo.title
+                    title: currentVideo.title,
                   });
                   return (
                     <div
