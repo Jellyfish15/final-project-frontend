@@ -13,6 +13,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   const containerRef = useRef(null);
   const processingVideoChange = useRef(false); // Prevent multiple simultaneous video changes
   const loadedFeedRef = useRef(null); // Track which custom feed has been loaded
+  const processedVideoIdRef = useRef(null); // Track which videoId from URL has been processed
   const location = useLocation();
   const {
     currentVideo,
@@ -87,6 +88,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
       processingVideoChange.current = true;
       loadedFeedRef.current = feedKey;
+      processedVideoIdRef.current = videoId; // Mark this videoId as processed for custom feeds too
 
       try {
         if (feedType === "profile" && username) {
@@ -162,35 +164,44 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
     console.log("[Video] URL changed:", location.search);
     console.log("[Video] Extracted videoId:", videoId);
+    console.log("[Video] Previously processed videoId:", processedVideoIdRef.current);
     console.log("[Video] Videos available:", videos.length);
     console.log(
       "[Video] Processing video change:",
       processingVideoChange.current
     );
 
-    if (videoId && videos.length > 0 && !processingVideoChange.current) {
-      // Check if we're already showing the requested video to prevent unnecessary calls
-      const currentVideoId = currentVideo?._id || currentVideo?.id;
-      if (currentVideoId !== videoId) {
-        console.log(
-          "[Video] Calling setVideoById with focused feed for:",
-          videoId
-        );
-        processingVideoChange.current = true;
-        // Create focused feed when navigating from thumbnail click
-        setVideoById(videoId, true);
+    // Only process if this is a NEW videoId that we haven't processed before
+    if (videoId && videos.length > 0 && !processingVideoChange.current && videoId !== processedVideoIdRef.current) {
+      console.log(
+        "[Video] Calling setVideoById with focused feed for:",
+        videoId
+      );
+      processingVideoChange.current = true;
+      processedVideoIdRef.current = videoId; // Mark this videoId as processed
+      
+      // Create focused feed when navigating from thumbnail click
+      setVideoById(videoId, true);
 
-        // Reset the flag after a short delay
-        setTimeout(() => {
-          processingVideoChange.current = false;
-        }, 1000);
-      } else {
-        console.log("[Video] Already showing requested video:", videoId);
-      }
+      // Reset the flag after a short delay
+      setTimeout(() => {
+        processingVideoChange.current = false;
+      }, 1000);
     } else if (videoId && videos.length === 0) {
       console.log("[Video] VideoId found but no videos loaded yet");
+    } else if (videoId === processedVideoIdRef.current) {
+      console.log("[Video] VideoId already processed, skipping to avoid jumping back");
     }
-  }, [location.search, setVideoById, videos.length, currentVideo]); // Removed currentIndex and currentVideo to prevent infinite loop
+  }, [location.search, setVideoById, videos.length]); // Removed currentVideo to prevent infinite loop
+
+  // Reset processed video ID when component unmounts or URL changes to a non-video page
+  useEffect(() => {
+    return () => {
+      // Cleanup when leaving the video page
+      console.log("[Video] Component unmounting, resetting processed video ID");
+      processedVideoIdRef.current = null;
+    };
+  }, []);
 
   // Debug current video changes
   useEffect(() => {
