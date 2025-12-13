@@ -145,7 +145,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     };
 
     loadCustomFeed();
-  }, [location.search, setCustomFeed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]); // setCustomFeed is stable, don't need it in deps
 
   // Handle video ID from URL parameters (for non-custom feeds)
   useEffect(() => {
@@ -159,6 +160,12 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     // Skip if we're already in a focused feed - don't let URL override it
     if (isFocusedFeed) {
       console.log("[Video] Already in focused feed, ignoring URL videoId");
+      return;
+    }
+
+    // Skip if video is currently switching to avoid conflicts
+    if (isVideoSwitching) {
+      console.log("[Video] Video is switching, skipping URL processing");
       return;
     }
 
@@ -208,7 +215,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
         "[Video] VideoId already processed, skipping to avoid jumping back"
       );
     }
-  }, [location.search, setVideoById, videos.length, isFocusedFeed]); // Added isFocusedFeed to properly skip when in focused feed
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, videos.length, isFocusedFeed, isVideoSwitching]); // setVideoById is stable, removed from deps to prevent re-runs
 
   // Reset processed video ID when component unmounts or URL changes to a non-video page
   useEffect(() => {

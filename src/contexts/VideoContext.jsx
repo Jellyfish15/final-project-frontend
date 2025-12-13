@@ -309,7 +309,7 @@ export const VideoProvider = ({
         fetchSingleVideo(videoId, createFocusedFeed);
       }
     },
-    [initialVideos, currentIndex]
+    [initialVideos]
   );
 
   // Function to fetch a single video by ID and add it to the context
