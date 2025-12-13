@@ -41,11 +41,19 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
           },
           events: {
             onReady: (event) => {
+              console.log("[YouTubePlayer] Player ready");
               setIsPlayerReady(true);
-              // Start muted to allow autoplay
+              setIsVideoLoading(false);
+              // Start muted and try to play
               event.target.mute();
-              // Use playVideo() instead of loadVideoById() for better autoplay
-              event.target.playVideo();
+
+              // Try to play immediately
+              try {
+                event.target.playVideo();
+                console.log("[YouTubePlayer] Attempted autoplay");
+              } catch (error) {
+                console.error("[YouTubePlayer] Autoplay failed:", error);
+              }
             },
             onStateChange: (event) => {
               console.log("[YouTubePlayer] State changed:", {
@@ -58,14 +66,27 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
                 CUED: window.YT.PlayerState.CUED,
               });
 
-              const isLoading =
-                event.data === window.YT.PlayerState.BUFFERING ||
-                event.data === window.YT.PlayerState.UNSTARTED;
-              setIsVideoLoading(isLoading);
-
-              // Unmute once video starts playing (if not muted by user)
-              if (event.data === window.YT.PlayerState.PLAYING && !isMuted) {
-                event.target.unMute();
+              // Handle loading states
+              if (event.data === window.YT.PlayerState.BUFFERING) {
+                setIsVideoLoading(true);
+              } else if (event.data === window.YT.PlayerState.PLAYING) {
+                setIsVideoLoading(false);
+                // Try to auto-unmute after video starts playing
+                // This might work if user has interacted with the page before
+                setTimeout(() => {
+                  try {
+                    if (!isMuted) {
+                      event.target.unMute();
+                      console.log("[YouTubePlayer] Auto-unmuted successfully");
+                    }
+                  } catch (error) {
+                    console.log(
+                      "[YouTubePlayer] Auto-unmute blocked by browser"
+                    );
+                  }
+                }, 500);
+              } else if (event.data === window.YT.PlayerState.PAUSED) {
+                setIsVideoLoading(false);
               }
             },
             onError: (event) => {
@@ -141,13 +162,31 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
           playerInstanceRef.current.pauseVideo();
         }
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
   }, [isPlaying, isPlayerReady]);
 
+  // Handle click to play if video is frozen
+  const handleClick = () => {
+    if (playerInstanceRef.current && isPlayerReady) {
+      const state = playerInstanceRef.current.getPlayerState();
+      console.log("[YouTubePlayer] Click - current state:", state);
+
+      // If video is not playing (paused, unstarted, etc), play it
+      if (state !== window.YT.PlayerState.PLAYING) {
+        console.log("[YouTubePlayer] Starting playback from click");
+        playerInstanceRef.current.playVideo();
+      }
+    }
+  };
+
   return (
-    <div className={className} style={{ position: "relative" }}>
+    <div
+      className={className}
+      style={{ position: "relative", cursor: "pointer" }}
+      onClick={handleClick}
+    >
       <div ref={playerRef} style={{ width: "100%", height: "100%" }} />
       {(isVideoLoading || !isPlayerReady) && <VideoLoader />}
     </div>
