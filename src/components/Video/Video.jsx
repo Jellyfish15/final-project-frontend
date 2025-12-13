@@ -239,34 +239,45 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
               </button>
 
               {currentVideo.videoType === "youtube" ? (
-                <div
-                  className="video-page__youtube-wrapper"
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    height: "100%",
-                  }}
-                >
-                  <YouTubePlayer
-                    videoId={currentVideo.id || currentVideo.videoUrl.split("/").pop().split("?")[0]}
-                    isMuted={isMuted}
-                    isPlaying={isPlaying}
-                    className="video-page__video"
-                  />
-                  {/* Transparent overlay to capture clicks on YouTube iframe */}
-                  <div
-                    onClick={togglePlay}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      height: "100%",
-                      cursor: "pointer",
-                      zIndex: 1,
-                    }}
-                  />
-                </div>
+                (() => {
+                  const extractedVideoId = currentVideo.id || currentVideo.videoUrl?.split("/").pop().split("?")[0];
+                  console.log("[Video] YouTube video ID:", {
+                    id: currentVideo.id,
+                    videoUrl: currentVideo.videoUrl,
+                    extracted: extractedVideoId,
+                    title: currentVideo.title
+                  });
+                  return (
+                    <div
+                      className="video-page__youtube-wrapper"
+                      style={{
+                        position: "relative",
+                        width: "100%",
+                        height: "100%",
+                      }}
+                    >
+                      <YouTubePlayer
+                        videoId={extractedVideoId}
+                        isMuted={isMuted}
+                        isPlaying={isPlaying}
+                        className="video-page__video"
+                      />
+                      {/* Transparent overlay to capture clicks on YouTube iframe */}
+                      <div
+                        onClick={togglePlay}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: "100%",
+                          cursor: "pointer",
+                          zIndex: 1,
+                        }}
+                      />
+                    </div>
+                  );
+                })()
               ) : (
                 <>
                   <video

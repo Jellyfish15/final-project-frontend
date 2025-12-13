@@ -8,6 +8,13 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
   const [isVideoLoading, setIsVideoLoading] = useState(true);
 
   useEffect(() => {
+    // Validate videoId before attempting to load
+    if (!videoId || typeof videoId !== 'string' || videoId.length < 5) {
+      console.error('[YouTubePlayer] Invalid video ID:', videoId);
+      setIsVideoLoading(false);
+      return;
+    }
+
     setIsVideoLoading(true);
     setIsPlayerReady(false);
 
