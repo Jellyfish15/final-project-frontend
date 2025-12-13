@@ -55,8 +55,9 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       scrollToVideo("next");
     };
 
-    window.addEventListener('skipUnplayableVideo', handleSkipVideo);
-    return () => window.removeEventListener('skipUnplayableVideo', handleSkipVideo);
+    window.addEventListener("skipUnplayableVideo", handleSkipVideo);
+    return () =>
+      window.removeEventListener("skipUnplayableVideo", handleSkipVideo);
   }, [scrollToVideo]);
 
   // Handle custom feed types (profile or similar)

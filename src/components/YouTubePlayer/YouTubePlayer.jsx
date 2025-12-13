@@ -42,9 +42,10 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
           events: {
             onReady: (event) => {
               setIsPlayerReady(true);
-              // Start muted to allow autoplay, then unmute after playing
+              // Start muted to allow autoplay
               event.target.mute();
-              event.target.loadVideoById(videoId);
+              // Use playVideo() instead of loadVideoById() for better autoplay
+              event.target.playVideo();
             },
             onStateChange: (event) => {
               console.log("[YouTubePlayer] State changed:", {
@@ -75,14 +76,26 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
               // 100 - Video not found or private
               // 101 - Video owner doesn't allow embedding
               // 150 - Same as 101
-              
+
               if (event.data === 101 || event.data === 150) {
-                console.log("[YouTubePlayer] Video playback disabled on other sites, skipping...");
+                console.log(
+                  "[YouTubePlayer] Video playback disabled on other sites, skipping..."
+                );
                 // Trigger skip to next video
-                window.dispatchEvent(new CustomEvent('skipUnplayableVideo', { detail: { videoId } }));
+                window.dispatchEvent(
+                  new CustomEvent("skipUnplayableVideo", {
+                    detail: { videoId },
+                  })
+                );
               } else if (event.data === 100) {
-                console.log("[YouTubePlayer] Video not found or private, skipping...");
-                window.dispatchEvent(new CustomEvent('skipUnplayableVideo', { detail: { videoId } }));
+                console.log(
+                  "[YouTubePlayer] Video not found or private, skipping..."
+                );
+                window.dispatchEvent(
+                  new CustomEvent("skipUnplayableVideo", {
+                    detail: { videoId },
+                  })
+                );
               }
             },
           },
@@ -120,11 +133,16 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
   // Handle play/pause state changes
   useEffect(() => {
     if (playerInstanceRef.current && isPlayerReady) {
-      if (isPlaying) {
-        playerInstanceRef.current.playVideo();
-      } else {
-        playerInstanceRef.current.pauseVideo();
-      }
+      // Add small delay to ensure player is fully ready
+      const timer = setTimeout(() => {
+        if (isPlaying) {
+          playerInstanceRef.current.playVideo();
+        } else {
+          playerInstanceRef.current.pauseVideo();
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
   }, [isPlaying, isPlayerReady]);
 
