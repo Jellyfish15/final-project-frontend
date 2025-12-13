@@ -156,6 +156,12 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     // Skip if it's a custom feed (handled by previous useEffect)
     if (feedType) return;
 
+    // Skip if we're already in a focused feed - don't let URL override it
+    if (isFocusedFeed) {
+      console.log("[Video] Already in focused feed, ignoring URL videoId");
+      return;
+    }
+
     // Reset loaded feed ref when switching to non-custom feed
     if (loadedFeedRef.current) {
       console.log("[Video] Resetting custom feed tracking");
@@ -164,7 +170,10 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
     console.log("[Video] URL changed:", location.search);
     console.log("[Video] Extracted videoId:", videoId);
-    console.log("[Video] Previously processed videoId:", processedVideoIdRef.current);
+    console.log(
+      "[Video] Previously processed videoId:",
+      processedVideoIdRef.current
+    );
     console.log("[Video] Videos available:", videos.length);
     console.log(
       "[Video] Processing video change:",
@@ -172,14 +181,19 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     );
 
     // Only process if this is a NEW videoId that we haven't processed before
-    if (videoId && videos.length > 0 && !processingVideoChange.current && videoId !== processedVideoIdRef.current) {
+    if (
+      videoId &&
+      videos.length > 0 &&
+      !processingVideoChange.current &&
+      videoId !== processedVideoIdRef.current
+    ) {
       console.log(
         "[Video] Calling setVideoById with focused feed for:",
         videoId
       );
       processingVideoChange.current = true;
       processedVideoIdRef.current = videoId; // Mark this videoId as processed
-      
+
       // Create focused feed when navigating from thumbnail click
       setVideoById(videoId, true);
 
@@ -190,9 +204,11 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     } else if (videoId && videos.length === 0) {
       console.log("[Video] VideoId found but no videos loaded yet");
     } else if (videoId === processedVideoIdRef.current) {
-      console.log("[Video] VideoId already processed, skipping to avoid jumping back");
+      console.log(
+        "[Video] VideoId already processed, skipping to avoid jumping back"
+      );
     }
-  }, [location.search, setVideoById, videos.length]); // Removed currentVideo to prevent infinite loop
+  }, [location.search, setVideoById, videos.length, isFocusedFeed]); // Added isFocusedFeed to properly skip when in focused feed
 
   // Reset processed video ID when component unmounts or URL changes to a non-video page
   useEffect(() => {
