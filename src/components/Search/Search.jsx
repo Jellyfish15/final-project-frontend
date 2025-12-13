@@ -125,25 +125,26 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
         `Using ${uploadedCount} uploaded videos, loading ${youtubeNeeded} from YouTube...`
       );
 
-      // Load additional videos from YouTube if needed
+      // Load additional videos from YouTube Shorts if needed
       if (youtubeNeeded > 0) {
         try {
+          console.log(`Loading ${youtubeNeeded} educational YouTube Shorts...`);
           const youtubeResults = await searchYouTubeVideos(
-            "educational tutorial",
+            "educational quick lesson",
             youtubeNeeded
           );
 
           if (youtubeResults && youtubeResults.length > 0) {
-            console.log("Loaded videos from YouTube:", youtubeResults.length);
-            // Combine uploaded videos first, then YouTube videos
+            console.log("Loaded YouTube Shorts:", youtubeResults.length);
+            // Combine uploaded videos first, then YouTube Shorts
             selectedVideos = [...uploadedVideos, ...youtubeResults];
           } else {
             // If YouTube fails, just use uploaded videos
-            console.log("YouTube load failed, using only uploaded videos");
+            console.log("YouTube Shorts load failed, using only uploaded videos");
             selectedVideos = uploadedVideos;
           }
         } catch (youtubeError) {
-          console.error("Failed to load from YouTube:", youtubeError);
+          console.error("Failed to load YouTube Shorts:", youtubeError);
           // Fallback to uploaded videos only
           selectedVideos = uploadedVideos;
         }
@@ -247,21 +248,23 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
         });
         console.log("Local search results:", localResults.length);
 
-        // Search YouTube videos
+        // Search YouTube Shorts
         let youtubeResults = [];
         try {
-          youtubeResults = await searchYouTubeVideos(query, 10);
-          console.log("YouTube search results:", youtubeResults.length);
+          console.log(`Searching YouTube Shorts for: "${query}"`);
+          youtubeResults = await searchYouTubeVideos(query, 20);
+          console.log(`Found ${youtubeResults.length} YouTube Shorts results`);
         } catch (youtubeError) {
-          console.warn("YouTube search failed:", youtubeError);
+          console.warn("YouTube Shorts search failed:", youtubeError);
         }
 
-        // Combine results - local videos first, then YouTube
+        // Combine results - local videos first, then YouTube Shorts
         const combinedResults = [
           ...localResults,
           ...youtubeResults.map((video) => ({ ...video, source: "youtube" })),
         ];
 
+        console.log(`Total search results: ${combinedResults.length} (${localResults.length} local, ${youtubeResults.length} YouTube Shorts)`);
         setSearchResults(combinedResults);
       } catch (error) {
         console.error("Search failed:", error);

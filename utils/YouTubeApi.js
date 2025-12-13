@@ -8,19 +8,21 @@ export const searchVideosByKeywords = async (
   maxResults = 10,
   pageToken = ""
 ) => {
+  // Append "shorts" or "short" to the query to prioritize YouTube Shorts
+  const shortsQuery = `${query} shorts OR #shorts`;
+  
   const searchParams = new URLSearchParams({
     part: "snippet",
-    q: query,
+    q: shortsQuery,
     type: "video",
     maxResults: maxResults.toString(),
     order: "relevance",
-    videoDuration: "short",
+    videoDuration: "short", // This limits to videos under 4 minutes
     videoDefinition: "high",
     key: API_KEY,
     safeSearch: "moderate",
     relevanceLanguage: "en",
     regionCode: "US",
-    videoCategoryId: "27", // Education category
   });
 
   if (pageToken) {

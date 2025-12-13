@@ -74,10 +74,10 @@ export const searchYouTubeVideos = async (query, count = 10) => {
 
     const filteredVideos = detailsData.items.filter((video) => {
       const duration = parseDuration(video.contentDetails?.duration || "PT0S");
-      return duration <= 600; // Allow up to 10 minutes for search results
+      return duration <= 180; // Prioritize videos under 3 minutes (ideal for Shorts)
     });
 
-    console.log(`Filtered to ${filteredVideos.length} videos under 10 minutes`);
+    console.log(`Filtered to ${filteredVideos.length} videos under 3 minutes (Shorts-friendly)`);
     const formattedVideos = filteredVideos.map(formatVideoForApp);
 
     console.log(
