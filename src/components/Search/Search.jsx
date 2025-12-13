@@ -140,7 +140,9 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
             selectedVideos = [...uploadedVideos, ...youtubeResults];
           } else {
             // If YouTube fails, just use uploaded videos
-            console.log("YouTube Shorts load failed, using only uploaded videos");
+            console.log(
+              "YouTube Shorts load failed, using only uploaded videos"
+            );
             selectedVideos = uploadedVideos;
           }
         } catch (youtubeError) {
@@ -248,14 +250,19 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
         });
         console.log("Local search results:", localResults.length);
 
-        // Search YouTube Shorts
+        // Search YouTube Shorts (live YouTube API search - NOT from cache)
         let youtubeResults = [];
         try {
-          console.log(`Searching YouTube Shorts for: "${query}"`);
+          console.log(`[Search] Searching YouTube API directly for: "${query}"`);
+          console.log("[Search] This is a LIVE search, not from cache");
           youtubeResults = await searchYouTubeVideos(query, 20);
-          console.log(`Found ${youtubeResults.length} YouTube Shorts results`);
+          console.log(`[Search] ✅ Found ${youtubeResults.length} YouTube Shorts from live API`);
+          if (youtubeResults.length > 0) {
+            console.log("[Search] Sample result:", youtubeResults[0]?.title);
+          }
         } catch (youtubeError) {
-          console.warn("YouTube Shorts search failed:", youtubeError);
+          console.error("[Search] ❌ YouTube API search failed:", youtubeError);
+          console.error("[Search] Error details:", youtubeError.message);
         }
 
         // Combine results - local videos first, then YouTube Shorts
@@ -264,7 +271,9 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
           ...youtubeResults.map((video) => ({ ...video, source: "youtube" })),
         ];
 
-        console.log(`Total search results: ${combinedResults.length} (${localResults.length} local, ${youtubeResults.length} YouTube Shorts)`);
+        console.log(
+          `Total search results: ${combinedResults.length} (${localResults.length} local, ${youtubeResults.length} YouTube Shorts)`
+        );
         setSearchResults(combinedResults);
       } catch (error) {
         console.error("Search failed:", error);

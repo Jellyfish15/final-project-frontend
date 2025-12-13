@@ -10,7 +10,7 @@ export const searchVideosByKeywords = async (
 ) => {
   // Append "shorts" or "short" to the query to prioritize YouTube Shorts
   const shortsQuery = `${query} shorts OR #shorts`;
-  
+
   const searchParams = new URLSearchParams({
     part: "snippet",
     q: shortsQuery,
