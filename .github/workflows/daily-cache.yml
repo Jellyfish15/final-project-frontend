@@ -1,0 +1,34 @@
+name: Daily Video Cache Refresh
+
+on:
+  schedule:
+    # Run daily at 1 AM UTC (adjust timezone as needed)
+    - cron: '0 1 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  refresh-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger cache refresh
+        run: |
+          echo "Refreshing video cache..."
+          response=$(curl -X POST "${{ secrets.VITE_API_URL }}/youtube-cache/refresh" \
+            -H "Content-Type: application/json" \
+            -d '{"count": 28}' \
+            -w "\nHTTP Status: %{http_code}")
+          
+          echo "$response"
+          
+          # Check if request was successful (200-299 status code)
+          if [[ $(echo "$response" | grep -oP 'HTTP Status: \K\d+') =~ ^2 ]]; then
+            echo "✅ Cache refresh successful"
+          else
+            echo "❌ Cache refresh failed"
+            exit 1
+          fi
+      
+      - name: Check cache stats
+        run: |
+          echo "Checking cache statistics..."
+          curl -s "${{ secrets.VITE_API_URL }}/youtube-cache/stats" | jq '.'
