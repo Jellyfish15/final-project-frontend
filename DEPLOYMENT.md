@@ -89,7 +89,8 @@
    - Should return cache statistics
 
 3. **Test Frontend**
-   - Visit your GitHub Pages site: `https://jellyfish15.github.io/final-project-frontend/`
+   - Visit your GitHub Pages site: `https://jellyfish15.
+   +github.io/final-project-frontend/`
    - Videos should now load properly!
 
 ## Important Notes

@@ -253,10 +253,14 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
         // Search YouTube Shorts (live YouTube API search - NOT from cache)
         let youtubeResults = [];
         try {
-          console.log(`[Search] Searching YouTube API directly for: "${query}"`);
+          console.log(
+            `[Search] Searching YouTube API directly for: "${query}"`
+          );
           console.log("[Search] This is a LIVE search, not from cache");
           youtubeResults = await searchYouTubeVideos(query, 20);
-          console.log(`[Search] ✅ Found ${youtubeResults.length} YouTube Shorts from live API`);
+          console.log(
+            `[Search] ✅ Found ${youtubeResults.length} YouTube Shorts from live API`
+          );
           if (youtubeResults.length > 0) {
             console.log("[Search] Sample result:", youtubeResults[0]?.title);
           }
