@@ -3,7 +3,7 @@ name: Keep Backend Alive
 on:
   schedule:
     # Runs every 14 minutes (just before Render's 15-minute timeout)
-    - cron: '*/14 * * * *'
+    - cron: "*/14 * * * *"
   workflow_dispatch: # Allows manual trigger
 
 jobs:

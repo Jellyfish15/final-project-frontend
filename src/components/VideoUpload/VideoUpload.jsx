@@ -310,11 +310,28 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
           onUploadSuccess(videoData);
         }, 500);
       } else {
-        alert(response.message || "Upload failed");
+        console.error("Upload failed with response:", response);
+        alert(response.message || "Upload failed. Please try again.");
       }
     } catch (error) {
-      console.error("Upload error:", error);
-      alert("Upload failed. Please try again.");
+      console.error("Upload error details:", {
+        message: error.message,
+        response: error.response,
+        stack: error.stack
+      });
+      
+      let errorMessage = "Upload failed. ";
+      if (error.response?.status === 401) {
+        errorMessage += "Please log in to upload videos.";
+      } else if (error.response?.status === 413) {
+        errorMessage += "File is too large. Maximum size is 100MB.";
+      } else if (error.response?.data?.message) {
+        errorMessage += error.response.data.message;
+      } else {
+        errorMessage += "Please check your connection and try again.";
+      }
+      
+      alert(errorMessage);
     } finally {
       setUploading(false);
       setUploadProgress(0);
