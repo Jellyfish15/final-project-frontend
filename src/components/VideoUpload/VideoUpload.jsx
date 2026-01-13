@@ -317,9 +317,9 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
       console.error("Upload error details:", {
         message: error.message,
         response: error.response,
-        stack: error.stack
+        stack: error.stack,
       });
-      
+
       let errorMessage = "Upload failed. ";
       if (error.response?.status === 401) {
         errorMessage += "Please log in to upload videos.";
@@ -330,7 +330,7 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
       } else {
         errorMessage += "Please check your connection and try again.";
       }
-      
+
       alert(errorMessage);
     } finally {
       setUploading(false);

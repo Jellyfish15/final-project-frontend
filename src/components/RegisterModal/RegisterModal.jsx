@@ -58,20 +58,36 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
 
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
+    } else if (
+      !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)
+    ) {
       newErrors.email = "Please enter a valid email address";
     } else {
       // Check if email domain is likely valid (has common TLD)
-      const emailParts = formData.email.toLowerCase().split('@');
+      const emailParts = formData.email.toLowerCase().split("@");
       if (emailParts.length === 2) {
         const domain = emailParts[1];
-        const commonTLDs = ['com', 'org', 'net', 'edu', 'gov', 'mil', 'int', 'co', 'io', 'ai', 'app', 'dev'];
-        const domainParts = domain.split('.');
+        const commonTLDs = [
+          "com",
+          "org",
+          "net",
+          "edu",
+          "gov",
+          "mil",
+          "int",
+          "co",
+          "io",
+          "ai",
+          "app",
+          "dev",
+        ];
+        const domainParts = domain.split(".");
         const tld = domainParts[domainParts.length - 1];
-        
+
         // Warn if using a suspicious domain
         if (!commonTLDs.includes(tld) && tld.length < 2) {
-          newErrors.email = "Please use a valid email domain (e.g., @gmail.com, @yahoo.com)";
+          newErrors.email =
+            "Please use a valid email domain (e.g., @gmail.com, @yahoo.com)";
         }
       }
     }
