@@ -6,39 +6,6 @@ const BASE_URL = "https://www.googleapis.com/youtube/v3";
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
-// Content filtering - keywords to exclude from videos
-const EXCLUDED_KEYWORDS = [
-  "white privilege",
-  "black privilege",
-  "asian privilege",
-  "privilege of any race",
-  "racial privilege",
-  "systemic privilege",
-  "checking your privilege",
-  "check your privilege",
-];
-
-/**
- * Filter function to exclude videos with certain keywords
- * @param {Object} video - Video object with snippet
- * @returns {boolean} - Returns true if video should be kept
- */
-const shouldIncludeVideo = (video) => {
-  const title = (video.snippet?.title || "").toLowerCase();
-  const description = (video.snippet?.description || "").toLowerCase();
-  const combinedText = `${title} ${description}`;
-
-  // Check if any excluded keyword appears in title or description
-  for (const keyword of EXCLUDED_KEYWORDS) {
-    if (combinedText.includes(keyword.toLowerCase())) {
-      console.log(`Filtered out video: "${video.snippet?.title}" (matched: ${keyword})`);
-      return false;
-    }
-  }
-
-  return true;
-};
-
 const searchVideosByKeywords = async (
   query,
   maxResults = 10,
@@ -70,12 +37,6 @@ const searchVideosByKeywords = async (
   }
 
   const searchData = await searchResponse.json();
-  
-  // Filter out videos with excluded keywords
-  if (searchData.items) {
-    searchData.items = searchData.items.filter(shouldIncludeVideo);
-  }
-  
   return searchData;
 };
 
@@ -140,12 +101,6 @@ const searchEducationalVideos = async (maxResults = 10, pageToken = "") => {
   }
 
   const searchData = await searchResponse.json();
-  
-  // Filter out videos with excluded keywords
-  if (searchData.items) {
-    searchData.items = searchData.items.filter(shouldIncludeVideo);
-  }
-  
   return searchData;
 };
 
@@ -220,27 +175,14 @@ const getDiverseEducationalFeed = async (count = 10) => {
           return null;
         }
 
-        // Filter out videos with excluded content keywords
-        const filteredItems = searchData.items.filter(shouldIncludeVideo);
-
-        if (filteredItems.length === 0) {
-          console.log(`All videos filtered out for query: "${query}"`);
-          return null;
-        }
-
         // Get video details to filter by duration
-        const videoIds = filteredItems
+        const videoIds = searchData.items
           .map((item) => item.id.videoId)
           .join(",");
         const detailsData = await getVideoDetails(videoIds);
 
-        // Find first video under 5 minutes that passes content filter
+        // Find first video under 5 minutes
         const validVideo = detailsData.items?.find((video) => {
-          // Apply content filter again (on full details)
-          if (!shouldIncludeVideo(video)) {
-            return false;
-          }
-
           const duration = video.contentDetails?.duration || "PT0S";
           const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
           if (!match) return false;

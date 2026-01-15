@@ -251,15 +251,22 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
   // Ensure video plays when loaded (fix for autoplay issues)
   useEffect(() => {
-    if (videoRef.current && currentVideo?.videoType !== "youtube" && isPlaying) {
+    if (
+      videoRef.current &&
+      currentVideo?.videoType !== "youtube" &&
+      isPlaying
+    ) {
       const playVideo = async () => {
         try {
           // Small delay to ensure video is ready
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
           await videoRef.current.play();
           console.log("[Video] Successfully started playback");
         } catch (error) {
-          console.log("[Video] Autoplay prevented, waiting for user interaction:", error.message);
+          console.log(
+            "[Video] Autoplay prevented, waiting for user interaction:",
+            error.message
+          );
         }
       };
 
