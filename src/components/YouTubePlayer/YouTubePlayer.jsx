@@ -171,11 +171,8 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
   const handleClick = () => {
     if (playerInstanceRef.current && isPlayerReady) {
       const state = playerInstanceRef.current.getPlayerState();
-      console.log("[YouTubePlayer] Click - current state:", state);
-
       // If video is not playing (paused, unstarted, etc), play it
       if (state !== window.YT.PlayerState.PLAYING) {
-        console.log("[YouTubePlayer] Starting playback from click");
         playerInstanceRef.current.playVideo();
       }
     }

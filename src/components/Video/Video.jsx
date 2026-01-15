@@ -14,6 +14,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   const processingVideoChange = useRef(false); // Prevent multiple simultaneous video changes
   const loadedFeedRef = useRef(null); // Track which custom feed has been loaded
   const processedVideoIdRef = useRef(null); // Track which videoId from URL has been processed
+  const hasBeenUnmutedRef = useRef(false); // Track if video has been unmuted by user click
   const location = useLocation();
   const {
     currentVideo,
@@ -60,6 +61,17 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     return () =>
       window.removeEventListener("skipUnplayableVideo", handleSkipVideo);
   }, [scrollToVideo]);
+
+  // Handle mute button click - unmute and mark as interacted
+  const handleMuteClick = () => {
+    hasBeenUnmutedRef.current = true;
+    toggleMute();
+  };
+
+  // Reset interaction tracker when video changes
+  useEffect(() => {
+    hasBeenUnmutedRef.current = false;
+  }, [currentVideo]);
 
   // Handle custom feed types (profile or similar)
   useEffect(() => {
@@ -303,9 +315,26 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
           {currentVideo && (
             <>
+              {/* Invisible fullscreen clickable area for first unmute */}
+              {isMuted && !hasBeenUnmutedRef.current && (
+                <div
+                  onClick={handleMuteClick}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    zIndex: 10,
+                    cursor: "pointer",
+                  }}
+                  aria-label="Unmute video"
+                />
+              )}
+
               <button
                 className="video-page__mute-btn"
-                onClick={toggleMute}
+                onClick={handleMuteClick}
                 aria-label={isMuted ? "Unmute video" : "Mute video"}
               >
                 {isMuted ? "🔇" : "🔊"}
