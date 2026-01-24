@@ -15,6 +15,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   const loadedFeedRef = useRef(null); // Track which custom feed has been loaded
   const processedVideoIdRef = useRef(null); // Track which videoId from URL has been processed
   const hasBeenUnmutedRef = useRef(false); // Track if video has been unmuted by user click
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 }); // Track touch start for tap detection
   const location = useLocation();
   const {
     currentVideo,
@@ -319,9 +320,29 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
               {isMuted && !hasBeenUnmutedRef.current && (
                 <div
                   onClick={handleMuteClick}
+                  onTouchStart={(e) => {
+                    const touch = e.touches[0];
+                    touchStartRef.current = {
+                      x: touch.clientX,
+                      y: touch.clientY,
+                      time: Date.now(),
+                    };
+                  }}
                   onTouchEnd={(e) => {
-                    e.preventDefault();
-                    handleMuteClick();
+                    const touch = e.changedTouches[0];
+                    const deltaX = Math.abs(
+                      touch.clientX - touchStartRef.current.x,
+                    );
+                    const deltaY = Math.abs(
+                      touch.clientY - touchStartRef.current.y,
+                    );
+                    const deltaTime = Date.now() - touchStartRef.current.time;
+
+                    // Only unmute if it's a tap (not a swipe)
+                    if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+                      e.preventDefault();
+                      handleMuteClick();
+                    }
                   }}
                   style={{
                     position: "absolute",
@@ -373,9 +394,30 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       {/* Transparent overlay to capture clicks on YouTube iframe */}
                       <div
                         onClick={togglePlay}
+                        onTouchStart={(e) => {
+                          const touch = e.touches[0];
+                          touchStartRef.current = {
+                            x: touch.clientX,
+                            y: touch.clientY,
+                            time: Date.now(),
+                          };
+                        }}
                         onTouchEnd={(e) => {
-                          e.preventDefault();
-                          togglePlay();
+                          const touch = e.changedTouches[0];
+                          const deltaX = Math.abs(
+                            touch.clientX - touchStartRef.current.x,
+                          );
+                          const deltaY = Math.abs(
+                            touch.clientY - touchStartRef.current.y,
+                          );
+                          const deltaTime =
+                            Date.now() - touchStartRef.current.time;
+
+                          // Only toggle play if it's a tap (not a swipe)
+                          if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+                            e.preventDefault();
+                            togglePlay();
+                          }
                         }}
                         style={{
                           position: "absolute",
@@ -402,9 +444,29 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     preload="auto"
                     controls={false}
                     onClick={togglePlay}
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0];
+                      touchStartRef.current = {
+                        x: touch.clientX,
+                        y: touch.clientY,
+                        time: Date.now(),
+                      };
+                    }}
                     onTouchEnd={(e) => {
-                      e.preventDefault();
-                      togglePlay();
+                      const touch = e.changedTouches[0];
+                      const deltaX = Math.abs(
+                        touch.clientX - touchStartRef.current.x,
+                      );
+                      const deltaY = Math.abs(
+                        touch.clientY - touchStartRef.current.y,
+                      );
+                      const deltaTime = Date.now() - touchStartRef.current.time;
+
+                      // Only toggle play if it's a tap (not a swipe)
+                      if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+                        e.preventDefault();
+                        togglePlay();
+                      }
                     }}
                     onLoadStart={() =>
                       console.log("[Video] Load start:", currentVideo?.videoUrl)
