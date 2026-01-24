@@ -117,7 +117,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
             // Find the clicked video's index
             const startIndex = response.videos.findIndex(
-              (v) => (v.id || v._id) === videoId
+              (v) => (v.id || v._id) === videoId,
             );
 
             setCustomFeed(response.videos, Math.max(0, startIndex));
@@ -130,7 +130,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
           if (response.success && response.videos) {
             console.log(
               "[Video] Similar videos loaded:",
-              response.videos.length
+              response.videos.length,
             );
 
             // Fetch the source video and add it to the beginning
@@ -191,12 +191,12 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     console.log("[Video] Extracted videoId:", videoId);
     console.log(
       "[Video] Previously processed videoId:",
-      processedVideoIdRef.current
+      processedVideoIdRef.current,
     );
     console.log("[Video] Videos available:", videos.length);
     console.log(
       "[Video] Processing video change:",
-      processingVideoChange.current
+      processingVideoChange.current,
     );
 
     // Only process if this is a NEW videoId that we haven't processed before
@@ -208,7 +208,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     ) {
       console.log(
         "[Video] Calling setVideoById with focused feed for:",
-        videoId
+        videoId,
       );
       processingVideoChange.current = true;
       processedVideoIdRef.current = videoId; // Mark this videoId as processed
@@ -224,7 +224,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       console.log("[Video] VideoId found but no videos loaded yet");
     } else if (videoId === processedVideoIdRef.current) {
       console.log(
-        "[Video] VideoId already processed, skipping to avoid jumping back"
+        "[Video] VideoId already processed, skipping to avoid jumping back",
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -277,7 +277,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
         } catch (error) {
           console.log(
             "[Video] Autoplay prevented, waiting for user interaction:",
-            error.message
+            error.message,
           );
         }
       };
@@ -319,6 +319,10 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
               {isMuted && !hasBeenUnmutedRef.current && (
                 <div
                   onClick={handleMuteClick}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    handleMuteClick();
+                  }}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -369,6 +373,10 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       {/* Transparent overlay to capture clicks on YouTube iframe */}
                       <div
                         onClick={togglePlay}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          togglePlay();
+                        }}
                         style={{
                           position: "absolute",
                           top: 0,
@@ -394,6 +402,10 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     preload="auto"
                     controls={false}
                     onClick={togglePlay}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      togglePlay();
+                    }}
                     onLoadStart={() =>
                       console.log("[Video] Load start:", currentVideo?.videoUrl)
                     }
@@ -404,7 +416,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       console.error(
                         "[Video] Error loading video:",
                         e.target.error,
-                        currentVideo?.videoUrl
+                        currentVideo?.videoUrl,
                       )
                     }
                     onCanPlay={() => console.log("[Video] Can play")}
@@ -420,7 +432,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       onError={() =>
                         console.error(
                           "[Video] Source error for:",
-                          currentVideo.videoUrl
+                          currentVideo.videoUrl,
                         )
                       }
                     />
@@ -430,7 +442,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       onError={() =>
                         console.error(
                           "[Video] WebM source error for:",
-                          currentVideo.videoUrl
+                          currentVideo.videoUrl,
                         )
                       }
                     />

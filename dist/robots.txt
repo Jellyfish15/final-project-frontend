@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jellyfish15.github.io/final-project-frontend/sitemap.xml
