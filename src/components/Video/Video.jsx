@@ -14,6 +14,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   const processingVideoChange = useRef(false); // Prevent multiple simultaneous video changes
   const loadedFeedRef = useRef(null); // Track which custom feed has been loaded
   const processedVideoIdRef = useRef(null); // Track which videoId from URL has been processed
+  const hasBeenUnmutedRef = useRef(false); // Track if video has been unmuted by user click
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 }); // Track touch start for tap detection
   const location = useLocation();
   const {
     currentVideo,
@@ -61,6 +63,17 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       window.removeEventListener("skipUnplayableVideo", handleSkipVideo);
   }, [scrollToVideo]);
 
+  // Handle mute button click - unmute and mark as interacted
+  const handleMuteClick = () => {
+    hasBeenUnmutedRef.current = true;
+    toggleMute();
+  };
+
+  // Reset interaction tracker when video changes
+  useEffect(() => {
+    hasBeenUnmutedRef.current = false;
+  }, [currentVideo]);
+
   // Handle custom feed types (profile or similar)
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -105,7 +118,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
             // Find the clicked video's index
             const startIndex = response.videos.findIndex(
-              (v) => (v.id || v._id) === videoId
+              (v) => (v.id || v._id) === videoId,
             );
 
             setCustomFeed(response.videos, Math.max(0, startIndex));
@@ -118,7 +131,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
           if (response.success && response.videos) {
             console.log(
               "[Video] Similar videos loaded:",
-              response.videos.length
+              response.videos.length,
             );
 
             // Fetch the source video and add it to the beginning
@@ -179,12 +192,12 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     console.log("[Video] Extracted videoId:", videoId);
     console.log(
       "[Video] Previously processed videoId:",
-      processedVideoIdRef.current
+      processedVideoIdRef.current,
     );
     console.log("[Video] Videos available:", videos.length);
     console.log(
       "[Video] Processing video change:",
-      processingVideoChange.current
+      processingVideoChange.current,
     );
 
     // Only process if this is a NEW videoId that we haven't processed before
@@ -196,7 +209,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     ) {
       console.log(
         "[Video] Calling setVideoById with focused feed for:",
-        videoId
+        videoId,
       );
       processingVideoChange.current = true;
       processedVideoIdRef.current = videoId; // Mark this videoId as processed
@@ -212,7 +225,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       console.log("[Video] VideoId found but no videos loaded yet");
     } else if (videoId === processedVideoIdRef.current) {
       console.log(
-        "[Video] VideoId already processed, skipping to avoid jumping back"
+        "[Video] VideoId already processed, skipping to avoid jumping back",
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -251,21 +264,36 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
   // Ensure video plays when loaded (fix for autoplay issues)
   useEffect(() => {
-    if (videoRef.current && currentVideo?.videoType !== "youtube" && isPlaying) {
+    if (
+      videoRef.current &&
+      currentVideo?.videoType !== "youtube" &&
+      isPlaying
+    ) {
       const playVideo = async () => {
         try {
+          // Reset video state
+          videoRef.current.load();
+
           // Small delay to ensure video is ready
-          await new Promise(resolve => setTimeout(resolve, 100));
-          await videoRef.current.play();
-          console.log("[Video] Successfully started playback");
+          await new Promise((resolve) => setTimeout(resolve, 150));
+
+          // Attempt to play
+          const playPromise = videoRef.current.play();
+          if (playPromise !== undefined) {
+            await playPromise;
+            console.log("[Video] Successfully started playback");
+          }
         } catch (error) {
-          console.log("[Video] Autoplay prevented, waiting for user interaction:", error.message);
+          console.log(
+            "[Video] Autoplay prevented, waiting for user interaction:",
+            error.message,
+          );
         }
       };
 
       playVideo();
     }
-  }, [currentVideo, isPlaying]);
+  }, [currentVideo]);
 
   return (
     <div className="video-page">
@@ -296,9 +324,50 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
           {currentVideo && (
             <>
+              {/* Invisible fullscreen clickable area for first unmute */}
+              {isMuted && !hasBeenUnmutedRef.current && (
+                <div
+                  onClick={handleMuteClick}
+                  onTouchStart={(e) => {
+                    const touch = e.touches[0];
+                    touchStartRef.current = {
+                      x: touch.clientX,
+                      y: touch.clientY,
+                      time: Date.now(),
+                    };
+                  }}
+                  onTouchEnd={(e) => {
+                    const touch = e.changedTouches[0];
+                    const deltaX = Math.abs(
+                      touch.clientX - touchStartRef.current.x,
+                    );
+                    const deltaY = Math.abs(
+                      touch.clientY - touchStartRef.current.y,
+                    );
+                    const deltaTime = Date.now() - touchStartRef.current.time;
+
+                    // Only unmute if it's a tap (not a swipe)
+                    if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+                      e.preventDefault();
+                      handleMuteClick();
+                    }
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    zIndex: 10,
+                    cursor: "pointer",
+                  }}
+                  aria-label="Unmute video"
+                />
+              )}
+
               <button
                 className="video-page__mute-btn"
-                onClick={toggleMute}
+                onClick={handleMuteClick}
                 aria-label={isMuted ? "Unmute video" : "Mute video"}
               >
                 {isMuted ? "🔇" : "🔊"}
@@ -333,6 +402,31 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       {/* Transparent overlay to capture clicks on YouTube iframe */}
                       <div
                         onClick={togglePlay}
+                        onTouchStart={(e) => {
+                          const touch = e.touches[0];
+                          touchStartRef.current = {
+                            x: touch.clientX,
+                            y: touch.clientY,
+                            time: Date.now(),
+                          };
+                        }}
+                        onTouchEnd={(e) => {
+                          const touch = e.changedTouches[0];
+                          const deltaX = Math.abs(
+                            touch.clientX - touchStartRef.current.x,
+                          );
+                          const deltaY = Math.abs(
+                            touch.clientY - touchStartRef.current.y,
+                          );
+                          const deltaTime =
+                            Date.now() - touchStartRef.current.time;
+
+                          // Only toggle play if it's a tap (not a swipe)
+                          if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+                            e.preventDefault();
+                            togglePlay();
+                          }
+                        }}
                         style={{
                           position: "absolute",
                           top: 0,
@@ -358,6 +452,30 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     preload="auto"
                     controls={false}
                     onClick={togglePlay}
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0];
+                      touchStartRef.current = {
+                        x: touch.clientX,
+                        y: touch.clientY,
+                        time: Date.now(),
+                      };
+                    }}
+                    onTouchEnd={(e) => {
+                      const touch = e.changedTouches[0];
+                      const deltaX = Math.abs(
+                        touch.clientX - touchStartRef.current.x,
+                      );
+                      const deltaY = Math.abs(
+                        touch.clientY - touchStartRef.current.y,
+                      );
+                      const deltaTime = Date.now() - touchStartRef.current.time;
+
+                      // Only toggle play if it's a tap (not a swipe)
+                      if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+                        e.preventDefault();
+                        togglePlay();
+                      }
+                    }}
                     onLoadStart={() =>
                       console.log("[Video] Load start:", currentVideo?.videoUrl)
                     }
@@ -368,10 +486,24 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       console.error(
                         "[Video] Error loading video:",
                         e.target.error,
-                        currentVideo?.videoUrl
+                        currentVideo?.videoUrl,
                       )
                     }
-                    onCanPlay={() => console.log("[Video] Can play")}
+                    onCanPlay={async () => {
+                      console.log("[Video] Can play");
+                      // Try to play when ready on mobile
+                      if (isPlaying && videoRef.current) {
+                        try {
+                          await videoRef.current.play();
+                          console.log("[Video] Auto-started on canPlay");
+                        } catch (err) {
+                          console.log(
+                            "[Video] Could not auto-start:",
+                            err.message,
+                          );
+                        }
+                      }
+                    }}
                     onPlay={() => console.log("[Video] Started playing")}
                     onPause={() => console.log("[Video] Paused")}
                     onLoadedMetadata={() =>
@@ -384,7 +516,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       onError={() =>
                         console.error(
                           "[Video] Source error for:",
-                          currentVideo.videoUrl
+                          currentVideo.videoUrl,
                         )
                       }
                     />
@@ -394,7 +526,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       onError={() =>
                         console.error(
                           "[Video] WebM source error for:",
-                          currentVideo.videoUrl
+                          currentVideo.videoUrl,
                         )
                       }
                     />

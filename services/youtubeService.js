@@ -5,39 +5,6 @@ import {
   getDiverseEducationalFeed,
 } from "../utils/YouTubeApi.js";
 
-// Content filtering - keywords to exclude from videos
-const EXCLUDED_KEYWORDS = [
-  "white privilege",
-  "black privilege",
-  "asian privilege",
-  "privilege of any race",
-  "racial privilege",
-  "systemic privilege",
-  "checking your privilege",
-  "check your privilege",
-];
-
-/**
- * Filter function to exclude videos with certain keywords
- * @param {Object} video - Video object with snippet
- * @returns {boolean} - Returns true if video should be kept
- */
-const shouldIncludeVideo = (video) => {
-  const title = (video.snippet?.title || video.title || "").toLowerCase();
-  const description = (video.snippet?.description || video.description || "").toLowerCase();
-  const combinedText = `${title} ${description}`;
-
-  // Check if any excluded keyword appears in title or description
-  for (const keyword of EXCLUDED_KEYWORDS) {
-    if (combinedText.includes(keyword.toLowerCase())) {
-      console.log(`Filtered out video: "${video.snippet?.title || video.title}" (matched: ${keyword})`);
-      return false;
-    }
-  }
-
-  return true;
-};
-
 const parseDuration = (duration) => {
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return 0;
@@ -106,12 +73,6 @@ export const searchYouTubeVideos = async (query, count = 10) => {
     }
 
     const filteredVideos = detailsData.items.filter((video) => {
-      // First check content filter
-      if (!shouldIncludeVideo(video)) {
-        return false;
-      }
-      
-      // Then check duration
       const duration = parseDuration(video.contentDetails?.duration || "PT0S");
       return duration <= 180; // Prioritize videos under 3 minutes (ideal for Shorts)
     });
