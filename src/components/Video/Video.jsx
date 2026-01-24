@@ -271,10 +271,18 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     ) {
       const playVideo = async () => {
         try {
+          // Reset video state
+          videoRef.current.load();
+
           // Small delay to ensure video is ready
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          await videoRef.current.play();
-          console.log("[Video] Successfully started playback");
+          await new Promise((resolve) => setTimeout(resolve, 150));
+
+          // Attempt to play
+          const playPromise = videoRef.current.play();
+          if (playPromise !== undefined) {
+            await playPromise;
+            console.log("[Video] Successfully started playback");
+          }
         } catch (error) {
           console.log(
             "[Video] Autoplay prevented, waiting for user interaction:",
@@ -285,7 +293,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
       playVideo();
     }
-  }, [currentVideo, isPlaying]);
+  }, [currentVideo]);
 
   return (
     <div className="video-page">
@@ -481,7 +489,21 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                         currentVideo?.videoUrl,
                       )
                     }
-                    onCanPlay={() => console.log("[Video] Can play")}
+                    onCanPlay={async () => {
+                      console.log("[Video] Can play");
+                      // Try to play when ready on mobile
+                      if (isPlaying && videoRef.current) {
+                        try {
+                          await videoRef.current.play();
+                          console.log("[Video] Auto-started on canPlay");
+                        } catch (err) {
+                          console.log(
+                            "[Video] Could not auto-start:",
+                            err.message,
+                          );
+                        }
+                      }
+                    }}
                     onPlay={() => console.log("[Video] Started playing")}
                     onPause={() => console.log("[Video] Paused")}
                     onLoadedMetadata={() =>
