@@ -52,6 +52,9 @@ function App() {
       let allVideos = [];
 
       // Handle YouTube videos (either newly cached or from existing cache)
+      console.log("[App] YouTube feed response status:", feedResponse.status);
+      console.log("[App] YouTube feed response value:", feedResponse.value);
+
       if (
         feedResponse.status === "fulfilled" &&
         feedResponse.value?.videos?.length > 0
@@ -61,12 +64,12 @@ function App() {
         // Log the caching status
         if (feedResponse.value.newlyCached > 0) {
           console.log(
-            `✅ Successfully cached ${feedResponse.value.newlyCached} new YouTube videos`
+            `✅ Successfully cached ${feedResponse.value.newlyCached} new YouTube videos`,
           );
         }
         if (feedResponse.value.quotaExceeded) {
           console.log(
-            "⚠️ YouTube API quota exceeded. Using cached videos only."
+            "⚠️ YouTube API quota exceeded. Using cached videos only.",
           );
           setYoutubeApiDisabled(true);
         }
@@ -74,13 +77,25 @@ function App() {
         console.log(
           "Successfully loaded",
           feedResponse.value.videos.length,
-          "YouTube videos"
+          "YouTube videos",
         );
       } else {
         console.log("No YouTube videos available");
+        if (feedResponse.status === "rejected") {
+          console.error("[App] YouTube feed rejected:", feedResponse.reason);
+        }
       }
 
       // Add uploaded videos
+      console.log(
+        "[App] Uploaded videos response status:",
+        uploadedVideosResponse.status,
+      );
+      console.log(
+        "[App] Uploaded videos response value:",
+        uploadedVideosResponse.value,
+      );
+
       if (
         uploadedVideosResponse.status === "fulfilled" &&
         uploadedVideosResponse.value?.videos?.length > 0
@@ -120,6 +135,21 @@ function App() {
               finalThumbnailUrl: thumbnailUrl,
             });
 
+            // Fix avatar URL too
+            let avatarUrl =
+              video.creator?.avatar ||
+              "https://via.placeholder.com/40x40?text=U";
+            if (
+              avatarUrl &&
+              !avatarUrl.startsWith("http") &&
+              !avatarUrl.includes("placeholder")
+            ) {
+              avatarUrl = avatarUrl.startsWith("/api/")
+                ? avatarUrl.replace("/api/", "/")
+                : avatarUrl;
+              avatarUrl = `${backendURL}${avatarUrl}`;
+            }
+
             return {
               ...video,
               _id: video.id || video._id, // Normalize id field
@@ -127,20 +157,26 @@ function App() {
               thumbnailUrl,
               videoType: "uploaded", // Mark as uploaded video for identification
               creator: video.creator?.username || video.creator || "Unknown",
-              avatar:
-                video.creator?.avatar ||
-                "https://via.placeholder.com/40x40?text=U",
+              avatar: avatarUrl,
               isVerified: video.creator?.isVerified || false,
             };
-          }
+          },
         );
 
         allVideos = [...allVideos, ...uploadedVideos];
         console.log(
           "Successfully loaded",
           uploadedVideos.length,
-          "uploaded videos"
+          "uploaded videos",
         );
+      } else {
+        console.log("No uploaded videos available");
+        if (uploadedVideosResponse.status === "rejected") {
+          console.error(
+            "[App] Uploaded videos rejected:",
+            uploadedVideosResponse.reason,
+          );
+        }
       }
 
       if (allVideos.length > 0) {
@@ -152,7 +188,7 @@ function App() {
             id: v._id,
             title: v.title,
             type: v.videoType || "youtube",
-          }))
+          })),
         );
       } else {
         // If no videos from either source, use fallback videos
@@ -161,7 +197,7 @@ function App() {
         console.warn(
           "No videos returned from any source, using",
           fallbackVideos.length,
-          "fallback videos"
+          "fallback videos",
         );
       }
     } catch (err) {
