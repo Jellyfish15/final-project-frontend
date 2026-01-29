@@ -57,6 +57,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await authAPI.login(credentials);
+      console.log("[AuthContext] Login response:", response);
+      console.log(
+        "[AuthContext] Token after login:",
+        localStorage.getItem("authToken"),
+      );
       if (response.success) {
         setAuthenticatedUser(response.user);
         return { success: true, user: response.user };
@@ -71,6 +76,11 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await authAPI.register(userData);
+      console.log("[AuthContext] Register response:", response);
+      console.log(
+        "[AuthContext] Token after register:",
+        localStorage.getItem("authToken"),
+      );
       if (response.success) {
         setAuthenticatedUser(response.user);
         return { success: true, user: response.user };

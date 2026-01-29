@@ -115,8 +115,20 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
           processedVideo.thumbnailUrl = thumbnailUrl;
           console.log(
             `Final thumbnail URL for "${video.title}":`,
-            thumbnailUrl
+            thumbnailUrl,
           );
+
+          // Process video URL similarly
+          let videoUrl = video.videoUrl;
+          if (videoUrl && !videoUrl.startsWith("http")) {
+            const backendURL = "http://localhost:5000";
+            videoUrl = videoUrl.startsWith("/api/")
+              ? videoUrl.replace("/api/", "/")
+              : videoUrl;
+            videoUrl = `${backendURL}${videoUrl}`;
+          }
+          processedVideo.videoUrl = videoUrl;
+          console.log(`Final video URL for "${video.title}":`, videoUrl);
 
           return processedVideo;
         });
@@ -126,7 +138,7 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
         // Calculate stats from videos
         const totalLikes = processedVideos.reduce(
           (sum, video) => sum + (video.likes || 0),
-          0
+          0,
         );
         const videoCount = processedVideos.length;
 
@@ -277,20 +289,30 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
   };
 
   const handleUploadSuccess = (video) => {
-    // Process thumbnail URL before adding to list
+    // Process thumbnail URL and video URL before adding to list
     let thumbnailUrl = video.thumbnailUrl || video.thumbnail;
+    let videoUrl = video.videoUrl;
+
+    const backendURL = "http://localhost:5000";
 
     if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
-      const backendURL = "http://localhost:5000";
       thumbnailUrl = thumbnailUrl.startsWith("/api/")
         ? thumbnailUrl.replace("/api/", "/")
         : thumbnailUrl;
       thumbnailUrl = `${backendURL}${thumbnailUrl}`;
     }
 
+    if (videoUrl && !videoUrl.startsWith("http")) {
+      videoUrl = videoUrl.startsWith("/api/")
+        ? videoUrl.replace("/api/", "/")
+        : videoUrl;
+      videoUrl = `${backendURL}${videoUrl}`;
+    }
+
     const processedVideo = {
       ...video,
       thumbnailUrl: thumbnailUrl,
+      videoUrl: videoUrl,
     };
 
     // Add the new video to the list
@@ -322,12 +344,12 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
 
         // Find the clicked video's index in the feed
         const videoIndex = response.videos.findIndex(
-          (v) => (v.id || v._id) === video._id
+          (v) => (v.id || v._id) === video._id,
         );
 
         // Navigate to videos page with custom feed
         navigate(
-          `/videos?videoId=${video._id}&feedType=profile&username=${user.username}`
+          `/videos?videoId=${video._id}&feedType=profile&username=${user.username}`,
         );
       } else {
         // Fallback to simple navigation if feed fetch fails
@@ -416,28 +438,28 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
                   htmlFor="avatar-upload"
                   className="profile__avatar-label"
                 >
-                  <img
-                    src={
-                      profileData.avatar ||
-                      "https://via.placeholder.com/120x120?text=Upload"
-                    }
-                    alt="Avatar"
-                    className="profile__avatar-image"
-                  />
+                  {profileData.avatar ? (
+                    <img
+                      src={profileData.avatar}
+                      alt="Avatar"
+                      className="profile__avatar-image"
+                    />
+                  ) : (
+                    <div className="profile__avatar-placeholder">📷</div>
+                  )}
                   <div className="profile__avatar-overlay">
                     {uploading ? <LoadingSpinner size="small" /> : "📷"}
                   </div>
                 </label>
               </div>
-            ) : (
+            ) : profileData.avatar ? (
               <img
-                src={
-                  profileData.avatar ||
-                  "https://via.placeholder.com/120x120?text=User"
-                }
+                src={profileData.avatar}
                 alt="Profile Avatar"
                 className="profile__avatar-image"
               />
+            ) : (
+              <div className="profile__avatar-placeholder">📷</div>
             )}
           </div>
           <div className="profile__info">

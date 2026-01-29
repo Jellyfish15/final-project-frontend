@@ -10,6 +10,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -77,6 +78,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
       password: "",
     });
     setErrors({});
+    setShowPassword(false);
     onClose();
   };
 
@@ -110,16 +112,37 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
         <label htmlFor="login-password" className="modal__label">
           Password
         </label>
-        <input
-          id="login-password"
-          type="password"
-          name="password"
-          className="modal__input"
-          placeholder="Enter your password"
-          value={formData.password}
-          onChange={handleInputChange}
-          required
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            id="login-password"
+            type={showPassword ? "text" : "password"}
+            name="password"
+            className="modal__input"
+            placeholder="Enter your password"
+            value={formData.password}
+            onChange={handleInputChange}
+            required
+            style={{ paddingRight: "40px" }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            style={{
+              position: "absolute",
+              right: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "18px",
+              padding: "5px",
+            }}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? "👁️" : "👁️‍🗨️"}
+          </button>
+        </div>
         {errors.password && (
           <div className="modal__error">{errors.password}</div>
         )}

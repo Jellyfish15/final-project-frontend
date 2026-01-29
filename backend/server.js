@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 5000;
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 // Rate limiting
@@ -51,7 +51,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "x-auth-token"],
     exposedHeaders: ["Content-Range", "X-Content-Range"],
     maxAge: 86400, // 24 hours
-  })
+  }),
 );
 
 // Handle preflight requests explicitly
@@ -65,11 +65,27 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(compression());
 app.use(morgan("combined"));
 
-// Static file serving for uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Static file serving for thumbnails
-app.use("/thumbnails", express.static(path.join(__dirname, "thumbnails")));
+// Static file serving for uploads with proper MIME types
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"), {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".mp4")) {
+        res.setHeader("Content-Type", "video/mp4");
+      } else if (filePath.endsWith(".webm")) {
+        res.setHeader("Content-Type", "video/webm");
+      } else if (filePath.endsWith(".mov")) {
+        res.setHeader("Content-Type", "video/quicktime");
+      } else if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) {
+        res.setHeader("Content-Type", "image/jpeg");
+      } else if (filePath.endsWith(".png")) {
+        res.setHeader("Content-Type", "image/png");
+      }
+      // Enable range requests for video streaming
+      res.setHeader("Accept-Ranges", "bytes");
+    },
+  }),
+);
 
 // Database connection
 const connectDB = async () => {
@@ -115,6 +131,49 @@ app.use("/api/users", require("./routes/users"));
 app.use("/api/videos", require("./routes/videos"));
 app.use("/api/upload", require("./routes/upload"));
 app.use("/api/youtube-cache", require("./routes/youtubeCache"));
+
+// Video streaming route with range request support
+app.get("/stream/video/:filename", (req, res) => {
+  const videoPath = path.join(
+    __dirname,
+    "uploads",
+    "videos",
+    req.params.filename,
+  );
+
+  if (!fs.existsSync(videoPath)) {
+    return res.status(404).send("Video not found");
+  }
+
+  const stat = fs.statSync(videoPath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunksize = end - start + 1;
+    const file = fs.createReadStream(videoPath, { start, end });
+    const head = {
+      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": chunksize,
+      "Content-Type": "video/mp4",
+    };
+
+    res.writeHead(206, head);
+    file.pipe(res);
+  } else {
+    const head = {
+      "Content-Length": fileSize,
+      "Content-Type": "video/mp4",
+      "Accept-Ranges": "bytes",
+    };
+    res.writeHead(200, head);
+    fs.createReadStream(videoPath).pipe(res);
+  }
+});
 
 // Health check endpoint (for Render and monitoring)
 app.get("/health", (req, res) => {

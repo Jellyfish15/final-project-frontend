@@ -5,8 +5,13 @@ const fs = require("fs");
 const { body, validationResult } = require("express-validator");
 const Video = require("../models/Video");
 const { auth } = require("../middleware/auth");
+const ffmpeg = require("fluent-ffmpeg");
 
 const router = express.Router();
+
+// Configure ffmpeg paths (optional, ffmpeg should be in PATH)
+// ffmpeg.setFfmpegPath('/path/to/ffmpeg');
+// ffmpeg.setFfprobePath('/path/to/ffprobe');
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, "../uploads");
@@ -27,6 +32,7 @@ const videoFilter = (req, file, cb) => {
     "video/mpeg",
     "video/quicktime",
     "video/webm",
+    "video/x-m4v",
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
@@ -34,9 +40,9 @@ const videoFilter = (req, file, cb) => {
   } else {
     cb(
       new Error(
-        "Invalid file type. Only MP4, MPEG, MOV, and WebM videos are allowed."
+        "Invalid file type. Only MP4, MPEG, MOV, and WebM videos are allowed.",
       ),
-      false
+      false,
     );
   }
 };
@@ -50,9 +56,9 @@ const imageFilter = (req, file, cb) => {
   } else {
     cb(
       new Error(
-        "Invalid file type. Only JPEG, PNG, and WebP images are allowed."
+        "Invalid file type. Only JPEG, PNG, and WebP images are allowed.",
       ),
-      false
+      false,
     );
   }
 };
@@ -88,7 +94,7 @@ const uploadVideo = multer({
   storage: videoStorage,
   fileFilter: videoFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB max file size
+    fileSize: 200 * 1024 * 1024, // 200MB max file size
   },
 });
 
@@ -99,6 +105,345 @@ const uploadImage = multer({
     fileSize: 5 * 1024 * 1024, // 5MB max file size
   },
 });
+
+// @route   POST /api/upload/temp-video
+// @desc    Upload video temporarily and generate 3 thumbnail options
+// @access  Private
+router.post(
+  "/temp-video",
+  auth,
+  uploadVideo.single("video"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No video file uploaded",
+        });
+      }
+
+      const videoPath = path.join(videosDir, req.file.filename);
+      const originalFilename = req.file.filename;
+
+      // Convert video to H.264/AAC format for browser compatibility
+      const convertedFilename = `converted-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.mp4`;
+      const convertedPath = path.join(videosDir, convertedFilename);
+
+      console.log("Converting video to browser-compatible format...");
+      console.log("Original video path:", videoPath);
+      console.log("Converted video path:", convertedPath);
+
+      // Convert video using FFmpeg
+      const conversionPromise = new Promise((resolve, reject) => {
+        ffmpeg(videoPath)
+          .videoCodec("libx264")
+          .audioCodec("aac")
+          .outputOptions([
+            "-preset fast",
+            "-crf 23",
+            "-movflags +faststart",
+            "-pix_fmt yuv420p",
+          ])
+          .on("start", (commandLine) => {
+            console.log("FFmpeg conversion started:", commandLine);
+          })
+          .on("progress", (progress) => {
+            console.log("Processing: " + progress.percent + "% done");
+          })
+          .on("end", () => {
+            console.log("Video conversion completed");
+            // Delete original file after successful conversion
+            if (fs.existsSync(videoPath)) {
+              fs.unlinkSync(videoPath);
+              console.log("Original file deleted");
+            }
+            resolve(convertedFilename);
+          })
+          .on("error", (err, stdout, stderr) => {
+            console.error("FFmpeg conversion error:", err.message);
+            console.error("FFmpeg stderr:", stderr);
+            reject(err);
+          })
+          .save(convertedPath);
+      });
+
+      let finalFilename;
+      try {
+        finalFilename = await Promise.race([
+          conversionPromise,
+          new Promise((_, reject) =>
+            setTimeout(
+              () =>
+                reject(new Error("Video conversion timeout after 120 seconds")),
+              120000,
+            ),
+          ),
+        ]);
+      } catch (err) {
+        console.error("Video conversion failed:", err.message);
+        // Clean up files
+        if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
+        if (fs.existsSync(convertedPath)) fs.unlinkSync(convertedPath);
+        return res.status(500).json({
+          success: false,
+          message:
+            "Failed to convert video to browser-compatible format: " +
+            err.message,
+        });
+      }
+
+      const finalVideoPath = path.join(videosDir, finalFilename);
+      const videoUrl = `/uploads/videos/${finalFilename}`;
+
+      // Generate thumbnails immediately
+      const thumbnailPrefix = `thumb-${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+
+      console.log("Starting generation of 3 thumbnails...");
+      console.log("Video path:", finalVideoPath);
+      console.log("Thumbnail prefix:", thumbnailPrefix);
+
+      // Promise to wait for thumbnail generation
+      const thumbnailPromise = new Promise((resolve, reject) => {
+        ffmpeg(finalVideoPath)
+          .on("start", (commandLine) => {
+            console.log("FFmpeg started - generating 3 thumbnails");
+            console.log("FFmpeg command:", commandLine);
+          })
+          .on("end", () => {
+            console.log("Thumbnail generation completed");
+            // Verify files exist before resolving
+            const thumbFiles = [
+              `${thumbnailPrefix}_1.png`,
+              `${thumbnailPrefix}_2.png`,
+              `${thumbnailPrefix}_3.png`,
+            ];
+
+            const allFilesExist = thumbFiles.every((file) => {
+              const filePath = path.join(thumbnailsDir, file);
+              const exists = fs.existsSync(filePath);
+              console.log(
+                `Thumbnail file ${file}: ${exists ? "EXISTS" : "MISSING"} at ${filePath}`,
+              );
+              return exists;
+            });
+
+            if (allFilesExist) {
+              const thumbUrls = [
+                `/uploads/thumbnails/${thumbnailPrefix}_1.png`,
+                `/uploads/thumbnails/${thumbnailPrefix}_2.png`,
+                `/uploads/thumbnails/${thumbnailPrefix}_3.png`,
+              ];
+              console.log("All thumbnails generated successfully:", thumbUrls);
+              resolve(thumbUrls);
+            } else {
+              reject(new Error("Generated thumbnail files not found"));
+            }
+          })
+          .on("error", (err, stdout, stderr) => {
+            console.error("FFmpeg error:", err.message);
+            console.error("FFmpeg stdout:", stdout);
+            console.error("FFmpeg stderr:", stderr);
+            reject(err);
+          })
+          .screenshots({
+            timestamps: ["25%", "50%", "75%"],
+            filename: `${thumbnailPrefix}_%i.png`,
+            folder: thumbnailsDir,
+            size: "640x?",
+          });
+      });
+
+      // Wait for thumbnails to generate (with timeout)
+      let thumbnailUrls;
+      try {
+        thumbnailUrls = await Promise.race([
+          thumbnailPromise,
+          new Promise((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new Error("Thumbnail generation timeout after 60 seconds"),
+                ),
+              60000,
+            ),
+          ),
+        ]);
+      } catch (err) {
+        console.error("Thumbnail generation failed:", err.message);
+        // If generation fails, return error instead of placeholder URLs
+        return res.status(500).json({
+          success: false,
+          message: "Failed to generate thumbnail previews: " + err.message,
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Video uploaded and thumbnails generated",
+        videoData: {
+          filename: finalFilename,
+          videoUrl,
+          fileSize: req.file.size,
+          thumbnailUrls,
+          thumbnailPrefix,
+        },
+      });
+    } catch (error) {
+      console.error("Temp video upload error:", error);
+
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      res.status(500).json({
+        success: false,
+        message: "Server error during video upload: " + error.message,
+      });
+    }
+  },
+);
+
+// @route   POST /api/upload/finalize-video
+// @desc    Finalize pre-uploaded video with metadata
+// @access  Private
+router.post(
+  "/finalize-video",
+  auth,
+  [
+    body("title")
+      .isLength({ min: 1, max: 150 })
+      .trim()
+      .withMessage("Title must be 1-150 characters"),
+    body("description")
+      .optional()
+      .isLength({ max: 2000 })
+      .trim()
+      .withMessage("Description must be less than 2000 characters"),
+    body("category")
+      .isIn([
+        "education",
+        "science",
+        "math",
+        "coding",
+        "language",
+        "history",
+        "art",
+        "music",
+        "sports",
+        "cooking",
+        "technology",
+        "business",
+        "health",
+        "other",
+      ])
+      .withMessage("Invalid category"),
+    body("isPrivate")
+      .optional()
+      .isBoolean()
+      .withMessage("isPrivate must be a boolean"),
+  ],
+  async (req, res) => {
+    try {
+      // Check for validation errors
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const {
+        videoFilename,
+        title,
+        description,
+        category,
+        tags: tagsJson,
+        isPrivate,
+        selectedThumbnailUrl,
+      } = req.body;
+
+      if (!videoFilename || !title) {
+        return res.status(400).json({
+          success: false,
+          message: "Video filename and title are required",
+        });
+      }
+
+      // Parse tags
+      let tags = [];
+      if (tagsJson) {
+        try {
+          tags = JSON.parse(tagsJson);
+          if (!Array.isArray(tags)) tags = [];
+        } catch (e) {
+          tags = [];
+        }
+      }
+
+      const videoUrl = `/uploads/videos/${videoFilename}`;
+
+      // Extract just the path from selectedThumbnailUrl (remove http://localhost:5000 if present)
+      let thumbnailUrl = selectedThumbnailUrl || "";
+      if (thumbnailUrl && thumbnailUrl.includes("localhost:5000")) {
+        thumbnailUrl = thumbnailUrl.replace(/^https?:\/\/[^\/]+/, "");
+      }
+
+      console.log("Finalizing video:", {
+        title,
+        videoUrl,
+        thumbnailUrl,
+        category,
+        creator: req.user.userId,
+      });
+
+      // Create video in database
+      const video = new Video({
+        title: title.trim(),
+        description: description?.trim() || "",
+        videoUrl,
+        thumbnailUrl,
+        videoType: "uploaded",
+        duration: 0,
+        fileSize: 0,
+        category,
+        tags,
+        creator: req.user.userId,
+        isPrivate: isPrivate === "true" || isPrivate === true,
+        status: "approved",
+        uploadedAt: new Date(),
+        publishedAt: new Date(),
+      });
+
+      await video.save();
+
+      res.status(201).json({
+        success: true,
+        message: "Video finalized successfully",
+        video: {
+          _id: video._id,
+          id: video._id,
+          title: video.title,
+          description: video.description,
+          thumbnailUrl: video.thumbnailUrl,
+          category: video.category,
+          tags: video.tags,
+          status: video.status,
+          uploadedAt: video.uploadedAt,
+        },
+      });
+    } catch (error) {
+      console.error("Finalize video error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error while finalizing video",
+      });
+    }
+  },
+);
 
 // @route   POST /api/upload/video
 // @desc    Upload a video file
@@ -145,7 +490,7 @@ router.post(
       console.log("Upload request body:", req.body);
       console.log(
         "Upload request file:",
-        req.file ? req.file.filename : "No file"
+        req.file ? req.file.filename : "No file",
       );
 
       // Check for validation errors
@@ -185,34 +530,37 @@ router.post(
         }
       }
 
-      // Get video metadata (you might want to use ffprobe for this)
+      // Get video metadata
       const videoUrl = `/uploads/videos/${req.file.filename}`;
       const fileSize = req.file.size;
 
-      // Generate 3 thumbnails at different timestamps
-      const ffmpeg = require("fluent-ffmpeg");
-      const thumbFilenames = [
-        `${req.file.filename}-1.png`,
-        `${req.file.filename}-2.png`,
-        `${req.file.filename}-3.png`,
-      ];
-      const thumbPaths = thumbFilenames.map((f) => path.join(thumbnailsDir, f));
-      const thumbUrls = thumbFilenames.map((f) => `/uploads/thumbnails/${f}`);
+      // Generate thumbnail immediately
+      const thumbnailPrefix = `thumb-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const primaryThumbnailPath = path.join(
+        thumbnailsDir,
+        `${thumbnailPrefix}_1.png`,
+      );
+      const primaryThumbnailUrl = `/uploads/thumbnails/${thumbnailPrefix}_1.png`;
 
-      console.log("Starting ffmpeg thumbnail generation for 3 images...");
+      console.log("Starting thumbnail generation at 20% of video...");
+      console.log("Video path:", path.join(videosDir, req.file.filename));
+      console.log("Thumbnail output path:", primaryThumbnailPath);
+
+      // Generate primary thumbnail at 20% of video
       ffmpeg(path.join(videosDir, req.file.filename))
         .on("start", (cmd) => {
-          console.log("ffmpeg started with command:", cmd);
+          console.log("FFmpeg started - generating thumbnail");
         })
         .on("end", async () => {
-          console.log("ffmpeg thumbnail generation finished.");
-          // Do not set thumbnail yet, let user select
+          console.log("Thumbnail generation completed successfully");
+
+          // Create video record in database
           const video = new Video({
             title,
             description: description || "",
             videoUrl,
-            thumbnailUrl: thumbUrls[0], // Default to first, will update after selection
-            thumbnailOptions: thumbUrls, // Store all options for frontend
+            thumbnailUrl: primaryThumbnailUrl,
+            thumbnailOptions: [primaryThumbnailUrl],
             videoType: "uploaded",
             duration: 0,
             fileSize,
@@ -224,68 +572,70 @@ router.post(
             uploadedAt: new Date(),
             publishedAt: new Date(),
           });
-          await video.save();
-          res.status(201).json({
-            success: true,
-            message: "Video uploaded successfully",
-            video: {
-              _id: video._id,
-              id: video._id,
-              title: video.title,
-              description: video.description,
-              thumbnailUrl: video.thumbnailUrl,
-              thumbnailOptions: video.thumbnailOptions,
-              category: video.category,
-              tags: video.tags,
-              status: video.status,
-              uploadedAt: video.uploadedAt,
-            },
-          });
+
+          try {
+            await video.save();
+            console.log("Video saved to database with thumbnail");
+          } catch (dbError) {
+            console.error("Error saving video to database:", dbError);
+          }
         })
-        .on("error", async (err) => {
-          console.error("Thumbnail generation failed:", err.message);
-          // Use placeholder if thumbnail generation fails
-          const video = new Video({
-            title,
-            description: description || "",
-            videoUrl,
-            thumbnailUrl: `/uploads/thumbnails/placeholder-thumb.jpg`,
-            thumbnailOptions: [],
-            videoType: "uploaded",
-            duration: 0,
-            fileSize,
-            category,
-            tags: tags,
-            creator: req.user.userId,
-            isPrivate: isPrivate === "true" || isPrivate === true,
-            status: "approved",
-            uploadedAt: new Date(),
-            publishedAt: new Date(),
-          });
-          await video.save();
-          res.status(201).json({
-            success: true,
-            message: "Video uploaded successfully (no thumbnails)",
-            video: {
-              _id: video._id,
-              id: video._id,
-              title: video.title,
-              description: video.description,
-              thumbnailUrl: video.thumbnailUrl,
-              thumbnailOptions: [],
-              category: video.category,
-              tags: video.tags,
-              status: video.status,
-              uploadedAt: video.uploadedAt,
-            },
-          });
+        .on("error", (err) => {
+          console.error("FFmpeg error:", err.message);
+          console.error("Full error:", err);
         })
         .screenshots({
-          timestamps: ["00:00:01", "00:00:03", "00:00:05"],
-          filename: "%f",
+          timestamps: ["20%"],
+          filename: `${thumbnailPrefix}_1.png`,
           folder: thumbnailsDir,
-          size: "320x240",
+          size: "640x360",
+        })
+        .run();
+
+      // Return response immediately (don't wait for thumbnail)
+      const video = new Video({
+        title,
+        description: description || "",
+        videoUrl,
+        thumbnailUrl: primaryThumbnailUrl,
+        thumbnailOptions: [primaryThumbnailUrl],
+        videoType: "uploaded",
+        duration: 0,
+        fileSize,
+        category,
+        tags: tags,
+        creator: req.user.userId,
+        isPrivate: isPrivate === "true" || isPrivate === true,
+        status: "approved",
+        uploadedAt: new Date(),
+        publishedAt: new Date(),
+      });
+
+      try {
+        await video.save();
+        res.status(201).json({
+          success: true,
+          message: "Video uploaded successfully",
+          video: {
+            _id: video._id,
+            id: video._id,
+            title: video.title,
+            description: video.description,
+            thumbnailUrl: video.thumbnailUrl,
+            thumbnailOptions: video.thumbnailOptions,
+            category: video.category,
+            tags: video.tags,
+            status: video.status,
+            uploadedAt: video.uploadedAt,
+          },
         });
+      } catch (saveError) {
+        console.error("Error saving video:", saveError);
+        res.status(500).json({
+          success: false,
+          message: "Error saving video information",
+        });
+      }
     } catch (error) {
       console.error("Video upload error:", error);
 
@@ -299,7 +649,7 @@ router.post(
         message: "Server error during video upload",
       });
     }
-  }
+  },
 );
 
 // @route   POST /api/upload/thumbnail
@@ -311,8 +661,6 @@ router.post(
   uploadImage.single("thumbnail"),
   async (req, res) => {
     try {
-      const { videoId } = req.params;
-
       if (!req.file) {
         return res.status(400).json({
           success: false,
@@ -320,9 +668,8 @@ router.post(
         });
       }
 
-      const video = await Video.findById(videoId);
+      const video = await Video.findById(req.params.videoId);
       if (!video) {
-        // Delete uploaded file if video not found
         fs.unlinkSync(req.file.path);
         return res.status(404).json({
           success: false,
@@ -362,7 +709,7 @@ router.post(
         message: "Server error during thumbnail upload",
       });
     }
-  }
+  },
 );
 
 // @route   POST /api/upload/avatar
@@ -431,7 +778,7 @@ router.get("/my-videos", auth, async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit))
       .select(
-        "title description thumbnailUrl duration category status views uploadedAt publishedAt likes comments"
+        "title description thumbnailUrl duration category status views uploadedAt publishedAt likes comments",
       );
 
     // Format videos to include counts

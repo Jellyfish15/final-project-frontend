@@ -28,7 +28,23 @@
   height: 120px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #8b5cf6;
+  border: 2px solid #e5e7eb;
+  background-color: #f3f4f6;
+  flex-shrink: 0;
+  display: block;
+}
+
+.profile__avatar-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 2px solid #e5e7eb;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  flex-shrink: 0;
 }
 
 .profile__info {
@@ -99,12 +115,12 @@
 }
 
 .profile__button--primary {
-  background-color: #8b5cf6;
+  background-color: #10b981;
   color: white;
 }
 
 .profile__button--primary:hover {
-  background-color: #7c3aed;
+  background-color: #059669;
 }
 
 .profile__button--secondary {
@@ -217,7 +233,7 @@
 
 .profile__upload-content {
   text-align: center;
-  color: #8b5cf6;
+  color: #10b981;
 }
 
 .profile__upload-icon {
@@ -318,7 +334,9 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .profile__video-item:hover {

@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext/AuthContext";
 import ModalWithForm from "../ModalWithForm/ModalWithForm";
+import { authAPI } from "../../services/api";
 
 const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const { register } = useAuth();
@@ -13,6 +14,14 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0,
+    feedback: "",
+  });
+  const [usernameAvailable, setUsernameAvailable] = useState(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
 
   const resetForm = () => {
     setFormData({
@@ -23,7 +32,61 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
       displayName: "",
     });
     setErrors({});
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setPasswordStrength({ score: 0, feedback: "" });
+    setUsernameAvailable(null);
   };
+
+  const calculatePasswordStrength = (password) => {
+    let score = 0;
+    let feedback = "";
+
+    if (!password) {
+      return { score: 0, feedback: "" };
+    }
+
+    if (password.length >= 6) score++;
+    if (password.length >= 10) score++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^a-zA-Z0-9]/.test(password)) score++;
+
+    if (score <= 1) feedback = "Weak";
+    else if (score <= 3) feedback = "Fair";
+    else if (score === 4) feedback = "Good";
+    else feedback = "Strong";
+
+    return { score, feedback };
+  };
+
+  const checkUsernameAvailability = async (username) => {
+    if (!username || username.length < 3) {
+      setUsernameAvailable(null);
+      return;
+    }
+
+    setCheckingUsername(true);
+    try {
+      const response = await authAPI.checkUsername(username);
+      setUsernameAvailable(response.available);
+    } catch (error) {
+      console.error("Error checking username:", error);
+      setUsernameAvailable(null);
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (formData.username) {
+        checkUsernameAvailability(formData.username);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.username]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -31,6 +94,10 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
       ...prev,
       [name]: value,
     }));
+
+    if (name === "password") {
+      setPasswordStrength(calculatePasswordStrength(value));
+    }
 
     if (errors[name]) {
       setErrors((prev) => ({
@@ -50,11 +117,11 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
     } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
       newErrors.username =
         "Username can only contain letters, numbers, and underscores";
+    } else if (usernameAvailable === false) {
+      newErrors.username = "Username is already taken";
     }
 
-    if (!formData.displayName.trim()) {
-      newErrors.displayName = "Display name is required";
-    }
+    // Display name is now optional - will be auto-generated from username if not provided
 
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
@@ -114,7 +181,7 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
     try {
       const result = await register({
         username: formData.username,
-        displayName: formData.displayName,
+        displayName: formData.displayName.trim() || formData.username,
         email: formData.email,
         password: formData.password,
       });
@@ -160,6 +227,29 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
           onChange={handleInputChange}
           required
         />
+        {checkingUsername && (
+          <div
+            className="modal__info"
+            style={{ fontSize: "12px", color: "#666" }}
+          >
+            Checking availability...
+          </div>
+        )}
+        {!checkingUsername &&
+          usernameAvailable === true &&
+          formData.username.length >= 3 && (
+            <div
+              className="modal__success"
+              style={{ fontSize: "12px", color: "#10b981" }}
+            >
+              ✓ Username available
+            </div>
+          )}
+        {!checkingUsername && usernameAvailable === false && (
+          <div className="modal__error" style={{ fontSize: "12px" }}>
+            ✗ Username already taken
+          </div>
+        )}
         {errors.username && (
           <div className="modal__error">{errors.username}</div>
         )}
@@ -167,17 +257,21 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
 
       <div className="modal__field">
         <label htmlFor="register-display-name" className="modal__label">
-          Display Name
+          Display Name{" "}
+          <span
+            style={{ fontSize: "12px", color: "#666", fontWeight: "normal" }}
+          >
+            (optional)
+          </span>
         </label>
         <input
           id="register-display-name"
           type="text"
           name="displayName"
           className="modal__input"
-          placeholder="Your display name"
+          placeholder="Leave blank to use your username"
           value={formData.displayName}
           onChange={handleInputChange}
-          required
         />
         {errors.displayName && (
           <div className="modal__error">{errors.displayName}</div>
@@ -205,16 +299,84 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
         <label htmlFor="register-password" className="modal__label">
           Password
         </label>
-        <input
-          id="register-password"
-          type="password"
-          name="password"
-          className="modal__input"
-          placeholder="Create a password"
-          value={formData.password}
-          onChange={handleInputChange}
-          required
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            id="register-password"
+            type={showPassword ? "text" : "password"}
+            name="password"
+            className="modal__input"
+            placeholder="Create a password (min 6 characters)"
+            value={formData.password}
+            onChange={handleInputChange}
+            required
+            style={{ paddingRight: "40px" }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            style={{
+              position: "absolute",
+              right: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "18px",
+              padding: "5px",
+            }}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? "👁️" : "👁️‍🗨️"}
+          </button>
+        </div>
+        {formData.password && (
+          <div style={{ marginTop: "8px" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "4px",
+                height: "4px",
+                marginBottom: "4px",
+              }}
+            >
+              {[1, 2, 3, 4, 5].map((level) => (
+                <div
+                  key={level}
+                  style={{
+                    flex: 1,
+                    backgroundColor:
+                      level <= passwordStrength.score
+                        ? passwordStrength.score <= 1
+                          ? "#ef4444"
+                          : passwordStrength.score <= 3
+                            ? "#f59e0b"
+                            : passwordStrength.score === 4
+                              ? "#10b981"
+                              : "#059669"
+                        : "#e5e7eb",
+                    borderRadius: "2px",
+                  }}
+                />
+              ))}
+            </div>
+            <div
+              style={{
+                fontSize: "12px",
+                color:
+                  passwordStrength.score <= 1
+                    ? "#ef4444"
+                    : passwordStrength.score <= 3
+                      ? "#f59e0b"
+                      : passwordStrength.score === 4
+                        ? "#10b981"
+                        : "#059669",
+              }}
+            >
+              {passwordStrength.feedback}
+            </div>
+          </div>
+        )}
         {errors.password && (
           <div className="modal__error">{errors.password}</div>
         )}
@@ -224,16 +386,37 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
         <label htmlFor="register-confirm-password" className="modal__label">
           Confirm Password
         </label>
-        <input
-          id="register-confirm-password"
-          type="password"
-          name="confirmPassword"
-          className="modal__input"
-          placeholder="Confirm your password"
-          value={formData.confirmPassword}
-          onChange={handleInputChange}
-          required
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            id="register-confirm-password"
+            type={showConfirmPassword ? "text" : "password"}
+            name="confirmPassword"
+            className="modal__input"
+            placeholder="Confirm your password"
+            value={formData.confirmPassword}
+            onChange={handleInputChange}
+            required
+            style={{ paddingRight: "40px" }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            style={{
+              position: "absolute",
+              right: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "18px",
+              padding: "5px",
+            }}
+            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+          >
+            {showConfirmPassword ? "👁️" : "👁️‍🗨️"}
+          </button>
+        </div>
         {errors.confirmPassword && (
           <div className="modal__error">{errors.confirmPassword}</div>
         )}

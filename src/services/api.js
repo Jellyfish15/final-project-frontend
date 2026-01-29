@@ -119,6 +119,12 @@ class ApiService {
   // File upload request
   async upload(endpoint, formData) {
     const url = `${this.baseURL}${endpoint}`;
+    const token = this.getAuthToken();
+    console.log(`[API Upload] Uploading to ${endpoint}`);
+    console.log(`[API Upload] Token present: ${!!token}`);
+    console.log(
+      `[API Upload] Token: ${token ? token.substring(0, 20) + "..." : "NO TOKEN"}`,
+    );
 
     try {
       const response = await fetch(url, {
@@ -131,7 +137,7 @@ class ApiService {
 
       if (!response.ok) {
         throw new Error(
-          data.message || `HTTP error! status: ${response.status}`
+          data.message || `HTTP error! status: ${response.status}`,
         );
       }
 
@@ -179,6 +185,10 @@ export const authAPI = {
   changePassword: (passwordData) =>
     apiService.put("/auth/change-password", passwordData),
 
+  // Check username availability
+  checkUsername: (username) =>
+    apiService.get(`/auth/check-username/${username}`, { includeAuth: false }),
+
   // Forgot password
   forgotPassword: (email) =>
     apiService.post("/auth/forgot-password", { email }, { includeAuth: false }),
@@ -188,7 +198,7 @@ export const authAPI = {
     apiService.post(
       "/auth/reset-password",
       { token, newPassword },
-      { includeAuth: false }
+      { includeAuth: false },
     ),
 };
 
@@ -203,7 +213,7 @@ export const usersAPI = {
   // Search users
   searchUsers: (query, page = 1, limit = 20) =>
     apiService.get(
-      `/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`
+      `/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
     ),
 
   // Follow user
@@ -276,7 +286,7 @@ export const videosAPI = {
   // Search videos
   searchVideos: (query, page = 1, limit = 20, category = null) => {
     let url = `/videos/search?q=${encodeURIComponent(
-      query
+      query,
     )}&page=${page}&limit=${limit}`;
     if (category) {
       url += `&category=${category}`;
@@ -291,13 +301,13 @@ export const videosAPI = {
   // Get profile feed (all user videos + similar based on most engaged)
   getProfileFeed: (username, similarLimit = 10) =>
     apiService.get(
-      `/videos/profile/${username}/feed?similarLimit=${similarLimit}`
+      `/videos/profile/${username}/feed?similarLimit=${similarLimit}`,
     ),
 
   // Get cached YouTube videos
   getCachedVideos: (count = null) =>
     apiService.get(
-      `/youtube-cache/diverse${count !== null ? `?count=${count}` : ""}`
+      `/youtube-cache/diverse${count !== null ? `?count=${count}` : ""}`,
     ),
 
   // Get all cached videos (not just diverse)
@@ -311,14 +321,21 @@ export const videosAPI = {
   // Get videos with opportunistic caching (tries to fetch new videos first)
   getFeedWithCaching: (count = 28) =>
     apiService.get(
-      `/youtube-cache/feed${count !== null ? `?count=${count}` : ""}`
+      `/youtube-cache/feed${count !== null ? `?count=${count}` : ""}`,
     ),
 };
 
 // Upload API
 export const uploadAPI = {
-  // Upload video
+  // Upload video (deprecated - use tempVideoUpload + finalizeVideo instead)
   uploadVideo: (formData) => apiService.upload("/upload/video", formData),
+
+  // Auto-upload video and generate thumbnails
+  tempVideoUpload: (formData) =>
+    apiService.upload("/upload/temp-video", formData),
+
+  // Finalize uploaded video with metadata
+  finalizeVideo: (data) => apiService.post("/upload/finalize-video", data),
 
   // Upload thumbnail
   uploadThumbnail: (videoId, formData) =>

@@ -15,6 +15,39 @@ const generateToken = (userId) => {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
 };
 
+// @route   GET /api/auth/check-username/:username
+// @desc    Check if username is available
+// @access  Public
+router.get("/check-username/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    // Validate username format
+    if (!username || username.length < 3 || !/^[a-zA-Z0-9_]+$/.test(username)) {
+      return res.json({
+        available: false,
+        message: "Invalid username format",
+      });
+    }
+
+    // Check if username exists
+    const existingUser = await User.findOne({ username });
+
+    res.json({
+      available: !existingUser,
+      message: existingUser
+        ? "Username is already taken"
+        : "Username is available",
+    });
+  } catch (error) {
+    console.error("Check username error:", error);
+    res.status(500).json({
+      available: false,
+      message: "Server error",
+    });
+  }
+});
+
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
@@ -32,9 +65,10 @@ router.post(
       .isLength({ min: 3, max: 30 })
       .matches(/^[a-zA-Z0-9_]+$/)
       .withMessage(
-        "Username must be 3-30 characters and contain only letters, numbers, and underscores"
+        "Username must be 3-30 characters and contain only letters, numbers, and underscores",
       ),
     body("displayName")
+      .optional()
       .isLength({ min: 1, max: 50 })
       .trim()
       .withMessage("Display name must be 1-50 characters"),
@@ -72,7 +106,8 @@ router.post(
         email,
         password,
         username,
-        displayName,
+        displayName:
+          displayName && displayName.trim() ? displayName.trim() : username,
         description: description || "",
         interests: interests || [],
       });
@@ -99,7 +134,7 @@ router.post(
         message: "Server error during registration",
       });
     }
-  }
+  },
 );
 
 // @route   POST /api/auth/login
@@ -191,7 +226,7 @@ router.post(
         message: "Server error during login",
       });
     }
-  }
+  },
 );
 
 // @route   GET /api/auth/me
@@ -289,7 +324,7 @@ router.put(
         message: "Server error",
       });
     }
-  }
+  },
 );
 
 module.exports = router;

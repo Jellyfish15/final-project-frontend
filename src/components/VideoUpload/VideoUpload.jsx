@@ -21,6 +21,7 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
   const [thumbnailOptions, setThumbnailOptions] = useState([]);
   const [selectedThumbnail, setSelectedThumbnail] = useState(0);
   const [generatingThumbnails, setGeneratingThumbnails] = useState(false);
+  const [uploadedVideoData, setUploadedVideoData] = useState(null);
 
   const categories = [
     { value: "education", label: "Education" },
@@ -71,15 +72,15 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
 
     if (!allowedTypes.includes(file.type) && !hasValidExtension) {
       alert(
-        "Please select a valid video file (MP4, MOV, MPEG, WebM, AVI, MKV, etc.)"
+        "Please select a valid video file (MP4, MOV, MPEG, WebM, AVI, MKV, etc.)",
       );
       return;
     }
 
-    // Validate file size (100MB max)
-    const maxSize = 100 * 1024 * 1024;
+    // Validate file size (200MB max)
+    const maxSize = 200 * 1024 * 1024;
     if (file.size > maxSize) {
-      alert("File size must be less than 100MB");
+      alert("File size must be less than 200MB");
       return;
     }
 
@@ -87,96 +88,65 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
     // For now, we'll rely on backend validation
 
     setSelectedFile(file);
-    // Generate thumbnails after file is selected
-    generateThumbnails(file);
+    // Auto-upload video in background for thumbnail generation
+    autoUploadVideo(file);
   };
 
-  const generateThumbnails = async (videoFile) => {
+  const autoUploadVideo = async (file) => {
+    console.log("Auto-uploading video for thumbnail generation...");
     setGeneratingThumbnails(true);
     setThumbnailOptions([]);
     setSelectedThumbnail(0);
 
     try {
-      const video = document.createElement("video");
-      video.preload = "metadata";
+      const formData = new FormData();
+      formData.append("video", file);
 
-      const objectURL = URL.createObjectURL(videoFile);
-      video.src = objectURL;
+      const response = await uploadAPI.tempVideoUpload(formData);
+      console.log("Temp upload response:", response);
 
-      await new Promise((resolve, reject) => {
-        video.onloadedmetadata = resolve;
-        video.onerror = reject;
-      });
-
-      const duration = video.duration;
-      const thumbnails = [];
-
-      // Generate 3 thumbnails at 25%, 50%, and 75% of video duration
-      const timePoints = [0.25, 0.5, 0.75];
-
-      for (const timePoint of timePoints) {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-
-        // Set canvas size (16:9 aspect ratio) - larger resolution to capture more detail
-        const canvasWidth = 1280;
-        const canvasHeight = 720;
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
-
-        // Seek to specific time
-        video.currentTime = duration * timePoint;
-
-        await new Promise((resolve) => {
-          video.onseeked = resolve;
+      if (response.success && response.videoData) {
+        setUploadedVideoData(response.videoData);
+        // Thumbnail options URLs need to be resolved to full paths
+        const resolvedThumbnails = response.videoData.thumbnailUrls.map(
+          (url) => {
+            if (url && !url.startsWith("http")) {
+              return `http://localhost:5000${url}`;
+            }
+            return url;
+          },
+        );
+        setThumbnailOptions(resolvedThumbnails);
+        console.log(
+          "Thumbnails generated successfully. Options:",
+          resolvedThumbnails,
+        );
+        // Log each URL for debugging
+        resolvedThumbnails.forEach((url, index) => {
+          console.log(`Thumbnail ${index + 1}: ${url}`);
         });
-
-        // First, draw blurred background (stretched to fill canvas)
-        ctx.filter = "blur(20px)";
-        ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
-
-        // Reset filter for main image
-        ctx.filter = "none";
-
-        // Calculate dimensions to fit entire video while maintaining aspect ratio
-        const videoAspectRatio = video.videoWidth / video.videoHeight;
-        const canvasAspectRatio = canvasWidth / canvasHeight;
-
-        let drawWidth, drawHeight, drawX, drawY;
-
-        if (videoAspectRatio > canvasAspectRatio) {
-          // Video is wider - fit to width
-          drawWidth = canvasWidth;
-          drawHeight = canvasWidth / videoAspectRatio;
-          drawX = 0;
-          drawY = (canvasHeight - drawHeight) / 2;
-        } else {
-          // Video is taller - fit to height
-          drawHeight = canvasHeight;
-          drawWidth = canvasHeight * videoAspectRatio;
-          drawX = (canvasWidth - drawWidth) / 2;
-          drawY = 0;
-        }
-
-        // Draw the full video frame centered on top of blurred background
-        ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
-
-        // Convert canvas to blob
-        const thumbnailDataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        thumbnails.push(thumbnailDataUrl);
+      } else {
+        console.error("Response was not successful:", response);
+        alert(
+          "Failed to generate thumbnails: " +
+            (response.message || "Unknown error"),
+        );
       }
-
-      setThumbnailOptions(thumbnails);
-      setSelectedThumbnail(0); // Select first thumbnail by default
-
-      // Clean up
-      URL.revokeObjectURL(objectURL);
     } catch (error) {
-      console.error("Error generating thumbnails:", error);
-      alert("Failed to generate thumbnails. You can still upload the video.");
+      console.error("Auto-upload error:", error);
+      console.error("Error details:", error.message);
+      alert("Error uploading video for thumbnail generation: " + error.message);
+      // Don't block the form if auto-upload fails
     } finally {
       setGeneratingThumbnails(false);
     }
+  };
+
+  const generateThumbnails = async (videoFile) => {
+    // This function is kept for backward compatibility but is now replaced by autoUploadVideo
+    // The new approach generates thumbnails server-side during auto-upload
+    // This is a fallback in case auto-upload fails
+    return;
   };
 
   const handleThumbnailSelect = (index) => {
@@ -210,8 +180,8 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!selectedFile) {
-      alert("Please select a video file");
+    if (!uploadedVideoData) {
+      alert("Please wait for video to finish uploading before submitting.");
       return;
     }
 
@@ -222,109 +192,55 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
 
     try {
       setUploading(true);
-      setUploadProgress(0);
 
-      const uploadFormData = new FormData();
-      uploadFormData.append("video", selectedFile);
-      uploadFormData.append("title", formData.title.trim());
-      uploadFormData.append("description", formData.description.trim());
-      uploadFormData.append("category", formData.category);
-      uploadFormData.append("tags", JSON.stringify(formData.tags));
-      uploadFormData.append("isPrivate", formData.isPrivate);
-
-      // Store selected thumbnail index for later use
-      // We'll upload the thumbnail separately after the video is uploaded
-      const selectedThumbnailData =
+      // Get selected thumbnail URL
+      const selectedThumbnailUrl =
         thumbnailOptions.length > 0
           ? thumbnailOptions[selectedThumbnail]
-          : null;
+          : uploadedVideoData.thumbnailUrls[0];
 
-      // Simulate upload progress (in real implementation, you'd use XMLHttpRequest or a library like axios)
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + Math.random() * 10;
-        });
-      }, 500);
+      console.log("Finalizing video with data:", {
+        videoFilename: uploadedVideoData.filename,
+        title: formData.title,
+        selectedThumbnailUrl,
+      });
 
-      const response = await uploadAPI.uploadVideo(uploadFormData);
+      // Call finalize-video endpoint
+      const finalizeData = {
+        videoFilename: uploadedVideoData.filename,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        category: formData.category,
+        tags: JSON.stringify(formData.tags),
+        isPrivate: formData.isPrivate,
+        selectedThumbnailUrl,
+      };
 
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-
-      console.log("Video upload response:", response);
+      const response = await uploadAPI.finalizeVideo(finalizeData);
+      console.log("Video finalize response:", response);
 
       if (response.success) {
-        let videoData = response.video;
-
-        console.log("Video data from response:", videoData);
-        console.log("Video ID:", videoData._id || videoData.id);
-
-        // If we have a thumbnail and the video was uploaded successfully, upload thumbnail separately
-        const videoId = videoData._id || videoData.id;
-        if (selectedThumbnailData && videoId) {
-          try {
-            const thumbnailBlob = await (
-              await fetch(selectedThumbnailData)
-            ).blob();
-            const thumbnailFormData = new FormData();
-            thumbnailFormData.append(
-              "thumbnail",
-              thumbnailBlob,
-              "thumbnail.jpg"
-            );
-
-            console.log("Uploading thumbnail for video ID:", videoId);
-
-            const thumbnailResponse = await uploadAPI.uploadThumbnail(
-              videoId,
-              thumbnailFormData
-            );
-
-            console.log("Thumbnail upload response:", thumbnailResponse);
-
-            // Update video data with the thumbnail URL from backend
-            if (thumbnailResponse.success && thumbnailResponse.thumbnailUrl) {
-              videoData = {
-                ...videoData,
-                thumbnailUrl: thumbnailResponse.thumbnailUrl,
-                thumbnail: thumbnailResponse.thumbnailUrl,
-              };
-              console.log("Updated video data with thumbnail:", videoData);
-            } else {
-              console.warn(
-                "Thumbnail upload succeeded but no thumbnailUrl returned:",
-                thumbnailResponse
-              );
-            }
-          } catch (thumbnailError) {
-            console.error("Thumbnail upload error:", thumbnailError);
-            // Don't fail the whole upload if thumbnail fails
-          }
-        }
+        const videoData = response.video;
 
         setTimeout(() => {
           onUploadSuccess(videoData);
         }, 500);
       } else {
-        console.error("Upload failed with response:", response);
-        alert(response.message || "Upload failed. Please try again.");
+        console.error("Finalize failed with response:", response);
+        alert(
+          response.message || "Failed to finalize video. Please try again.",
+        );
       }
     } catch (error) {
-      console.error("Upload error details:", {
+      console.error("Finalize error details:", {
         message: error.message,
         response: error.response,
         stack: error.stack,
       });
 
-      let errorMessage = "Upload failed. ";
+      let errorMessage = "Failed to finalize video. ";
       if (error.response?.status === 401) {
         errorMessage += "Please log in to upload videos.";
-      } else if (error.response?.status === 413) {
-        errorMessage += "File is too large. Maximum size is 100MB.";
       } else if (error.response?.data?.message) {
         errorMessage += error.response.data.message;
       } else {
@@ -334,7 +250,6 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
       alert(errorMessage);
     } finally {
       setUploading(false);
-      setUploadProgress(0);
     }
   };
 
@@ -351,6 +266,7 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
     setUploadProgress(0);
     setThumbnailOptions([]);
     setSelectedThumbnail(0);
+    setUploadedVideoData(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -416,7 +332,7 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
                     Click to select video file
                   </div>
                   <div className="video-upload__file-subtext">
-                    MP4, MOV, WebM (max 100MB, 5 minutes)
+                    MP4, MOV, WebM (max 200MB, 5 minutes)
                   </div>
                 </div>
               </div>
@@ -588,13 +504,15 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
           <button
             type="submit"
             className="video-upload__button video-upload__button--primary"
-            disabled={!selectedFile || !formData.title.trim() || uploading}
+            disabled={!uploadedVideoData || !formData.title.trim() || uploading}
           >
             {uploading ? (
               <>
                 <LoadingSpinner size="small" />
-                Uploading...
+                Finalizing...
               </>
+            ) : !uploadedVideoData ? (
+              "Select Video & Wait for Upload"
             ) : (
               "Upload Video"
             )}

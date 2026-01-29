@@ -451,6 +451,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     playsInline
                     preload="auto"
                     controls={false}
+                    crossOrigin="anonymous"
                     onClick={togglePlay}
                     onTouchStart={(e) => {
                       const touch = e.touches[0];
@@ -479,16 +480,32 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     onLoadStart={() =>
                       console.log("[Video] Load start:", currentVideo?.videoUrl)
                     }
-                    onLoadedData={() =>
-                      console.log("[Video] Loaded data successfully")
-                    }
-                    onError={(e) =>
+                    onLoadedData={() => {
+                      console.log("[Video] Loaded data successfully");
+                      console.log(
+                        "[Video] Duration:",
+                        videoRef.current?.duration,
+                      );
+                      console.log(
+                        "[Video] Has audio:",
+                        videoRef.current?.mozHasAudio !== false,
+                      );
+                    }}
+                    onError={(e) => {
+                      const error = e.target.error;
                       console.error(
                         "[Video] Error loading video:",
-                        e.target.error,
+                        {
+                          code: error?.code,
+                          message: error?.message,
+                          MEDIA_ERR_ABORTED: error?.code === 1,
+                          MEDIA_ERR_NETWORK: error?.code === 2,
+                          MEDIA_ERR_DECODE: error?.code === 3,
+                          MEDIA_ERR_SRC_NOT_SUPPORTED: error?.code === 4,
+                        },
                         currentVideo?.videoUrl,
-                      )
-                    }
+                      );
+                    }}
                     onCanPlay={async () => {
                       console.log("[Video] Can play");
                       // Try to play when ready on mobile
@@ -512,23 +529,21 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                   >
                     <source
                       src={currentVideo.videoUrl}
-                      type="video/mp4"
-                      onError={() =>
+                      type={
+                        currentVideo.videoUrl?.endsWith(".webm")
+                          ? "video/webm"
+                          : currentVideo.videoUrl?.endsWith(".mov")
+                            ? "video/mp4"
+                            : "video/mp4"
+                      }
+                      onError={(e) => {
                         console.error(
                           "[Video] Source error for:",
                           currentVideo.videoUrl,
-                        )
-                      }
-                    />
-                    <source
-                      src={currentVideo.videoUrl}
-                      type="video/webm"
-                      onError={() =>
-                        console.error(
-                          "[Video] WebM source error for:",
-                          currentVideo.videoUrl,
-                        )
-                      }
+                          "Error:",
+                          e.target.error,
+                        );
+                      }}
                     />
                     <div className="video-page__video-placeholder">
                       <div className="video-page__placeholder-content">
