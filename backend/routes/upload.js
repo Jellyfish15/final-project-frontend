@@ -125,74 +125,90 @@ router.post(
       const videoPath = path.join(videosDir, req.file.filename);
       const originalFilename = req.file.filename;
 
-      // Convert video to H.264/AAC format for browser compatibility
-      const convertedFilename = `converted-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.mp4`;
-      const convertedPath = path.join(videosDir, convertedFilename);
+      // Check if we're on a free tier (Render free tier has limited memory)
+      const isFreeTier =
+        process.env.RENDER_INSTANCE_TYPE === "free" ||
+        process.env.SKIP_VIDEO_CONVERSION === "true" ||
+        !process.env.RENDER_INSTANCE_TYPE; // Local development
 
-      console.log("Converting video to browser-compatible format...");
-      console.log("Original video path:", videoPath);
-      console.log("Converted video path:", convertedPath);
+      let finalFilename = originalFilename;
+      let finalVideoPath = videoPath;
 
-      // Convert video using FFmpeg
-      const conversionPromise = new Promise((resolve, reject) => {
-        ffmpeg(videoPath)
-          .videoCodec("libx264")
-          .audioCodec("aac")
-          .outputOptions([
-            "-preset fast",
-            "-crf 23",
-            "-movflags +faststart",
-            "-pix_fmt yuv420p",
-          ])
-          .on("start", (commandLine) => {
-            console.log("FFmpeg conversion started:", commandLine);
-          })
-          .on("progress", (progress) => {
-            console.log("Processing: " + progress.percent + "% done");
-          })
-          .on("end", () => {
-            console.log("Video conversion completed");
-            // Delete original file after successful conversion
-            if (fs.existsSync(videoPath)) {
-              fs.unlinkSync(videoPath);
-              console.log("Original file deleted");
-            }
-            resolve(convertedFilename);
-          })
-          .on("error", (err, stdout, stderr) => {
-            console.error("FFmpeg conversion error:", err.message);
-            console.error("FFmpeg stderr:", stderr);
-            reject(err);
-          })
-          .save(convertedPath);
-      });
+      // Only convert video if NOT on free tier
+      if (!isFreeTier) {
+        console.log("Converting video to browser-compatible format...");
+        const convertedFilename = `converted-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.mp4`;
+        const convertedPath = path.join(videosDir, convertedFilename);
 
-      let finalFilename;
-      try {
-        finalFilename = await Promise.race([
-          conversionPromise,
-          new Promise((_, reject) =>
-            setTimeout(
-              () =>
-                reject(new Error("Video conversion timeout after 120 seconds")),
-              120000,
-            ),
-          ),
-        ]);
-      } catch (err) {
-        console.error("Video conversion failed:", err.message);
-        // Clean up files
-        if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
-        if (fs.existsSync(convertedPath)) fs.unlinkSync(convertedPath);
-        return res.status(500).json({
-          success: false,
-          message:
-            "Failed to convert video to browser-compatible format: " +
-            err.message,
+        console.log("Original video path:", videoPath);
+        console.log("Converted video path:", convertedPath);
+
+        // Convert video using FFmpeg
+        const conversionPromise = new Promise((resolve, reject) => {
+          ffmpeg(videoPath)
+            .videoCodec("libx264")
+            .audioCodec("aac")
+            .outputOptions([
+              "-preset fast",
+              "-crf 23",
+              "-movflags +faststart",
+              "-pix_fmt yuv420p",
+            ])
+            .on("start", (commandLine) => {
+              console.log("FFmpeg conversion started:", commandLine);
+            })
+            .on("progress", (progress) => {
+              console.log("Processing: " + progress.percent + "% done");
+            })
+            .on("end", () => {
+              console.log("Video conversion completed");
+              // Delete original file after successful conversion
+              if (fs.existsSync(videoPath)) {
+                fs.unlinkSync(videoPath);
+                console.log("Original file deleted");
+              }
+              resolve(convertedFilename);
+            })
+            .on("error", (err, stdout, stderr) => {
+              console.error("FFmpeg conversion error:", err.message);
+              console.error("FFmpeg stderr:", stderr);
+              reject(err);
+            })
+            .save(convertedPath);
         });
+
+        try {
+          finalFilename = await Promise.race([
+            conversionPromise,
+            new Promise((_, reject) =>
+              setTimeout(
+                () =>
+                  reject(
+                    new Error("Video conversion timeout after 120 seconds"),
+                  ),
+                120000,
+              ),
+            ),
+          ]);
+          finalVideoPath = path.join(videosDir, finalFilename);
+        } catch (err) {
+          console.error("Video conversion failed:", err.message);
+          // Clean up files
+          if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
+          if (fs.existsSync(convertedPath)) fs.unlinkSync(convertedPath);
+          return res.status(500).json({
+            success: false,
+            message:
+              "Failed to convert video to browser-compatible format: " +
+              err.message,
+          });
+        }
+      } else {
+        console.log(
+          "Skipping video conversion (free tier or local development)",
+        );
       }
 
-      const finalVideoPath = path.join(videosDir, finalFilename);
       const videoUrl = `/uploads/videos/${finalFilename}`;
 
       // Generate thumbnails immediately
