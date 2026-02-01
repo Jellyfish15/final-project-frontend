@@ -1,7 +1,7 @@
 services:
   # Backend API Service
   - type: web
-    name: nudl-backend
+    name: final-project-frontend
     runtime: node
     region: oregon
     plan: free
