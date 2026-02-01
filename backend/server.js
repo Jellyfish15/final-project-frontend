@@ -33,11 +33,15 @@ app.use("/api/", limiter);
 app.use(
   cors({
     origin:
-      process.env.NODE_ENV === "production"
+      process.env.NODE_ENV === "production" || process.env.NODE_ENV === "development"
         ? [
             "https://jellyfish15.github.io",
-            "https://your-custom-domain.com",
+            "https://final-project-frontend-1-2yrx.onrender.com",
             /\.github\.io$/,
+            /\.onrender\.com$/,
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:5000",
           ]
         : [
             "http://localhost:3000",
@@ -45,6 +49,7 @@ app.use(
             "http://localhost:3002",
             "http://localhost:3003",
             "http://localhost:3005",
+            "http://localhost:5000",
           ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
