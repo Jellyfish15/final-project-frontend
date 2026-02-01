@@ -103,8 +103,6 @@ export default defineConfig({
       },
     },
   },
-  base:
-    process.env.NODE_ENV === "production" ? "/final-project-frontend/" : "/",
   build: {
     outDir: "dist",
     assetsDir: "assets",
