@@ -104,7 +104,7 @@ const searchEducationalVideos = async (maxResults = 10, pageToken = "") => {
   return searchData;
 };
 
-const getDiverseEducationalFeed = async (count = 10) => {
+const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
   const educationalQueries = [
     "mathematics lesson",
     "physics explained",
@@ -150,7 +150,7 @@ const getDiverseEducationalFeed = async (count = 10) => {
           q: query,
           type: "video",
           maxResults: "3", // Get 3 results to have options after duration filtering
-          order: "relevance",
+          order: "date",
           videoDuration: "short",
           videoDefinition: "high",
           key: API_KEY,
@@ -159,6 +159,10 @@ const getDiverseEducationalFeed = async (count = 10) => {
           regionCode: "US",
           videoCategoryId: "27", // Education category
         });
+
+        if (publishedAfter) {
+          searchParams.append("publishedAfter", publishedAfter);
+        }
 
         const searchResponse = await fetch(
           `${BASE_URL}/search?${searchParams}`

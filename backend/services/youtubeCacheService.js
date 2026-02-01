@@ -121,8 +121,24 @@ class YouTubeCacheService {
     try {
       console.log(`Fetching ${count} new YouTube videos to cache...`);
 
+      const latestPublished = await YouTubeVideo.findOne({ isActive: true })
+        .sort({ publishedAt: -1 })
+        .select("publishedAt");
+      const publishedAfter = latestPublished?.publishedAt
+        ? latestPublished.publishedAt.toISOString()
+        : null;
+
+      if (publishedAfter) {
+        console.log(`Using publishedAfter=${publishedAfter} to fetch newer videos`);
+      }
+
       // Fetch diverse educational videos from YouTube API
-      const youtubeVideos = await getDiverseEducationalFeed(count);
+      let youtubeVideos = await getDiverseEducationalFeed(count, publishedAfter);
+
+      if (publishedAfter && (!youtubeVideos || youtubeVideos.length === 0)) {
+        console.log("No videos returned with publishedAfter. Falling back to broader search.");
+        youtubeVideos = await getDiverseEducationalFeed(count);
+      }
 
       if (!youtubeVideos || youtubeVideos.length === 0) {
         console.log("No videos returned from YouTube API");
