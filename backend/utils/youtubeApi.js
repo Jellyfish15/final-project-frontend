@@ -9,7 +9,7 @@ const fetch = (...args) =>
 const searchVideosByKeywords = async (
   query,
   maxResults = 10,
-  pageToken = ""
+  pageToken = "",
 ) => {
   const searchParams = new URLSearchParams({
     part: "snippet",
@@ -17,13 +17,10 @@ const searchVideosByKeywords = async (
     type: "video",
     maxResults: maxResults.toString(),
     order: "relevance",
-    videoDuration: "short",
-    videoDefinition: "high",
     key: API_KEY,
     safeSearch: "moderate",
     relevanceLanguage: "en",
     regionCode: "US",
-    videoCategoryId: "27", // Education category
   });
 
   if (pageToken) {
@@ -81,13 +78,10 @@ const searchEducationalVideos = async (maxResults = 10, pageToken = "") => {
     type: "video",
     maxResults: maxResults.toString(),
     order: "relevance",
-    videoDuration: "short",
-    videoDefinition: "high",
     key: API_KEY,
     safeSearch: "moderate",
     relevanceLanguage: "en",
     regionCode: "US",
-    videoCategoryId: "27", // Education category
   });
 
   if (pageToken) {
@@ -105,6 +99,7 @@ const searchEducationalVideos = async (maxResults = 10, pageToken = "") => {
 };
 
 const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
+  const MAX_DURATION_SECONDS = 900; // 15 minutes
   const educationalQueries = [
     "mathematics lesson",
     "physics explained",
@@ -151,13 +146,10 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
           type: "video",
           maxResults: "3", // Get 3 results to have options after duration filtering
           order: "date",
-          videoDuration: "short",
-          videoDefinition: "high",
           key: API_KEY,
           safeSearch: "moderate",
           relevanceLanguage: "en",
           regionCode: "US",
-          videoCategoryId: "27", // Education category
         });
 
         if (publishedAfter) {
@@ -165,7 +157,7 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
         }
 
         const searchResponse = await fetch(
-          `${BASE_URL}/search?${searchParams}`
+          `${BASE_URL}/search?${searchParams}`,
         );
 
         if (!searchResponse.ok) {
@@ -185,7 +177,7 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
           .join(",");
         const detailsData = await getVideoDetails(videoIds);
 
-        // Find first video under 5 minutes
+        // Find first video under 15 minutes
         const validVideo = detailsData.items?.find((video) => {
           const duration = video.contentDetails?.duration || "PT0S";
           const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -196,7 +188,7 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
           const seconds = parseInt(match[3]) || 0;
           const totalSeconds = hours * 3600 + minutes * 60 + seconds;
 
-          return totalSeconds <= 300; // 5 minutes
+          return totalSeconds <= MAX_DURATION_SECONDS; // 15 minutes
         });
 
         return validVideo || null;
