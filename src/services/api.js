@@ -1,5 +1,7 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "/api" : "/api"); // Fallback to /api for both dev and prod
+  import.meta.env.VITE_API_URL 
+    ? `${import.meta.env.VITE_API_URL}/api`
+    : (import.meta.env.DEV ? "/api" : "/api");
 
 // API utility class for handling HTTP requests
 class ApiService {
