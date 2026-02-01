@@ -240,12 +240,11 @@ app.use("*", (req, res) => {
 });
 
 // Graceful shutdown
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
   console.log("SIGTERM received. Shutting down gracefully...");
-  mongoose.connection.close(() => {
-    console.log("MongoDB connection closed.");
-    process.exit(0);
-  });
+  await mongoose.connection.close();
+  console.log("MongoDB connection closed.");
+  process.exit(0);
 });
 
 // Start server
