@@ -98,7 +98,7 @@ class YouTubeCacheService {
 
         for (let i = 0; i < remaining && i < availableVideos.length; i++) {
           const randomIndex = Math.floor(
-            Math.random() * availableVideos.length
+            Math.random() * availableVideos.length,
           );
           diverseVideos.push(availableVideos[randomIndex]);
           availableVideos.splice(randomIndex, 1);
@@ -129,14 +129,21 @@ class YouTubeCacheService {
         : null;
 
       if (publishedAfter) {
-        console.log(`Using publishedAfter=${publishedAfter} to fetch newer videos`);
+        console.log(
+          `Using publishedAfter=${publishedAfter} to fetch newer videos`,
+        );
       }
 
       // Fetch diverse educational videos from YouTube API
-      let youtubeVideos = await getDiverseEducationalFeed(count, publishedAfter);
+      let youtubeVideos = await getDiverseEducationalFeed(
+        count,
+        publishedAfter,
+      );
 
       if (publishedAfter && (!youtubeVideos || youtubeVideos.length === 0)) {
-        console.log("No videos returned with publishedAfter. Falling back to broader search.");
+        console.log(
+          "No videos returned with publishedAfter. Falling back to broader search.",
+        );
         youtubeVideos = await getDiverseEducationalFeed(count);
       }
 
@@ -176,7 +183,7 @@ class YouTubeCacheService {
             channelTitle: ytVideo.snippet.channelTitle,
             subject: subject,
             duration: this.parseDuration(
-              ytVideo.contentDetails?.duration || "PT0S"
+              ytVideo.contentDetails?.duration || "PT0S",
             ),
             viewCount: parseInt(ytVideo.statistics?.viewCount || 0),
             publishedAt: new Date(ytVideo.snippet.publishedAt),
@@ -238,11 +245,11 @@ class YouTubeCacheService {
 
       const result = await YouTubeVideo.updateMany(
         { cachedAt: { $lt: cutoffDate }, isActive: true },
-        { $set: { isActive: false } }
+        { $set: { isActive: false } },
       );
 
       console.log(
-        `Deactivated ${result.modifiedCount} videos older than ${daysOld} days`
+        `Deactivated ${result.modifiedCount} videos older than ${daysOld} days`,
       );
       return result.modifiedCount;
     } catch (error) {
@@ -411,7 +418,7 @@ class YouTubeCacheService {
   async getVideosWithOpportunisticCaching(count = 28) {
     try {
       console.log(
-        "Attempting to fetch and cache new videos from YouTube API..."
+        "Attempting to fetch and cache new videos from YouTube API...",
       );
 
       // Try to fetch new videos from YouTube
@@ -420,7 +427,7 @@ class YouTubeCacheService {
       if (cacheResult.success && cacheResult.cachedCount > 0) {
         // Successfully cached new videos, return them
         console.log(
-          `✅ Successfully cached ${cacheResult.cachedCount} new videos`
+          `✅ Successfully cached ${cacheResult.cachedCount} new videos`,
         );
 
         // Get diverse cached videos (including the newly cached ones)

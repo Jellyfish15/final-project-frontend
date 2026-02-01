@@ -141,7 +141,7 @@ const searchEducationalVideos = async (maxResults = 10, pageToken = "") => {
     "science for kids",
     "math for kids",
     "history for kids",
-    "coding for kids"
+    "coding for kids",
   ];
 
   const randomQuery =
