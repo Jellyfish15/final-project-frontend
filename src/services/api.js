@@ -1,7 +1,8 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL 
-    ? `${import.meta.env.VITE_API_URL}/api`
-    : (import.meta.env.DEV ? "/api" : "/api");
+const API_BASE_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : import.meta.env.DEV
+    ? "/api"
+    : "/api";
 
 // API utility class for handling HTTP requests
 class ApiService {

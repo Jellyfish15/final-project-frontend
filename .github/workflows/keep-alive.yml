@@ -13,4 +13,4 @@ jobs:
       - name: Ping backend health endpoint
         run: |
           echo "Pinging backend to keep it awake..."
-          curl -f https://nudl-backend.onrender.com/health && echo "✅ Backend is alive" || echo "⚠️ Backend ping failed"
+          curl -f https://final-project-frontend-1.onrender.com/health && echo "✅ Backend is alive" || echo "⚠️ Backend ping failed"
