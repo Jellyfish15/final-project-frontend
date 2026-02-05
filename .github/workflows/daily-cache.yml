@@ -13,7 +13,8 @@ jobs:
       - name: Trigger cache refresh
         run: |
           echo "Refreshing video cache..."
-          response=$(curl -X POST "${{ secrets.VITE_API_URL }}/youtube-cache/refresh" \
+          echo "Using API URL: ${{ secrets.VITE_API_URL }}/api/youtube-cache/refresh"
+          response=$(curl -X POST "${{ secrets.VITE_API_URL }}/api/youtube-cache/refresh" \
             -H "Content-Type: application/json" \
             -d '{"count": 28}' \
             -w "\nHTTP Status: %{http_code}")
@@ -21,10 +22,11 @@ jobs:
           echo "$response"
 
           # Check if request was successful (200-299 status code)
-          if [[ $(echo "$response" | grep -oP 'HTTP Status: \K\d+') =~ ^2 ]]; then
+          http_code=$(echo "$response" | grep -oP 'HTTP Status: \K\d+')
+          if [[ $http_code =~ ^2 ]]; then
             echo "✅ Cache refresh successful"
           else
-            echo "❌ Cache refresh failed"
+            echo "❌ Cache refresh failed with HTTP $http_code"
             exit 1
           fi
 
