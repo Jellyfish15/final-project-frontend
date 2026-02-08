@@ -67,8 +67,24 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   const handleMuteClick = () => {
     hasBeenUnmutedRef.current = true;
     toggleMute();
-    // Also play the video when unmuting for the first time
-    togglePlay();
+    
+    // Wait for state to update, then play the video
+    setTimeout(() => {
+      if (currentVideo?.videoType !== "youtube" && videoRef.current) {
+        const playPromise = videoRef.current.play();
+        if (playPromise) {
+          playPromise
+            .then(() => {
+              console.log("[Video] Playing after unmute");
+            })
+            .catch((err) => {
+              console.log("[Video] Could not play:", err.message);
+            });
+        }
+      } else {
+        togglePlay();
+      }
+    }, 10);
   };
 
   // Reset interaction tracker when video changes
