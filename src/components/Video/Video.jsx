@@ -325,6 +325,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                 <div
                   onClick={handleMuteClick}
                   onTouchStart={(e) => {
+                    e.stopPropagation();
                     const touch = e.touches[0];
                     touchStartRef.current = {
                       x: touch.clientX,
@@ -333,6 +334,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     };
                   }}
                   onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     const touch = e.changedTouches[0];
                     const deltaX = Math.abs(
                       touch.clientX - touchStartRef.current.x,
@@ -344,7 +347,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
                     // Only unmute if it's a tap (not a swipe)
                     if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
-                      e.preventDefault();
                       handleMuteClick();
                     }
                   }}
