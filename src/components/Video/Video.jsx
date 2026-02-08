@@ -67,6 +67,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   const handleMuteClick = () => {
     hasBeenUnmutedRef.current = true;
     toggleMute();
+    // Also play the video when unmuting for the first time
+    togglePlay();
   };
 
   // Reset interaction tracker when video changes
@@ -262,38 +264,32 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     }
   }, [currentVideo, currentIndex, isFocusedFeed, videos]);
 
-  // Ensure video plays when loaded (fix for autoplay issues)
+  // Handle autoplay for uploaded videos when they load
   useEffect(() => {
     if (
       videoRef.current &&
       currentVideo?.videoType !== "youtube" &&
       isPlaying
     ) {
-      const playVideo = async () => {
+      // Simply ensure the video is playing when it's the current one
+      const ensurePlayback = async () => {
         try {
-          // Reset video state
-          videoRef.current.load();
-
-          // Small delay to ensure video is ready
-          await new Promise((resolve) => setTimeout(resolve, 150));
-
-          // Attempt to play
+          // Play the video if it exists
           const playPromise = videoRef.current.play();
           if (playPromise !== undefined) {
             await playPromise;
-            console.log("[Video] Successfully started playback");
+            console.log("[Video] Video is now playing");
           }
         } catch (error) {
-          console.log(
-            "[Video] Autoplay prevented, waiting for user interaction:",
-            error.message,
-          );
+          console.log("[Video] Could not autoplay:", error.message);
         }
       };
 
-      playVideo();
+      // Wait a tiny bit for the video element to be ready, then play
+      const timeoutId = setTimeout(ensurePlayback, 50);
+      return () => clearTimeout(timeoutId);
     }
-  }, [currentVideo]);
+  }, [currentVideo, isPlaying]);
 
   return (
     <div className="video-page">
@@ -507,19 +503,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       );
                     }}
                     onCanPlay={async () => {
-                      console.log("[Video] Can play");
-                      // Try to play when ready on mobile
-                      if (isPlaying && videoRef.current) {
-                        try {
-                          await videoRef.current.play();
-                          console.log("[Video] Auto-started on canPlay");
-                        } catch (err) {
-                          console.log(
-                            "[Video] Could not auto-start:",
-                            err.message,
-                          );
-                        }
-                      }
+                      console.log("[Video] Can play - video is ready");
                     }}
                     onPlay={() => console.log("[Video] Started playing")}
                     onPause={() => console.log("[Video] Paused")}
