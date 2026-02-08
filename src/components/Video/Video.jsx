@@ -451,6 +451,10 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     controls={false}
                     crossOrigin="anonymous"
                     onClick={togglePlay}
+                    style={{
+                      pointerEvents:
+                        isMuted && !hasBeenUnmutedRef.current ? "none" : "auto",
+                    }}
                     onTouchStart={(e) => {
                       const touch = e.touches[0];
                       touchStartRef.current = {
