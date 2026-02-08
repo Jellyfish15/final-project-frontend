@@ -85,7 +85,7 @@ export const VideoProvider = ({
       "[VideoContext] Current video is now:",
       currentVideo
         ? { id: currentVideo._id, title: currentVideo.title }
-        : "none"
+        : "none",
     );
   }, [currentIndex, currentVideo]);
 
@@ -104,13 +104,13 @@ export const VideoProvider = ({
       ) {
         // Reached end of custom feed, append more videos from cache
         console.log(
-          "[VideoContext] End of custom feed reached, fetching more cached videos"
+          "[VideoContext] End of custom feed reached, fetching more cached videos",
         );
 
         // Get videos from full feed that aren't already in the custom feed
         const customFeedIds = new Set(focusedVideos.map((v) => v._id || v.id));
         const additionalVideos = initialVideos.filter(
-          (v) => !customFeedIds.has(v._id || v.id)
+          (v) => !customFeedIds.has(v._id || v.id),
         );
 
         if (additionalVideos.length > 0) {
@@ -129,7 +129,7 @@ export const VideoProvider = ({
         } else {
           // No more videos in initialVideos, try fetching more from cache
           console.log(
-            "[VideoContext] No more videos in initialVideos, fetching random videos from cache..."
+            "[VideoContext] No more videos in initialVideos, fetching random videos from cache...",
           );
 
           try {
@@ -137,7 +137,7 @@ export const VideoProvider = ({
             if (response?.videos && response.videos.length > 0) {
               // Filter out videos already in the focused feed
               const newVideos = response.videos.filter(
-                (v) => !customFeedIds.has(v._id || v.id)
+                (v) => !customFeedIds.has(v._id || v.id),
               );
 
               if (newVideos.length > 0) {
@@ -150,20 +150,20 @@ export const VideoProvider = ({
                     fetchedFromCache: response.videos.length,
                     afterFiltering: newVideos.length,
                     newFeedSize: expandedFeed.length,
-                  }
+                  },
                 );
 
                 setFocusedVideos(expandedFeed);
                 newIndex = currentIndex + 1;
               } else {
                 console.log(
-                  "[VideoContext] All cached videos already in feed, fetching more..."
+                  "[VideoContext] All cached videos already in feed, fetching more...",
                 );
                 // All 50 videos were duplicates, try fetching more
                 const response2 = await videosAPI.getRandomCachedVideos(50);
                 if (response2?.videos && response2.videos.length > 0) {
                   const newVideos2 = response2.videos.filter(
-                    (v) => !customFeedIds.has(v._id || v.id)
+                    (v) => !customFeedIds.has(v._id || v.id),
                   );
 
                   if (newVideos2.length > 0) {
@@ -171,13 +171,13 @@ export const VideoProvider = ({
                     console.log(
                       "[VideoContext] Second attempt - added",
                       newVideos2.length,
-                      "videos"
+                      "videos",
                     );
                     setFocusedVideos(expandedFeed);
                     newIndex = currentIndex + 1;
                   } else {
                     console.log(
-                      "[VideoContext] All cached videos have been shown"
+                      "[VideoContext] All cached videos have been shown",
                     );
                     return;
                   }
@@ -192,7 +192,7 @@ export const VideoProvider = ({
           } catch (error) {
             console.error(
               "[VideoContext] Error fetching more cached videos:",
-              error
+              error,
             );
             return;
           }
@@ -215,11 +215,11 @@ export const VideoProvider = ({
         userInteractionService.trackNavigation(
           `video_${currentIndex}`,
           `video_${newIndex}`,
-          { method: "swipe", direction }
+          { method: "swipe", direction },
         );
       }
     },
-    [currentIndex, videos.length, watchTracker, focusedVideos, initialVideos]
+    [currentIndex, videos.length, watchTracker, focusedVideos, initialVideos],
   );
 
   const setVideoById = useCallback(
@@ -228,12 +228,12 @@ export const VideoProvider = ({
         "[VideoContext] setVideoById called with:",
         videoId,
         "createFocusedFeed:",
-        createFocusedFeed
+        createFocusedFeed,
       );
       console.log("[VideoContext] Available videos:", initialVideos.length);
 
       const videoIndex = initialVideos.findIndex(
-        (video) => video._id === videoId || video.id === videoId
+        (video) => video._id === videoId || video.id === videoId,
       );
       console.log("[VideoContext] Found video at index:", videoIndex);
 
@@ -243,7 +243,7 @@ export const VideoProvider = ({
           const clickedVideo = initialVideos[videoIndex];
           console.log(
             "[VideoContext] Creating focused feed starting with:",
-            clickedVideo.title
+            clickedVideo.title,
           );
 
           // Start with just the clicked video
@@ -252,14 +252,14 @@ export const VideoProvider = ({
           // Fetch random videos from cache to fill the feed
           try {
             console.log(
-              "[VideoContext] Fetching random videos to populate feed..."
+              "[VideoContext] Fetching random videos to populate feed...",
             );
             const response = await videosAPI.getRandomCachedVideos(50);
 
             if (response?.videos && response.videos.length > 0) {
               // Filter out the clicked video
               const additionalVideos = response.videos.filter(
-                (v) => (v._id || v.id) !== videoId
+                (v) => (v._id || v.id) !== videoId,
               );
 
               // Add the random videos after the clicked video
@@ -272,13 +272,13 @@ export const VideoProvider = ({
               });
             } else {
               console.log(
-                "[VideoContext] No cached videos available, using only clicked video"
+                "[VideoContext] No cached videos available, using only clicked video",
               );
             }
           } catch (error) {
             console.error(
               "[VideoContext] Error fetching random videos:",
-              error
+              error,
             );
             // Continue with just the clicked video if fetch fails
           }
@@ -299,17 +299,17 @@ export const VideoProvider = ({
       } else {
         console.log(
           "[VideoContext] Video with ID not found in current feed:",
-          videoId
+          videoId,
         );
         console.log(
-          "[VideoContext] Attempting to fetch video directly from API..."
+          "[VideoContext] Attempting to fetch video directly from API...",
         );
 
         // Try to fetch the specific video from the API
         fetchSingleVideo(videoId, createFocusedFeed);
       }
     },
-    [initialVideos]
+    [initialVideos],
   );
 
   // Function to fetch a single video by ID and add it to the context
@@ -322,7 +322,7 @@ export const VideoProvider = ({
         if (response.success && response.video) {
           console.log(
             "[VideoContext] Successfully fetched video:",
-            response.video
+            response.video,
           );
 
           // Fix video URLs for uploaded videos
@@ -356,7 +356,7 @@ export const VideoProvider = ({
             const focusedVideosFeed = [video, ...contextVideos];
 
             console.log(
-              "[VideoContext] Creating focused feed with fetched video at index 0"
+              "[VideoContext] Creating focused feed with fetched video at index 0",
             );
             setFocusedVideos(focusedVideosFeed);
             setCurrentIndex(0);
@@ -378,7 +378,7 @@ export const VideoProvider = ({
         console.error("[VideoContext] Error fetching single video:", error);
       }
     },
-    [initialVideos]
+    [initialVideos],
   );
 
   const resetToFullFeed = useCallback(() => {
@@ -409,7 +409,7 @@ export const VideoProvider = ({
         console.log(
           "[VideoContext] Removing duplicate video:",
           video.title,
-          videoId
+          videoId,
         );
       }
     }
@@ -432,13 +432,14 @@ export const VideoProvider = ({
       // For YouTube videos, just toggle the state - YouTubePlayer will handle it
       setIsPlaying(!isPlaying);
     } else if (videoRef.current) {
-      // For uploaded videos, control the video element directly
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
+      // For uploaded videos, check the actual playback state of the element
+      if (videoRef.current.paused) {
         videoRef.current.play();
+        setIsPlaying(true);
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -471,7 +472,7 @@ export const VideoProvider = ({
     userInteractionService.trackVideoEngagement(
       videoId,
       newLikedState ? "like" : "unlike",
-      { source: "video_player" }
+      { source: "video_player" },
     );
 
     // Call backend API
@@ -494,8 +495,8 @@ export const VideoProvider = ({
                     ? (v.likes || 0) + 1
                     : Math.max(0, (v.likes || 0) - 1),
                 }
-              : v
-          )
+              : v,
+          ),
         );
       }
     } catch (error) {
@@ -503,7 +504,7 @@ export const VideoProvider = ({
       // Revert on error
       setIsLiked(!newLikedState);
       setLikeCount((prev) =>
-        newLikedState ? Math.max(0, prev - 1) : prev + 1
+        newLikedState ? Math.max(0, prev - 1) : prev + 1,
       );
     }
   };
@@ -523,7 +524,7 @@ export const VideoProvider = ({
     userInteractionService.trackVideoEngagement(
       currentVideo._id || currentVideo.id,
       "share",
-      { source: "video_player" }
+      { source: "video_player" },
     );
 
     // Call backend API to increment share count
@@ -548,7 +549,7 @@ export const VideoProvider = ({
     userInteractionService.trackVideoEngagement(
       currentVideo._id || currentVideo.id,
       "comment",
-      { source: "video_player" }
+      { source: "video_player" },
     );
   };
 
@@ -639,7 +640,7 @@ export const VideoProvider = ({
         currentY: touch.clientY,
       }));
     },
-    [touchState.isDragging, touchState.startY, touchState.startX]
+    [touchState.isDragging, touchState.startY, touchState.startX],
   );
 
   const handleTouchEnd = useCallback(
@@ -652,7 +653,7 @@ export const VideoProvider = ({
       const deltaX = Math.abs(touchState.startX - touchState.currentY); // Fixed calculation
       const actualDeltaX = Math.abs(
         touchState.startX -
-          (event.changedTouches?.[0]?.clientX || touchState.startX)
+          (event.changedTouches?.[0]?.clientX || touchState.startX),
       );
       const deltaTime = Date.now() - touchState.startTime;
       const velocity = Math.abs(deltaY) / deltaTime;
@@ -722,7 +723,13 @@ export const VideoProvider = ({
         currentY: 0,
       });
     },
-    [touchState, currentIndex, videos.length, scrollToVideo, showSwipeIndicator]
+    [
+      touchState,
+      currentIndex,
+      videos.length,
+      scrollToVideo,
+      showSwipeIndicator,
+    ],
   );
 
   const handleTouchCancel = useCallback(() => {
