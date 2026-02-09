@@ -66,25 +66,30 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   // Handle mute button click - unmute and mark as interacted
   const handleMuteClick = () => {
     hasBeenUnmutedRef.current = true;
-    toggleMute();
-    
-    // Wait for state to update, then play the video
-    setTimeout(() => {
-      if (currentVideo?.videoType !== "youtube" && videoRef.current) {
-        const playPromise = videoRef.current.play();
-        if (playPromise) {
-          playPromise
-            .then(() => {
-              console.log("[Video] Playing after unmute");
-            })
-            .catch((err) => {
-              console.log("[Video] Could not play:", err.message);
-            });
+
+    if (currentVideo?.videoType !== "youtube" && videoRef.current) {
+      // For uploaded videos: unmute and ensure it's playing
+      // Important: Do these operations synchronously without waiting for state updates
+      const videoElement = videoRef.current;
+      
+      // Only proceed if video is actually muted (first time unmute)
+      if (videoElement.muted) {
+        videoElement.muted = false;
+        
+        // Ensure video plays immediately after unmuting
+        if (videoElement.paused) {
+          videoElement.play().catch((err) => {
+            console.log("[Video] Could not play:", err.message);
+          });
         }
-      } else {
-        togglePlay();
+        
+        // Toggle mute state for UI update (button emoji, etc)
+        toggleMute();
       }
-    }, 10);
+    } else {
+      // For YouTube videos, use the context functions
+      toggleMute();
+    }
   };
 
   // Reset interaction tracker when video changes
