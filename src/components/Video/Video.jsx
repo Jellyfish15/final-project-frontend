@@ -99,14 +99,17 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   // Reset interaction tracker when video changes
   useEffect(() => {
     hasBeenUnmutedRef.current = false;
-    
+
     // For non-first videos, auto-unmute so they can autoplay with sound on mobile
     // Only do this if the user has unmuted at least once (indicated by isFirstVideoEverRef being false)
     if (currentVideo && !isFirstVideoEverRef.current && videoRef.current) {
       if (currentVideo?.videoType !== "youtube") {
         // Auto-unmute non-first videos
         videoRef.current.muted = false;
-        console.log("[Video] Auto-unmuting non-first video:", currentVideo?.title);
+        console.log(
+          "[Video] Auto-unmuting non-first video:",
+          currentVideo?.title,
+        );
       }
     }
   }, [currentVideo]);
