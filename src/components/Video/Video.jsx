@@ -100,19 +100,32 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   useEffect(() => {
     hasBeenUnmutedRef.current = false;
 
-    // For non-first videos, auto-unmute so they can autoplay with sound on mobile
+    // For non-first videos, auto-unmute and ensure playback
     // Only do this if the user has unmuted at least once (indicated by isFirstVideoEverRef being false)
     if (currentVideo && !isFirstVideoEverRef.current && videoRef.current) {
       if (currentVideo?.videoType !== "youtube") {
+        const videoElement = videoRef.current;
+        
         // Auto-unmute non-first videos
-        videoRef.current.muted = false;
-        console.log(
-          "[Video] Auto-unmuting non-first video:",
-          currentVideo?.title,
-        );
+        if (videoElement.muted) {
+          videoElement.muted = false;
+          // Update React state to match the video element's actual muted state
+          toggleMute();
+          console.log("[Video] Auto-unmuting non-first video:", currentVideo?.title);
+          
+          // Ensure the video plays after unmuting
+          // Use a tiny delay to let the mute update process
+          setTimeout(() => {
+            if (videoElement.paused) {
+              videoElement.play().catch((err) => {
+                console.log("[Video] Could not autoplay after unmute:", err.message);
+              });
+            }
+          }, 5);
+        }
       }
     }
-  }, [currentVideo]);
+  }, [currentVideo, toggleMute]);
 
   // Handle custom feed types (profile or similar)
   useEffect(() => {

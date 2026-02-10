@@ -34,16 +34,19 @@ function App() {
     try {
       setIsLoadingVideos(true);
       setVideosError(null);
-      
+
       const startTime = performance.now();
       const isMobile = /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent);
-      console.log(`[App] Loading videos on ${isMobile ? "MOBILE" : "DESKTOP"}...`, {startTime});
+      console.log(
+        `[App] Loading videos on ${isMobile ? "MOBILE" : "DESKTOP"}...`,
+        { startTime },
+      );
 
       // Try to fetch and cache new videos, or fall back to existing cache
       // Reduce initial load for mobile performance (detect mobile via user agent)
       const initialVideoCount = isMobile ? 12 : 28; // Load fewer videos on mobile
       console.log(`[App] Requesting ${initialVideoCount} initial videos`);
-      
+
       const [feedResponse, uploadedVideosResponse] = await Promise.allSettled([
         // Try opportunistic caching (attempts to fetch new videos, falls back to cache)
         videosAPI.getFeedWithCaching(initialVideoCount).catch((err) => {
@@ -190,7 +193,10 @@ function App() {
         const endTime = performance.now();
         const loadTime = (endTime - startTime) / 1000;
         setVideos(allVideos);
-        console.log(`[App] ✅ Videos loaded in ${loadTime.toFixed(2)}s:`, allVideos.length);
+        console.log(
+          `[App] ✅ Videos loaded in ${loadTime.toFixed(2)}s:`,
+          allVideos.length,
+        );
         console.log(
           "All video IDs:",
           allVideos.map((v) => ({
