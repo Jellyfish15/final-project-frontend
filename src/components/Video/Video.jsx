@@ -15,6 +15,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   const loadedFeedRef = useRef(null); // Track which custom feed has been loaded
   const processedVideoIdRef = useRef(null); // Track which videoId from URL has been processed
   const hasBeenUnmutedRef = useRef(false); // Track if video has been unmuted by user click
+  const isFirstVideoEverRef = useRef(true); // Track if this is the very first video loaded
   const touchStartRef = useRef({ x: 0, y: 0, time: 0 }); // Track touch start for tap detection
   const location = useLocation();
   const {
@@ -66,23 +67,26 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   // Handle mute button click - unmute and mark as interacted
   const handleMuteClick = () => {
     hasBeenUnmutedRef.current = true;
+    // Mark that we've now shown the unmute overlay and user has interacted with it
+    // This signals that subsequent videos should auto-unmute for sound autoplay
+    isFirstVideoEverRef.current = false;
 
     if (currentVideo?.videoType !== "youtube" && videoRef.current) {
       // For uploaded videos: unmute and ensure it's playing
       // Important: Do these operations synchronously without waiting for state updates
       const videoElement = videoRef.current;
-      
+
       // Only proceed if video is actually muted (first time unmute)
       if (videoElement.muted) {
         videoElement.muted = false;
-        
+
         // Ensure video plays immediately after unmuting
         if (videoElement.paused) {
           videoElement.play().catch((err) => {
             console.log("[Video] Could not play:", err.message);
           });
         }
-        
+
         // Toggle mute state for UI update (button emoji, etc)
         toggleMute();
       }
@@ -95,6 +99,16 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   // Reset interaction tracker when video changes
   useEffect(() => {
     hasBeenUnmutedRef.current = false;
+    
+    // For non-first videos, auto-unmute so they can autoplay with sound on mobile
+    // Only do this if the user has unmuted at least once (indicated by isFirstVideoEverRef being false)
+    if (currentVideo && !isFirstVideoEverRef.current && videoRef.current) {
+      if (currentVideo?.videoType !== "youtube") {
+        // Auto-unmute non-first videos
+        videoRef.current.muted = false;
+        console.log("[Video] Auto-unmuting non-first video:", currentVideo?.title);
+      }
+    }
   }, [currentVideo]);
 
   // Handle custom feed types (profile or similar)
