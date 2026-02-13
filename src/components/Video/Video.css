@@ -1,16 +1,19 @@
 .video-page {
-  position: fixed;
-  top: 60px;
+  position: absolute;
+  top: 0;
   left: 0;
   width: 100%;
-  height: calc(100vh - 60px);
+  height: 100%;
   background-color: #000;
   overflow: hidden;
+  margin: 0;
+  padding: 0;
 }
 
 /* Desktop with sidebar */
 @media (min-width: 769px) {
   .video-page {
+    position: fixed;
     top: 0;
     left: 240px; /* Width of sidebar */
     width: calc(100% - 240px);
@@ -21,26 +24,29 @@
 /* Mobile adjustments for fullscreen-like experience */
 @media (max-width: 768px) {
   .video-page {
-    /* Position at the very top of the screen - no header on mobile */
+    /* Fullscreen on mobile */
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    height: calc(100vh - 70px); /* Account for bottom navigation */
-    /* Ensure video page doesn't interfere with bottom nav touches */
+    height: 100%;
     z-index: 1;
-    /* Remove any potential margins or padding that could cause white space */
     margin: 0;
     padding: 0;
   }
 }
 
 .video-page__container {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0;
+  padding: 0;
   /* Safari-specific touch optimization */
   touch-action: manipulation;
   -webkit-overflow-scrolling: touch;
@@ -49,19 +55,32 @@
   user-select: none;
   /* Smooth transitions for touch interactions */
   transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  overflow: hidden;
 }
 
 .video-page__video-container {
-  position: relative;
-  width: 600px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
   height: 100%;
-  max-height: calc(100vh - 60px);
   display: flex;
   align-items: center;
   justify-content: center;
   background: #000;
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Desktop specific sizing */
+@media (min-width: 769px) {
+  .video-page__video-container {
+    width: 600px;
+    border-radius: 8px;
+    position: relative;
+  }
 }
 
 .video-page__video {

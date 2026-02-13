@@ -6,13 +6,27 @@
   width: 240px;
   background-color: #000;
   z-index: 100;
-  display: none; /* Hidden by default */
+  display: none !important; /* Hidden by default on all devices */
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
-/* Show sidebar on desktop ONLY for Videos page - handled by Video.jsx parent */
+/* Show sidebar on desktop ONLY */
 @media (min-width: 769px) {
-  .video-page .video-sidebar {
-    display: block;
+  .video-sidebar {
+    display: block !important;
+  }
+}
+
+/* ENSURE completely hidden on mobile */
+@media (max-width: 768px) {
+  .video-sidebar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    visibility: hidden !important;
+    position: absolute !important;
   }
 }
 

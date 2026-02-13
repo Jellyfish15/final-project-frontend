@@ -148,14 +148,20 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       paused: videoElement.paused,
       muted: videoElement.muted,
       readyState: videoElement.readyState,
-      readyStateLabel:
-        ["HAVE_NOTHING", "HAVE_METADATA", "HAVE_CURRENT_DATA", "HAVE_FUTURE_DATA", "HAVE_ENOUGH_DATA"][
-          videoElement.readyState
-        ],
+      readyStateLabel: [
+        "HAVE_NOTHING",
+        "HAVE_METADATA",
+        "HAVE_CURRENT_DATA",
+        "HAVE_FUTURE_DATA",
+        "HAVE_ENOUGH_DATA",
+      ][videoElement.readyState],
       networkState: videoElement.networkState,
-      networkStateLabel: ["NETWORK_EMPTY", "NETWORK_IDLE", "NETWORK_LOADING", "NETWORK_NO_SOURCE"][
-        videoElement.networkState
-      ],
+      networkStateLabel: [
+        "NETWORK_EMPTY",
+        "NETWORK_IDLE",
+        "NETWORK_LOADING",
+        "NETWORK_NO_SOURCE",
+      ][videoElement.networkState],
     });
 
     // Wait for the video to be ready before forcing play
@@ -235,13 +241,17 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
             ? `${videoElement.buffered.end(0).toFixed(2)}s buffered`
             : "",
         ),
-      canplay: () => console.log("[Video EVENT] CANPLAY 🟢 VIDEO CAN PLAY NOW!"),
+      canplay: () =>
+        console.log("[Video EVENT] CANPLAY 🟢 VIDEO CAN PLAY NOW!"),
       canplaythrough: () => console.log("[Video EVENT] CANPLAYTHROUGH"),
       playing: () => console.log("[Video EVENT] PLAYING ▶️"),
       pause: () => console.log("[Video EVENT] PAUSE ⏸️"),
       ended: () => console.log("[Video EVENT] ENDED"),
       loadedmetadata: () =>
-        console.log("[Video EVENT] LOADEDMETADATA, duration:", videoElement.duration),
+        console.log(
+          "[Video EVENT] LOADEDMETADATA, duration:",
+          videoElement.duration,
+        ),
       loadeddata: () => console.log("[Video EVENT] LOADEDDATA"),
       error: () =>
         console.error(

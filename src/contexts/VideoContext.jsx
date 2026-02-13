@@ -122,7 +122,9 @@ export const VideoProvider = ({
 
           // Check current state
           if (videoElement.paused === false) {
-            console.log("[VideoContext SYNC] Video already playing, no action needed");
+            console.log(
+              "[VideoContext SYNC] Video already playing, no action needed",
+            );
             return;
           }
 
@@ -132,7 +134,9 @@ export const VideoProvider = ({
           if (playPromise !== undefined) {
             await playPromise
               .then(() => {
-                console.log("[VideoContext SYNC] ✅ VIDEO PLAYING AFTER STATE SYNC");
+                console.log(
+                  "[VideoContext SYNC] ✅ VIDEO PLAYING AFTER STATE SYNC",
+                );
               })
               .catch((err) => {
                 // Handle autoplay restrictions gracefully
@@ -189,7 +193,9 @@ export const VideoProvider = ({
       // If state says it should be playing, force it to play
       if (isPlaying && videoElement.paused) {
         try {
-          console.log("[VideoContext CANPLAY] Forcing play from canPlay event...");
+          console.log(
+            "[VideoContext CANPLAY] Forcing play from canPlay event...",
+          );
           await videoElement.play();
           console.log("[VideoContext CANPLAY] ✅ Successfully forced play!");
         } catch (err) {
@@ -214,7 +220,11 @@ export const VideoProvider = ({
     console.log(
       "[VideoContext] Current video is now:",
       currentVideo
-        ? { id: currentVideo._id, title: currentVideo.title, type: currentVideo.videoType }
+        ? {
+            id: currentVideo._id,
+            title: currentVideo.title,
+            type: currentVideo.videoType,
+          }
         : "none",
     );
   }, [currentIndex, currentVideo]);
