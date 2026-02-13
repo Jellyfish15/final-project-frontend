@@ -105,20 +105,26 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     if (currentVideo && !isFirstVideoEverRef.current && videoRef.current) {
       if (currentVideo?.videoType !== "youtube") {
         const videoElement = videoRef.current;
-        
+
         // Auto-unmute non-first videos
         if (videoElement.muted) {
           videoElement.muted = false;
           // Update React state to match the video element's actual muted state
           toggleMute();
-          console.log("[Video] Auto-unmuting non-first video:", currentVideo?.title);
-          
+          console.log(
+            "[Video] Auto-unmuting non-first video:",
+            currentVideo?.title,
+          );
+
           // Ensure the video plays after unmuting
           // Use a tiny delay to let the mute update process
           setTimeout(() => {
             if (videoElement.paused) {
               videoElement.play().catch((err) => {
-                console.log("[Video] Could not autoplay after unmute:", err.message);
+                console.log(
+                  "[Video] Could not autoplay after unmute:",
+                  err.message,
+                );
               });
             }
           }, 5);
@@ -367,7 +373,15 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
             handleTouchEnd(e);
           }}
         >
-          {(isLoading || isVideoSwitching) && <VideoLoader />}
+          {(isLoading || isVideoSwitching) && (
+            <VideoLoader
+              message={
+                isVideoSwitching
+                  ? "Loading next video..."
+                  : "Loading first video..."
+              }
+            />
+          )}
 
           {currentVideo && (
             <>

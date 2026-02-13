@@ -9,6 +9,7 @@ import React, {
 import { triggerSwipeHaptic } from "../utils/hapticFeedback";
 import { logTouchEvent, isSafari } from "../utils/touchDebug";
 import userInteractionService from "../services/userInteractionService";
+import performanceOptimizationService from "../services/performanceOptimizationService";
 import { videosAPI } from "../services/api";
 
 const VideoContext = createContext();
@@ -77,6 +78,25 @@ export const VideoProvider = ({
       setCommentCount(currentVideo.comments || 0);
     }
   }, [currentVideo]);
+
+  // Preload upcoming videos for faster transitions
+  useEffect(() => {
+    if (videos.length > 0) {
+      // Preload thumbnails for next 3-5 videos
+      const upcomingVideos = videos.slice(currentIndex + 1, currentIndex + 5);
+
+      if (upcomingVideos.length > 0) {
+        performanceOptimizationService.batchPreloadThumbnails(
+          upcomingVideos,
+          3,
+        );
+        performanceOptimizationService.batchPreloadVideoMetadata(
+          upcomingVideos,
+          2,
+        );
+      }
+    }
+  }, [currentIndex, videos]);
 
   // Debug current video changes
   useEffect(() => {
