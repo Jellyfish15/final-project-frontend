@@ -107,17 +107,32 @@ export const VideoProvider = ({
 
     const videoElement = videoRef.current;
 
+    console.log("[VideoContext SYNC] isPlaying state changed to:", isPlaying, {
+      videoElement_paused: videoElement.paused,
+      readyState: videoElement.readyState,
+      networkState: videoElement.networkState,
+      hasVideo: !!videoElement.videoTracks?.length,
+    });
+
     // Function to safely play or pause with error handling
     const syncPlayback = async () => {
       try {
         if (isPlaying) {
+          console.log("[VideoContext SYNC] Attempting to PLAY video...");
+
+          // Check current state
+          if (videoElement.paused === false) {
+            console.log("[VideoContext SYNC] Video already playing, no action needed");
+            return;
+          }
+
           // Attempt to play, with specific error handling for autoplay restrictions
           const playPromise = videoElement.play();
-          
+
           if (playPromise !== undefined) {
             await playPromise
               .then(() => {
-                console.log("[VideoContext] ✅ Video playing after state sync");
+                console.log("[VideoContext SYNC] ✅ VIDEO PLAYING AFTER STATE SYNC");
               })
               .catch((err) => {
                 // Handle autoplay restrictions gracefully
@@ -126,30 +141,34 @@ export const VideoProvider = ({
                   err.name === "NotSupportedError"
                 ) {
                   console.warn(
-                    "[VideoContext] Autoplay restricted (iOS/Safari):",
+                    "[VideoContext SYNC] ⚠️ Autoplay restricted (iOS/Safari):",
                     err.message,
                   );
                   // Video will play once user interacts, which is fine
                 } else {
-                  console.error(
-                    "[VideoContext] Error playing video:",
-                    err.message,
-                  );
+                  console.error("[VideoContext SYNC] ❌ Error playing video:", {
+                    errorName: err.name,
+                    errorMessage: err.message,
+                    videoReadyState: videoElement.readyState,
+                    videoNetworkState: videoElement.networkState,
+                  });
                 }
               });
           }
         } else {
           // Pause immediately
-          videoElement.pause();
-          console.log("[VideoContext] Video paused after state sync");
+          if (videoElement.paused === false) {
+            videoElement.pause();
+            console.log("[VideoContext SYNC] ⏸️ VIDEO PAUSED");
+          }
         }
       } catch (err) {
-        console.error("[VideoContext] Error syncing playback:", err);
+        console.error("[VideoContext SYNC] Unexpected error:", err);
       }
     };
 
     syncPlayback();
-  }, [isPlaying, currentVideo?.videoType]);
+  }, [isPlaying, currentVideo?.videoType, currentVideo?._id]);
 
   // Force video to play when it becomes canPlay (ready to play)
   // This is critical for iOS where autoplay might have failed initially
@@ -161,15 +180,23 @@ export const VideoProvider = ({
     const videoElement = videoRef.current;
 
     const handleCanPlay = async () => {
+      console.log("[VideoContext CANPLAY] Video is ready to play!", {
+        isPlaying,
+        videoElement_paused: videoElement.paused,
+        readyState: videoElement.readyState,
+      });
+
       // If state says it should be playing, force it to play
       if (isPlaying && videoElement.paused) {
         try {
-          console.log(
-            "[VideoContext] Video ready and paused, forcing play now...",
-          );
+          console.log("[VideoContext CANPLAY] Forcing play from canPlay event...");
           await videoElement.play();
+          console.log("[VideoContext CANPLAY] ✅ Successfully forced play!");
         } catch (err) {
-          console.warn("[VideoContext] Could not force play:", err.message);
+          console.warn("[VideoContext CANPLAY] ⚠️ Could not force play:", {
+            errorName: err.name,
+            errorMessage: err.message,
+          });
         }
       }
     };
@@ -179,7 +206,7 @@ export const VideoProvider = ({
     return () => {
       videoElement.removeEventListener("canplay", handleCanPlay);
     };
-  }, [isPlaying, currentVideo]);
+  }, [isPlaying, currentVideo, currentVideo?._id]);
 
   // Debug current video changes
   useEffect(() => {
@@ -187,7 +214,7 @@ export const VideoProvider = ({
     console.log(
       "[VideoContext] Current video is now:",
       currentVideo
-        ? { id: currentVideo._id, title: currentVideo.title }
+        ? { id: currentVideo._id, title: currentVideo.title, type: currentVideo.videoType }
         : "none",
     );
   }, [currentIndex, currentVideo]);
@@ -533,30 +560,46 @@ export const VideoProvider = ({
   const togglePlay = () => {
     if (currentVideo?.videoType === "youtube") {
       // For YouTube videos, just toggle the state - YouTubePlayer will handle it
+      console.log("[togglePlay] YouTube video toggle to:", !isPlaying);
       setIsPlaying(!isPlaying);
     } else if (videoRef.current) {
       // For uploaded videos, ensure we actually play/pause the element
       const videoElement = videoRef.current;
 
+      console.log("[togglePlay] Current state before toggle:", {
+        isPlaying,
+        videoElement_paused: videoElement.paused,
+        readyState: videoElement.readyState,
+        networkState: videoElement.networkState,
+      });
+
       if (videoElement.paused) {
+        console.log("[togglePlay] Video is paused, attempting to PLAY...");
         // Try to play
         videoElement
           .play()
           .then(() => {
-            console.log("[togglePlay] ✅ Video started playing");
+            console.log("[togglePlay] ✅ VIDEO STARTED PLAYING");
             setIsPlaying(true);
           })
           .catch((err) => {
-            console.warn("[togglePlay] Could not play:", err.message);
+            console.warn("[togglePlay] ⚠️ Could not play:", {
+              errorName: err.name,
+              errorMessage: err.message,
+              readyState: videoElement.readyState,
+            });
             // Still update state in case of autoplay restrictions
             setIsPlaying(true);
           });
       } else {
+        console.log("[togglePlay] Video is playing, attempting to PAUSE...");
         // Pause immediately
         videoElement.pause();
-        console.log("[togglePlay] Video paused");
+        console.log("[togglePlay] ⏸️ VIDEO PAUSED");
         setIsPlaying(false);
       }
+    } else {
+      console.warn("[togglePlay] ⚠️ No video element available!");
     }
   };
 

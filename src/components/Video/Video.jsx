@@ -140,25 +140,128 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
     const videoElement = videoRef.current;
 
+    console.log("[Video] 🎥 NEW VIDEO LOADED:", {
+      title: currentVideo.title,
+      url: currentVideo.videoUrl,
+      hasVideoSrc: !!videoElement.src,
+      currentSrc: videoElement.src?.slice(0, 100),
+      paused: videoElement.paused,
+      muted: videoElement.muted,
+      readyState: videoElement.readyState,
+      readyStateLabel:
+        ["HAVE_NOTHING", "HAVE_METADATA", "HAVE_CURRENT_DATA", "HAVE_FUTURE_DATA", "HAVE_ENOUGH_DATA"][
+          videoElement.readyState
+        ],
+      networkState: videoElement.networkState,
+      networkStateLabel: ["NETWORK_EMPTY", "NETWORK_IDLE", "NETWORK_LOADING", "NETWORK_NO_SOURCE"][
+        videoElement.networkState
+      ],
+    });
+
     // Wait for the video to be ready before forcing play
     const forcePlayWhenReady = async () => {
       // Initial delay to ensure src is set
       await new Promise((resolve) => setTimeout(resolve, 100));
+
+      console.log("[Video] Attempting to force play...", {
+        readyState: videoElement.readyState,
+        networkState: videoElement.networkState,
+        paused: videoElement.paused,
+        duration: videoElement.duration,
+      });
 
       try {
         // Try to play immediately
         const playPromise = videoElement.play();
         if (playPromise !== undefined) {
           await playPromise;
-          console.log("[Video] ✅ Forced play on video load");
+          console.log("[Video] ✅ FORCE PLAY SUCCESS!");
         }
       } catch (err) {
-        console.warn("[Video] Could not force play on load:", err.message);
-        // Wait for user interaction - this is expected on iOS with muted=false
+        console.warn("[Video] ⚠️ Force play failed:", {
+          errorName: err.name,
+          errorMessage: err.message,
+          errorCode: err.code,
+        });
       }
     };
 
     forcePlayWhenReady();
+  }, [currentVideo?._id, currentVideo?.videoUrl]);
+
+  // DEBUG: Monitor video element state every 2 seconds
+  useEffect(() => {
+    if (!videoRef.current || currentVideo?.videoType === "youtube") return;
+
+    const videoElement = videoRef.current;
+    let debugIntervalId = null;
+
+    const debugVideoState = () => {
+      console.log("[Video MONITOR] State snapshot:", {
+        src: videoElement.src?.slice(0, 100),
+        paused: videoElement.paused,
+        muted: videoElement.muted,
+        readyState: videoElement.readyState,
+        networkState: videoElement.networkState,
+        duration: videoElement.duration,
+        currentTime: videoElement.currentTime,
+        canPlayType_mp4: videoElement.canPlayType("video/mp4"),
+      });
+    };
+
+    // Log immediately
+    debugVideoState();
+
+    // Log every 2 seconds
+    debugIntervalId = setInterval(debugVideoState, 2000);
+
+    return () => {
+      if (debugIntervalId) clearInterval(debugIntervalId);
+    };
+  }, [currentVideo?._id]);
+
+  // DEBUG: Comprehensive event logging
+  useEffect(() => {
+    if (!videoRef.current || currentVideo?.videoType === "youtube") return;
+
+    const videoElement = videoRef.current;
+
+    const handlers = {
+      loadstart: () => console.log("[Video EVENT] LOADSTART 🔄"),
+      progress: () =>
+        console.log(
+          "[Video EVENT] PROGRESS",
+          videoElement.buffered.length > 0
+            ? `${videoElement.buffered.end(0).toFixed(2)}s buffered`
+            : "",
+        ),
+      canplay: () => console.log("[Video EVENT] CANPLAY 🟢 VIDEO CAN PLAY NOW!"),
+      canplaythrough: () => console.log("[Video EVENT] CANPLAYTHROUGH"),
+      playing: () => console.log("[Video EVENT] PLAYING ▶️"),
+      pause: () => console.log("[Video EVENT] PAUSE ⏸️"),
+      ended: () => console.log("[Video EVENT] ENDED"),
+      loadedmetadata: () =>
+        console.log("[Video EVENT] LOADEDMETADATA, duration:", videoElement.duration),
+      loadeddata: () => console.log("[Video EVENT] LOADEDDATA"),
+      error: () =>
+        console.error(
+          "[Video EVENT] ERROR:",
+          videoElement.error?.message || "Unknown error",
+        ),
+      stalled: () => console.log("[Video EVENT] STALLED ⚠️"),
+      durationchange: () =>
+        console.log("[Video EVENT] DURATIONCHANGE:", videoElement.duration),
+    };
+
+    Object.entries(handlers).forEach(([event, handler]) => {
+      videoElement.addEventListener(event, handler);
+    });
+
+    return () => {
+      Object.entries(handlers).forEach(([event, handler]) => {
+        videoElement.removeEventListener(event, handler);
+      });
+    };
   }, [currentVideo?._id]);
 
   // Handle custom feed types (profile or similar)
