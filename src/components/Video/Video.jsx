@@ -133,6 +133,34 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     }
   }, [currentVideo, toggleMute]);
 
+  // Force play when new video loads (essential for iOS where autoplay fails)
+  useEffect(() => {
+    if (!currentVideo || !videoRef.current) return;
+    if (currentVideo.videoType === "youtube") return;
+
+    const videoElement = videoRef.current;
+
+    // Wait for the video to be ready before forcing play
+    const forcePlayWhenReady = async () => {
+      // Initial delay to ensure src is set
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      try {
+        // Try to play immediately
+        const playPromise = videoElement.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          console.log("[Video] ✅ Forced play on video load");
+        }
+      } catch (err) {
+        console.warn("[Video] Could not force play on load:", err.message);
+        // Wait for user interaction - this is expected on iOS with muted=false
+      }
+    };
+
+    forcePlayWhenReady();
+  }, [currentVideo?._id]);
+
   // Handle custom feed types (profile or similar)
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);

@@ -98,6 +98,89 @@ export const VideoProvider = ({
     }
   }, [currentIndex, videos]);
 
+  // CRITICAL: Sync actual video playback with React state to prevent freeze
+  // This ensures the video element actually plays/pauses when state changes
+  useEffect(() => {
+    if (!videoRef.current || currentVideo?.videoType === "youtube") {
+      return; // YouTube handled separately
+    }
+
+    const videoElement = videoRef.current;
+
+    // Function to safely play or pause with error handling
+    const syncPlayback = async () => {
+      try {
+        if (isPlaying) {
+          // Attempt to play, with specific error handling for autoplay restrictions
+          const playPromise = videoElement.play();
+          
+          if (playPromise !== undefined) {
+            await playPromise
+              .then(() => {
+                console.log("[VideoContext] ✅ Video playing after state sync");
+              })
+              .catch((err) => {
+                // Handle autoplay restrictions gracefully
+                if (
+                  err.name === "NotAllowedError" ||
+                  err.name === "NotSupportedError"
+                ) {
+                  console.warn(
+                    "[VideoContext] Autoplay restricted (iOS/Safari):",
+                    err.message,
+                  );
+                  // Video will play once user interacts, which is fine
+                } else {
+                  console.error(
+                    "[VideoContext] Error playing video:",
+                    err.message,
+                  );
+                }
+              });
+          }
+        } else {
+          // Pause immediately
+          videoElement.pause();
+          console.log("[VideoContext] Video paused after state sync");
+        }
+      } catch (err) {
+        console.error("[VideoContext] Error syncing playback:", err);
+      }
+    };
+
+    syncPlayback();
+  }, [isPlaying, currentVideo?.videoType]);
+
+  // Force video to play when it becomes canPlay (ready to play)
+  // This is critical for iOS where autoplay might have failed initially
+  useEffect(() => {
+    if (!videoRef.current || currentVideo?.videoType === "youtube") {
+      return;
+    }
+
+    const videoElement = videoRef.current;
+
+    const handleCanPlay = async () => {
+      // If state says it should be playing, force it to play
+      if (isPlaying && videoElement.paused) {
+        try {
+          console.log(
+            "[VideoContext] Video ready and paused, forcing play now...",
+          );
+          await videoElement.play();
+        } catch (err) {
+          console.warn("[VideoContext] Could not force play:", err.message);
+        }
+      }
+    };
+
+    videoElement.addEventListener("canplay", handleCanPlay);
+
+    return () => {
+      videoElement.removeEventListener("canplay", handleCanPlay);
+    };
+  }, [isPlaying, currentVideo]);
+
   // Debug current video changes
   useEffect(() => {
     console.log("[VideoContext] Current index changed to:", currentIndex);
@@ -452,12 +535,26 @@ export const VideoProvider = ({
       // For YouTube videos, just toggle the state - YouTubePlayer will handle it
       setIsPlaying(!isPlaying);
     } else if (videoRef.current) {
-      // For uploaded videos, check the actual playback state of the element
-      if (videoRef.current.paused) {
-        videoRef.current.play();
-        setIsPlaying(true);
+      // For uploaded videos, ensure we actually play/pause the element
+      const videoElement = videoRef.current;
+
+      if (videoElement.paused) {
+        // Try to play
+        videoElement
+          .play()
+          .then(() => {
+            console.log("[togglePlay] ✅ Video started playing");
+            setIsPlaying(true);
+          })
+          .catch((err) => {
+            console.warn("[togglePlay] Could not play:", err.message);
+            // Still update state in case of autoplay restrictions
+            setIsPlaying(true);
+          });
       } else {
-        videoRef.current.pause();
+        // Pause immediately
+        videoElement.pause();
+        console.log("[togglePlay] Video paused");
         setIsPlaying(false);
       }
     }
