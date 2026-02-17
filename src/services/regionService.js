@@ -138,7 +138,7 @@ export const detectUserCountry = () => {
   // If it's an English-speaking country detected from language, use it
   if (ENGLISH_SPEAKING_REGIONS.includes(countryFromLanguage)) {
     console.log(
-      `[Region] Detected English-speaking region from language: ${language} → ${countryFromLanguage}`
+      `[Region] Detected English-speaking region from language: ${language} → ${countryFromLanguage}`,
     );
     return countryFromLanguage;
   }
@@ -149,7 +149,7 @@ export const detectUserCountry = () => {
 
   if (countryFromTimezone) {
     console.log(
-      `[Region] Detected region from timezone: ${timezone} → ${countryFromTimezone}`
+      `[Region] Detected region from timezone: ${timezone} → ${countryFromTimezone}`,
     );
     return countryFromTimezone;
   }
@@ -157,7 +157,7 @@ export const detectUserCountry = () => {
   // Method 3: If language is English-like, assume English-speaking region
   if (language.startsWith("en")) {
     console.log(
-      `[Region] Detected English language prefix: ${language} → defaulting to US`
+      `[Region] Detected English language prefix: ${language} → defaulting to US`,
     );
     return "US";
   }
@@ -175,7 +175,7 @@ export const isEnglishSpeakingRegion = () => {
   const country = detectUserCountry();
   const isEnglish = ENGLISH_SPEAKING_REGIONS.includes(country);
   console.log(
-    `[Region] User country: ${country}, English content only: ${isEnglish}`
+    `[Region] User country: ${country}, English content only: ${isEnglish}`,
   );
   return isEnglish;
 };

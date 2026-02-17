@@ -8,7 +8,16 @@ const BASE_URL =
  */
 const shouldFilterByEnglishOnly = () => {
   const englishSpeakingRegions = [
-    "US", "GB", "CA", "AU", "NZ", "IE", "ZA", "IN", "SG", "JM"
+    "US",
+    "GB",
+    "CA",
+    "AU",
+    "NZ",
+    "IE",
+    "ZA",
+    "IN",
+    "SG",
+    "JM",
   ];
 
   try {
@@ -17,20 +26,22 @@ const shouldFilterByEnglishOnly = () => {
     const countryCode = language.split("-")[1]?.toUpperCase();
 
     if (countryCode && englishSpeakingRegions.includes(countryCode)) {
-      console.log(`[API] English-only filter enabled for region: ${countryCode}`);
+      console.log(
+        `[API] English-only filter enabled for region: ${countryCode}`,
+      );
       return true;
     }
 
     // Check if language starts with "en" (fallback)
     if (language.startsWith("en")) {
       console.log(
-        `[API] English-only filter enabled for English language: ${language}`
+        `[API] English-only filter enabled for English language: ${language}`,
       );
       return true;
     }
 
     console.log(
-      `[API] Regional content filtering enabled for language: ${language}`
+      `[API] Regional content filtering enabled for language: ${language}`,
     );
     return false;
   } catch {
@@ -54,20 +65,67 @@ const isEnglish = (text) => {
 
   // Common English words
   const englishWords = [
-    "the", "be", "to", "of", "and", "a", "in", "that", "have", "i",
-    "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
-    "this", "but", "his", "by", "from", "is", "was", "are", "been",
-    "will", "can", "get", "make", "go", "know", "take", "see", "come",
-    "think", "how", "when", "what", "where", "why", "which", "who",
-    "tutorial", "lesson", "explained", "guide", "learn", "teach", "course"
+    "the",
+    "be",
+    "to",
+    "of",
+    "and",
+    "a",
+    "in",
+    "that",
+    "have",
+    "i",
+    "it",
+    "for",
+    "not",
+    "on",
+    "with",
+    "he",
+    "as",
+    "you",
+    "do",
+    "at",
+    "this",
+    "but",
+    "his",
+    "by",
+    "from",
+    "is",
+    "was",
+    "are",
+    "been",
+    "will",
+    "can",
+    "get",
+    "make",
+    "go",
+    "know",
+    "take",
+    "see",
+    "come",
+    "think",
+    "how",
+    "when",
+    "what",
+    "where",
+    "why",
+    "which",
+    "who",
+    "tutorial",
+    "lesson",
+    "explained",
+    "guide",
+    "learn",
+    "teach",
+    "course",
   ];
 
   const lowerText = text.toLowerCase();
-  
+
   // Check for common English words
   let englishWordCount = 0;
   const words = lowerText.match(/\b\w+\b/g) || [];
-  
+
   for (const word of words) {
     if (englishWords.includes(word)) {
       englishWordCount++;
@@ -80,14 +138,14 @@ const isEnglish = (text) => {
 
   // If text contains mostly Latin characters and some English words, it's likely English
   const englishWordRatio = englishWordCount / Math.max(words.length, 1);
-  
+
   return latinRatio > 0.7 && englishWordRatio > 0.15;
 };
 
 export const searchVideosByKeywords = async (
   query,
   maxResults = 10,
-  pageToken = ""
+  pageToken = "",
 ) => {
   // Append "shorts" or "short" to the query to prioritize YouTube Shorts
   const shortsQuery = `${query} shorts OR #shorts`;
@@ -121,23 +179,25 @@ export const searchVideosByKeywords = async (
   }
 
   const searchData = await searchResponse.json();
-  
+
   // Filter by language only if user is in English-speaking region
   if (filterByEnglishOnly && searchData.items) {
-    searchData.items = searchData.items.filter((item) => {
-      const title = item.snippet?.title || "";
-      const description = item.snippet?.description || "";
-      const text = `${title} ${description}`;
-      return isEnglish(text);
-    }).slice(0, maxResults);
+    searchData.items = searchData.items
+      .filter((item) => {
+        const title = item.snippet?.title || "";
+        const description = item.snippet?.description || "";
+        const text = `${title} ${description}`;
+        return isEnglish(text);
+      })
+      .slice(0, maxResults);
   }
-  
+
   return searchData;
 };
 
 export const searchEducationalVideos = async (
   maxResults = 10,
-  pageToken = ""
+  pageToken = "",
 ) => {
   const educationalQueries = [
     "mathematics lesson",
@@ -203,17 +263,19 @@ export const searchEducationalVideos = async (
   }
 
   const searchData = await searchResponse.json();
-  
+
   // Filter by language only if user is in English-speaking region
   if (filterByEnglishOnly && searchData.items) {
-    searchData.items = searchData.items.filter((item) => {
-      const title = item.snippet?.title || "";
-      const description = item.snippet?.description || "";
-      const text = `${title} ${description}`;
-      return isEnglish(text);
-    }).slice(0, maxResults);
+    searchData.items = searchData.items
+      .filter((item) => {
+        const title = item.snippet?.title || "";
+        const description = item.snippet?.description || "";
+        const text = `${title} ${description}`;
+        return isEnglish(text);
+      })
+      .slice(0, maxResults);
   }
-  
+
   return searchData;
 };
 
@@ -279,7 +341,7 @@ export const getDiverseEducationalFeed = async (count = 10) => {
         });
 
         const searchResponse = await fetch(
-          `${BASE_URL}/search?${searchParams}`
+          `${BASE_URL}/search?${searchParams}`,
         );
 
         if (!searchResponse.ok) {

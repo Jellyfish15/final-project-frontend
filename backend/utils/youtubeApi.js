@@ -14,18 +14,65 @@ const isEnglish = (text) => {
   if (!text) return false;
 
   const englishWords = [
-    "the", "be", "to", "of", "and", "a", "in", "that", "have", "i",
-    "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
-    "this", "but", "his", "by", "from", "is", "was", "are", "been",
-    "will", "can", "get", "make", "go", "know", "take", "see", "come",
-    "think", "how", "when", "what", "where", "why", "which", "who",
-    "tutorial", "lesson", "explained", "guide", "learn", "teach", "course"
+    "the",
+    "be",
+    "to",
+    "of",
+    "and",
+    "a",
+    "in",
+    "that",
+    "have",
+    "i",
+    "it",
+    "for",
+    "not",
+    "on",
+    "with",
+    "he",
+    "as",
+    "you",
+    "do",
+    "at",
+    "this",
+    "but",
+    "his",
+    "by",
+    "from",
+    "is",
+    "was",
+    "are",
+    "been",
+    "will",
+    "can",
+    "get",
+    "make",
+    "go",
+    "know",
+    "take",
+    "see",
+    "come",
+    "think",
+    "how",
+    "when",
+    "what",
+    "where",
+    "why",
+    "which",
+    "who",
+    "tutorial",
+    "lesson",
+    "explained",
+    "guide",
+    "learn",
+    "teach",
+    "course",
   ];
 
   const lowerText = text.toLowerCase();
   let englishWordCount = 0;
   const words = lowerText.match(/\b\w+\b/g) || [];
-  
+
   for (const word of words) {
     if (englishWords.includes(word)) {
       englishWordCount++;
@@ -35,7 +82,7 @@ const isEnglish = (text) => {
   const latinCharCount = (lowerText.match(/[a-z0-9\s.,!?'-]/gi) || []).length;
   const latinRatio = latinCharCount / Math.max(lowerText.length, 1);
   const englishWordRatio = englishWordCount / Math.max(words.length, 1);
-  
+
   return latinRatio > 0.7 && englishWordRatio > 0.15;
 };
 
@@ -44,11 +91,14 @@ const searchVideosByKeywords = async (
   maxResults = 10,
   pageToken = "",
 ) => {
+  // Request 2x results since we'll filter by English
+  const requestCount = maxResults * 2;
+  
   const searchParams = new URLSearchParams({
     part: "snippet",
     q: query,
     type: "video",
-    maxResults: maxResults.toString(),
+    maxResults: requestCount.toString(),
     order: "relevance",
     key: API_KEY,
     safeSearch: "moderate",
@@ -68,6 +118,21 @@ const searchVideosByKeywords = async (
   }
 
   const searchData = await searchResponse.json();
+  
+  // Filter by English language
+  if (searchData.items) {
+    searchData.items = searchData.items.filter((item) => {
+      const title = item.snippet?.title || "";
+      const description = item.snippet?.description || "";
+      const text = `${title} ${description}`;
+      return isEnglish(text);
+    }).slice(0, maxResults);
+    
+    console.log(
+      `[YouTube API] Filtered to ${searchData.items.length} English videos from ${requestCount} results`
+    );
+  }
+  
   return searchData;
 };
 
@@ -181,11 +246,14 @@ const searchEducationalVideos = async (maxResults = 10, pageToken = "") => {
   const randomQuery =
     educationalQueries[Math.floor(Math.random() * educationalQueries.length)];
 
+  // Request 2x results since we'll filter by English
+  const requestCount = maxResults * 2;
+
   const searchParams = new URLSearchParams({
     part: "snippet",
     q: randomQuery,
     type: "video",
-    maxResults: maxResults.toString(),
+    maxResults: requestCount.toString(),
     order: "relevance",
     key: API_KEY,
     safeSearch: "moderate",
@@ -205,6 +273,21 @@ const searchEducationalVideos = async (maxResults = 10, pageToken = "") => {
   }
 
   const searchData = await searchResponse.json();
+  
+  // Filter by English language
+  if (searchData.items) {
+    searchData.items = searchData.items.filter((item) => {
+      const title = item.snippet?.title || "";
+      const description = item.snippet?.description || "";
+      const text = `${title} ${description}`;
+      return isEnglish(text);
+    }).slice(0, maxResults);
+    
+    console.log(
+      `[YouTube API] Filtered to ${searchData.items.length} English educational videos from ${requestCount} results`
+    );
+  }
+  
   return searchData;
 };
 
@@ -250,11 +333,12 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
     // Search for one video per keyword in parallel
     const searchPromises = shuffledQueries.map(async (query) => {
       try {
+        // Request 3x results to filter by English and duration
         const searchParams = new URLSearchParams({
           part: "snippet",
           q: query,
           type: "video",
-          maxResults: "3",
+          maxResults: "9",
           order: "date",
           key: API_KEY,
           safeSearch: "moderate",
@@ -282,8 +366,20 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
           return null;
         }
 
+        // Filter by English language first
+        const englishItems = searchData.items.filter((item) => {
+          const title = item.snippet?.title || "";
+          const description = item.snippet?.description || "";
+          const text = `${title} ${description}`;
+          return isEnglish(text);
+        });
+
+        if (englishItems.length === 0) {
+          return null;
+        }
+
         // Get video details to filter by duration
-        const videoIds = searchData.items
+        const videoIds = englishItems
           .map((item) => item.id.videoId)
           .join(",");
         const detailsData = await getVideoDetails(videoIds);
@@ -313,7 +409,11 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
     const results = await Promise.all(searchPromises);
 
     // Filter out nulls and return valid videos
-    return results.filter((video) => video !== null);
+    const validVideos = results.filter((video) => video !== null);
+    console.log(
+      `[YouTube API] Found ${validVideos.length} diverse English educational videos`
+    );
+    return validVideos;
   } catch (error) {
     console.error("Error getting diverse educational feed:", error);
     return [];
