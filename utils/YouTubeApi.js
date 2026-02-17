@@ -4,7 +4,50 @@ const BASE_URL =
   "https://www.googleapis.com/youtube/v3";
 
 /**
+ * Detect if user is in an English-speaking region
+ */
+const shouldFilterByEnglishOnly = () => {
+  const englishSpeakingRegions = [
+    "US", "GB", "CA", "AU", "NZ", "IE", "ZA", "IN", "SG", "JM"
+  ];
+
+  try {
+    // Get browser language
+    const language = navigator.language || "en-US";
+    const countryCode = language.split("-")[1]?.toUpperCase();
+
+    if (countryCode && englishSpeakingRegions.includes(countryCode)) {
+      console.log(`[API] English-only filter enabled for region: ${countryCode}`);
+      return true;
+    }
+
+    // Check if language starts with "en" (fallback)
+    if (language.startsWith("en")) {
+      console.log(
+        `[API] English-only filter enabled for English language: ${language}`
+      );
+      return true;
+    }
+
+    console.log(
+      `[API] Regional content filtering enabled for language: ${language}`
+    );
+    return false;
+  } catch {
+    // Default to English-only if detection fails
+    console.log("[API] Region detection failed, defaulting to English-only");
+    return true;
+  }
+};
+
+/**
+ * Store filter preference (can be set once on app load)
+ */
+let filterByEnglishOnly = shouldFilterByEnglishOnly();
+
+/**
  * Simple English language detection based on text analysis
+ * Only applied if user is in an English-speaking region
  */
 const isEnglish = (text) => {
   if (!text) return false;
@@ -49,11 +92,14 @@ export const searchVideosByKeywords = async (
   // Append "shorts" or "short" to the query to prioritize YouTube Shorts
   const shortsQuery = `${query} shorts OR #shorts`;
 
+  // Request more results if we'll filter by language
+  const requestMultiplier = filterByEnglishOnly ? 2 : 1;
+
   const searchParams = new URLSearchParams({
     part: "snippet",
     q: shortsQuery,
     type: "video",
-    maxResults: (maxResults * 2).toString(), // Get 2x to filter by language
+    maxResults: (maxResults * requestMultiplier).toString(),
     order: "relevance",
     videoDuration: "short", // This limits to videos under 4 minutes
     videoDefinition: "high",
@@ -61,7 +107,7 @@ export const searchVideosByKeywords = async (
     safeSearch: "moderate",
     relevanceLanguage: "en",
     regionCode: "US",
-    hl: "en", // UI language to prioritize English content
+    hl: "en", // UI language to prioritize relevant results
   });
 
   if (pageToken) {
@@ -76,8 +122,8 @@ export const searchVideosByKeywords = async (
 
   const searchData = await searchResponse.json();
   
-  // Filter by language - keep only English videos
-  if (searchData.items) {
+  // Filter by language only if user is in English-speaking region
+  if (filterByEnglishOnly && searchData.items) {
     searchData.items = searchData.items.filter((item) => {
       const title = item.snippet?.title || "";
       const description = item.snippet?.description || "";
@@ -127,11 +173,14 @@ export const searchEducationalVideos = async (
   const randomQuery =
     educationalQueries[Math.floor(Math.random() * educationalQueries.length)];
 
+  // Request more results if we'll filter by language
+  const requestMultiplier = filterByEnglishOnly ? 2 : 1;
+
   const searchParams = new URLSearchParams({
     part: "snippet",
     q: randomQuery,
     type: "video",
-    maxResults: (maxResults * 2).toString(), // Get 2x to filter by language
+    maxResults: (maxResults * requestMultiplier).toString(),
     order: "relevance",
     videoDuration: "short",
     videoDefinition: "high",
@@ -140,7 +189,7 @@ export const searchEducationalVideos = async (
     relevanceLanguage: "en",
     regionCode: "US",
     videoCategoryId: "27", // Education category
-    hl: "en", // UI language to prioritize English content
+    hl: "en", // UI language to prioritize relevant results
   });
 
   if (pageToken) {
@@ -155,8 +204,8 @@ export const searchEducationalVideos = async (
 
   const searchData = await searchResponse.json();
   
-  // Filter by language - keep only English videos
-  if (searchData.items) {
+  // Filter by language only if user is in English-speaking region
+  if (filterByEnglishOnly && searchData.items) {
     searchData.items = searchData.items.filter((item) => {
       const title = item.snippet?.title || "";
       const description = item.snippet?.description || "";
@@ -210,11 +259,14 @@ export const getDiverseEducationalFeed = async (count = 10) => {
     // Search for one video per keyword in parallel
     const searchPromises = shuffledQueries.map(async (query) => {
       try {
+        // Request more results if we'll filter by language
+        const requestSize = filterByEnglishOnly ? 6 : 3;
+
         const searchParams = new URLSearchParams({
           part: "snippet",
           q: query,
           type: "video",
-          maxResults: "6", // Get 6 results to have options after language & duration filtering
+          maxResults: requestSize.toString(),
           order: "relevance",
           videoDuration: "short",
           videoDefinition: "high",
@@ -223,7 +275,7 @@ export const getDiverseEducationalFeed = async (count = 10) => {
           relevanceLanguage: "en",
           regionCode: "US",
           videoCategoryId: "27", // Education category
-          hl: "en", // UI language to prioritize English content
+          hl: "en", // UI language to prioritize relevant results
         });
 
         const searchResponse = await fetch(
@@ -241,20 +293,23 @@ export const getDiverseEducationalFeed = async (count = 10) => {
           return null;
         }
 
-        // Filter by language first - keep only English videos
-        const englishItems = searchData.items.filter((item) => {
-          const title = item.snippet?.title || "";
-          const description = item.snippet?.description || "";
-          const text = `${title} ${description}`;
-          return isEnglish(text);
-        });
+        // Filter by language first (if enabled)
+        let itemsToProcess = searchData.items;
+        if (filterByEnglishOnly) {
+          itemsToProcess = searchData.items.filter((item) => {
+            const title = item.snippet?.title || "";
+            const description = item.snippet?.description || "";
+            const text = `${title} ${description}`;
+            return isEnglish(text);
+          });
 
-        if (englishItems.length === 0) {
-          return null;
+          if (itemsToProcess.length === 0) {
+            return null;
+          }
         }
 
         // Get video details to filter by duration
-        const videoIds = englishItems
+        const videoIds = itemsToProcess
           .map((item) => item.id.videoId)
           .join(",");
         const detailsData = await getVideoDetails(videoIds);
