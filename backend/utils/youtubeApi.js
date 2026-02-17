@@ -6,6 +6,47 @@ const BASE_URL = "https://www.googleapis.com/youtube/v3";
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
+/**
+ * Simple English language detection based on text analysis
+ * @param {string} text - Text to analyze
+ * @returns {boolean} - True if text appears to be in English
+ */
+const isEnglish = (text) => {
+  if (!text) return false;
+
+  // Common English words (high frequency, language-specific)
+  const englishWords = [
+    "the", "be", "to", "of", "and", "a", "in", "that", "have", "i",
+    "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
+    "this", "but", "his", "by", "from", "is", "was", "are", "been",
+    "will", "can", "get", "make", "go", "know", "take", "see", "come",
+    "think", "how", "when", "what", "where", "why", "which", "who",
+    "tutorial", "lesson", "explained", "guide", "learn", "teach", "course"
+  ];
+
+  const lowerText = text.toLowerCase();
+  
+  // Check for common English words
+  let englishWordCount = 0;
+  const words = lowerText.match(/\b\w+\b/g) || [];
+  
+  for (const word of words) {
+    if (englishWords.includes(word)) {
+      englishWordCount++;
+    }
+  }
+
+  // Check for English character patterns (Latin characters mostly)
+  const latinCharCount = (lowerText.match(/[a-z0-9\s.,!?'-]/gi) || []).length;
+  const latinRatio = latinCharCount / Math.max(lowerText.length, 1);
+
+  // If text contains mostly Latin characters and some English words, it's likely English
+  // Threshold: 70% Latin characters and good English word ratio
+  const englishWordRatio = englishWordCount / Math.max(words.length, 1);
+  
+  return latinRatio > 0.7 && englishWordRatio > 0.15;
+};
+
 const searchVideosByKeywords = async (
   query,
   maxResults = 10,
@@ -15,12 +56,13 @@ const searchVideosByKeywords = async (
     part: "snippet",
     q: query,
     type: "video",
-    maxResults: maxResults.toString(),
+    maxResults: (maxResults * 2).toString(), // Get 2x to filter by language
     order: "relevance",
     key: API_KEY,
     safeSearch: "moderate",
     relevanceLanguage: "en",
     regionCode: "US",
+    hl: "en", // UI language to prioritize English content
   });
 
   if (pageToken) {
@@ -34,6 +76,17 @@ const searchVideosByKeywords = async (
   }
 
   const searchData = await searchResponse.json();
+  
+  // Filter by language - keep only English videos
+  if (searchData.items) {
+    searchData.items = searchData.items.filter((item) => {
+      const title = item.snippet?.title || "";
+      const description = item.snippet?.description || "";
+      const text = `${title} ${description}`;
+      return isEnglish(text);
+    }).slice(0, maxResults);
+  }
+  
   return searchData;
 };
 
@@ -151,12 +204,13 @@ const searchEducationalVideos = async (maxResults = 10, pageToken = "") => {
     part: "snippet",
     q: randomQuery,
     type: "video",
-    maxResults: maxResults.toString(),
+    maxResults: (maxResults * 2).toString(), // Get 2x to filter by language
     order: "relevance",
     key: API_KEY,
     safeSearch: "moderate",
     relevanceLanguage: "en",
     regionCode: "US",
+    hl: "en", // UI language to prioritize English content
   });
 
   if (pageToken) {
@@ -170,6 +224,17 @@ const searchEducationalVideos = async (maxResults = 10, pageToken = "") => {
   }
 
   const searchData = await searchResponse.json();
+  
+  // Filter by language - keep only English videos
+  if (searchData.items) {
+    searchData.items = searchData.items.filter((item) => {
+      const title = item.snippet?.title || "";
+      const description = item.snippet?.description || "";
+      const text = `${title} ${description}`;
+      return isEnglish(text);
+    }).slice(0, maxResults);
+  }
+  
   return searchData;
 };
 
@@ -219,12 +284,13 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
           part: "snippet",
           q: query,
           type: "video",
-          maxResults: "3", // Get 3 results to have options after duration filtering
+          maxResults: "6", // Get 6 results to have options after language & duration filtering
           order: "date",
           key: API_KEY,
           safeSearch: "moderate",
           relevanceLanguage: "en",
           regionCode: "US",
+          hl: "en", // UI language to prioritize English content
         });
 
         if (publishedAfter) {
@@ -246,8 +312,20 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
           return null;
         }
 
+        // Filter by language first - keep only English videos
+        const englishItems = searchData.items.filter((item) => {
+          const title = item.snippet?.title || "";
+          const description = item.snippet?.description || "";
+          const text = `${title} ${description}`;
+          return isEnglish(text);
+        });
+
+        if (englishItems.length === 0) {
+          return null;
+        }
+
         // Get video details to filter by duration
-        const videoIds = searchData.items
+        const videoIds = englishItems
           .map((item) => item.id.videoId)
           .join(",");
         const detailsData = await getVideoDetails(videoIds);
