@@ -345,11 +345,19 @@ export const VideoProvider = ({
           watchTracker.complete();
         }
 
+        // Pause and release the old video immediately to free memory/CPU
+        if (videoRef.current && currentVideo?.videoType !== "youtube") {
+          videoRef.current.pause();
+        }
+
+        // Switch video immediately — no artificial delay
         setIsVideoSwitching(true);
-        setTimeout(() => {
-          setCurrentIndex(newIndex);
+        setCurrentIndex(newIndex);
+
+        // Clear the switching flag after a short paint cycle
+        requestAnimationFrame(() => {
           setIsVideoSwitching(false);
-        }, 300);
+        });
 
         // Track navigation
         userInteractionService.trackNavigation(
