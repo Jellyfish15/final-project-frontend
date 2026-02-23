@@ -359,12 +359,15 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
               ) : (
                 <>
                   <video
-                    key={currentVideo._id || currentVideo.id || currentVideo.videoUrl}
+                    key={
+                      currentVideo._id ||
+                      currentVideo.id ||
+                      currentVideo.videoUrl
+                    }
                     ref={videoRef}
                     className="video-page__video"
                     src={currentVideo.videoUrl}
                     loop
-                    autoPlay
                     muted={isMuted}
                     playsInline
                     preload="auto"

@@ -101,30 +101,28 @@ export const VideoProvider = ({
     }
   }, [currentIndex, videos]);
 
-  // Track whether currentVideo._id has changed so we can skip
-  // the sync effect on initial mount (let autoPlay handle it)
-  const lastVideoIdRef = useRef(null);
-
   // Sync play/pause state with the video element.
-  // IMPORTANT: On iOS Safari, we must NOT call play() when a new video mounts
-  // because the <video> element already has autoPlay. Calling play() during
-  // the browser's autoplay initialization causes a silent abort and freeze.
-  // This effect should ONLY act on user-initiated play/pause toggles.
+  // We always call play() programmatically instead of relying on the autoPlay
+  // HTML attribute, which is unreliable across browsers.
+  // Videos always mount muted (isMuted=true) so play() is allowed by all
+  // browsers' autoplay policies. Unmuting happens in a separate effect below.
   useEffect(() => {
     if (!videoRef.current || currentVideo?.videoType === "youtube") return;
-
-    const videoId = currentVideo?._id;
-    const isNewVideo = videoId !== lastVideoIdRef.current;
-    lastVideoIdRef.current = videoId;
-
-    // Skip play() on new video mount — autoPlay attribute handles it
-    if (isNewVideo) return;
 
     const videoElement = videoRef.current;
 
     if (isPlaying) {
       if (videoElement.paused) {
-        videoElement.play().catch(() => {});
+        const doPlay = () => {
+          videoElement.play().catch(() => {});
+        };
+        // Wait for enough data before playing
+        if (videoElement.readyState >= 3) {
+          doPlay();
+        } else {
+          videoElement.addEventListener("canplay", doPlay, { once: true });
+          return () => videoElement.removeEventListener("canplay", doPlay);
+        }
       }
     } else {
       if (!videoElement.paused) {
@@ -245,9 +243,8 @@ export const VideoProvider = ({
           videoRef.current.pause();
         }
 
-        // Don't set isPlaying here — let it stay true.
-        // The new <video> element's autoPlay attribute handles playback.
-        // Calling setIsPlaying would trigger syncPlayback which fights with autoPlay on iOS.
+        // Ensure isPlaying is true so the sync effect will call play()
+        setIsPlaying(true);
 
         // iOS Safari BLOCKS autoplay on unmuted videos.
         // Always mount new videos muted so autoPlay works, then unmute after playback starts.
