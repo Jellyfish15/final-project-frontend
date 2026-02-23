@@ -81,8 +81,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
         // Ensure video plays immediately after unmuting
         if (videoElement.paused) {
-          videoElement.play().catch((err) => {
-          });
+          videoElement.play().catch((err) => {});
         }
 
         // Toggle mute state for UI update (button emoji, etc)
@@ -121,33 +120,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     }
   }, [currentVideo, toggleMute]);
 
-  // Force play when new video loads (essential for iOS where autoplay fails)
-  useEffect(() => {
-    if (!currentVideo || !videoRef.current) return;
-    if (currentVideo.videoType === "youtube") return;
-
-    const videoElement = videoRef.current;
-
-    // Wait for the video to be ready before forcing play
-    const forcePlayWhenReady = async () => {
-      // Initial delay to ensure src is set
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      try {
-        const playPromise = videoElement.play();
-        if (playPromise !== undefined) {
-          await playPromise;
-        }
-      } catch (err) {
-        // Autoplay failures are expected on some browsers
-      }
-    };
-
-    forcePlayWhenReady();
-  }, [currentVideo?._id, currentVideo?.videoUrl]);
-
-
-
   // Handle custom feed types (profile or similar)
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -177,7 +149,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
           const response = await videosAPI.getProfileFeed(username, 10);
 
           if (response.success && response.videos) {
-
             // Find the clicked video's index
             const startIndex = response.videos.findIndex(
               (v) => (v.id || v._id) === videoId,
@@ -189,7 +160,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
           const response = await videosAPI.getSimilarVideos(videoId, 20);
 
           if (response.success && response.videos) {
-
             // Fetch the source video and add it to the beginning
             try {
               const sourceResponse = await videosAPI.getVideo(videoId);
@@ -266,33 +236,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       processedVideoIdRef.current = null;
     };
   }, []);
-
-
-
-  // Handle autoplay for uploaded videos when they load
-  useEffect(() => {
-    if (
-      videoRef.current &&
-      currentVideo?.videoType !== "youtube" &&
-      isPlaying
-    ) {
-      // Simply ensure the video is playing when it's the current one
-      const ensurePlayback = async () => {
-        try {
-          const playPromise = videoRef.current.play();
-          if (playPromise !== undefined) {
-            await playPromise;
-          }
-        } catch (error) {
-          // Autoplay may be blocked by browser policy
-        }
-      };
-
-      // Wait a tiny bit for the video element to be ready, then play
-      const timeoutId = setTimeout(ensurePlayback, 50);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [currentVideo, isPlaying]);
 
   return (
     <div className="video-page">
@@ -439,6 +382,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                   <video
                     ref={videoRef}
                     className="video-page__video"
+                    src={currentVideo.videoUrl}
                     loop
                     autoPlay
                     muted={isMuted}
@@ -479,18 +423,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       const error = e.target.error;
                     }}
                   >
-                    <source
-                      src={currentVideo.videoUrl}
-                      type={
-                        currentVideo.videoUrl?.endsWith(".webm")
-                          ? "video/webm"
-                          : currentVideo.videoUrl?.endsWith(".mov")
-                            ? "video/mp4"
-                            : "video/mp4"
-                      }
-                      onError={(e) => {
-                      }}
-                    />
                     <div className="video-page__video-placeholder">
                       <div className="video-page__placeholder-content">
                         <div className="video-page__placeholder-icon">🎥</div>

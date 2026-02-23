@@ -414,43 +414,36 @@ export const VideoProvider = ({
     }, 300);
   }, []);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (currentVideo?.videoType === "youtube") {
-      // For YouTube videos, just toggle the state - YouTubePlayer will handle it
-      setIsPlaying(!isPlaying);
+      setIsPlaying((prev) => !prev);
     } else if (videoRef.current) {
-      // For uploaded videos, ensure we actually play/pause the element
       const videoElement = videoRef.current;
 
-
       if (videoElement.paused) {
-        // Try to play
         videoElement
           .play()
           .then(() => {
             setIsPlaying(true);
           })
-          .catch((err) => {
-            // Still update state in case of autoplay restrictions
+          .catch(() => {
             setIsPlaying(true);
           });
       } else {
-        // Pause immediately
         videoElement.pause();
         setIsPlaying(false);
       }
-    } else {
     }
-  };
+  }, [currentVideo?.videoType]);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     if (videoRef.current && currentVideo?.videoType !== "youtube") {
       videoRef.current.muted = !videoRef.current.muted;
       setIsMuted(videoRef.current.muted);
     } else {
-      setIsMuted(!isMuted);
+      setIsMuted((prev) => !prev);
     }
-  };
+  }, [currentVideo?.videoType]);
 
   const handleLike = async () => {
     if (!currentVideo) return;
