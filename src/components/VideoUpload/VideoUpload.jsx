@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { uploadAPI } from "../../services/api";
+import { API_BASE_URL } from "../../services/config";
 import LoadingSpinner from "../LoadingSpinner/LoadingSpinner";
 import "./VideoUpload.css";
 import { useEffect } from "react";
@@ -111,7 +112,7 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
         const resolvedThumbnails = response.videoData.thumbnailUrls.map(
           (url) => {
             if (url && !url.startsWith("http")) {
-              return `http://localhost:5000${url}`;
+              return `${API_BASE_URL.replace(/\/api\/?$/, "")}${url}`;
             }
             return url;
           },

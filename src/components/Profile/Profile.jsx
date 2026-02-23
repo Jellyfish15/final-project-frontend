@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext/AuthContext";
 import { usersAPI, videosAPI, uploadAPI } from "../../services/api";
+import { API_BASE_URL } from "../../services/config";
 import LoadingSpinner from "../LoadingSpinner/LoadingSpinner";
 import VideoUploadModal from "../VideoUploadModal/VideoUploadModal";
 import VideoSidebar from "../VideoSidebar/VideoSidebar";
@@ -105,7 +106,7 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
           });
 
           if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
-            const backendURL = "http://localhost:5000";
+            const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
             thumbnailUrl = thumbnailUrl.startsWith("/api/")
               ? thumbnailUrl.replace("/api/", "/")
               : thumbnailUrl;
@@ -121,7 +122,7 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
           // Process video URL similarly
           let videoUrl = video.videoUrl;
           if (videoUrl && !videoUrl.startsWith("http")) {
-            const backendURL = "http://localhost:5000";
+            const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
             videoUrl = videoUrl.startsWith("/api/")
               ? videoUrl.replace("/api/", "/")
               : videoUrl;
@@ -293,7 +294,7 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
     let thumbnailUrl = video.thumbnailUrl || video.thumbnail;
     let videoUrl = video.videoUrl;
 
-    const backendURL = "http://localhost:5000";
+    const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
 
     if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
       thumbnailUrl = thumbnailUrl.startsWith("/api/")

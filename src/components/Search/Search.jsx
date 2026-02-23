@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useVideo } from "../../contexts/VideoContext";
 import { useAuth } from "../AuthContext/AuthContext";
 import { searchYouTubeVideos } from "../../../services/youtubeService";
+import { API_BASE_URL } from "../../services/config";
 import SearchIcon from "../../images/search.svg";
 import VideoSidebar from "../VideoSidebar/VideoSidebar";
 import "./Search.css";
@@ -163,7 +164,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
         let thumbnailUrl = video.thumbnailUrl;
 
         if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
-          const backendURL = "http://localhost:5000";
+          const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
           thumbnailUrl = thumbnailUrl.startsWith("/api/")
             ? thumbnailUrl.replace("/api/", "/")
             : thumbnailUrl;

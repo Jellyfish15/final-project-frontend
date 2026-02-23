@@ -17,6 +17,7 @@ import { AuthProvider } from "./components/AuthContext/AuthContext";
 import { VideoProvider } from "./contexts/VideoContext";
 import { getEducationalVideoFeed } from "../services/youtubeService.js";
 import { videosAPI } from "./services/api.js";
+import { API_BASE_URL } from "./services/config.js";
 import "./App.css";
 
 function App() {
@@ -121,7 +122,8 @@ function App() {
         uploadedVideosResponse.status === "fulfilled" &&
         uploadedVideosResponse.value?.videos?.length > 0
       ) {
-        const backendURL = "http://localhost:5000";
+        // Derive backend server root from API_BASE_URL (strip trailing /api)
+        const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
         uploadedVideos = uploadedVideosResponse.value.videos.map((video) => {
           let videoUrl = video.videoUrl;
           let thumbnailUrl = video.thumbnailUrl;

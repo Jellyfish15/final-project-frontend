@@ -12,6 +12,7 @@ import { triggerSwipeHaptic } from "../utils/hapticFeedback";
 import userInteractionService from "../services/userInteractionService";
 import performanceOptimizationService from "../services/performanceOptimizationService";
 import { videosAPI } from "../services/api";
+import { API_BASE_URL } from "../services/config";
 
 const VideoContext = createContext();
 
@@ -338,7 +339,7 @@ export const VideoProvider = ({
         if (response.success && response.video) {
 
           // Fix video URLs for uploaded videos
-          const backendURL = "http://localhost:5000";
+          const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
           let video = response.video;
 
           // Ensure the video has the right structure (_id vs id)
