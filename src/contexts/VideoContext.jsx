@@ -7,7 +7,7 @@ import React, {
   useEffect,
 } from "react";
 import { triggerSwipeHaptic } from "../utils/hapticFeedback";
-import { logTouchEvent, isSafari } from "../utils/touchDebug";
+// touchDebug import removed — debug logging disabled for performance
 import userInteractionService from "../services/userInteractionService";
 import performanceOptimizationService from "../services/performanceOptimizationService";
 import { videosAPI } from "../services/api";
@@ -48,7 +48,7 @@ export const VideoProvider = ({
   }, []);
 
   // Touch handling state
-  const [touchState, setTouchState] = useState({
+  const touchStateRef = useRef({
     startY: 0,
     startX: 0,
     startTime: 0,
@@ -760,88 +760,56 @@ export const VideoProvider = ({
 
   // Touch event handlers for mobile swipe gestures
   const handleTouchStart = useCallback((e) => {
-    logTouchEvent("touchstart", e);
     const touch = e.touches[0];
-
-    console.log("[VideoContext] Touch start:", {
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      timestamp: Date.now(),
-    });
-
-    setTouchState({
+    touchStateRef.current = {
       startY: touch.clientY,
       startX: touch.clientX,
       startTime: Date.now(),
       isDragging: true,
       currentY: touch.clientY,
-    });
+    };
   }, []);
 
   const handleTouchMove = useCallback(
     (event) => {
-      if (!touchState.isDragging) return;
+      if (!touchStateRef.current.isDragging) return;
 
-      logTouchEvent("touchmove", event);
       const touch = event.touches[0];
-      const deltaY = touch.clientY - touchState.startY;
-      const deltaX = touch.clientX - touchState.startX;
+      const deltaY = touch.clientY - touchStateRef.current.startY;
+      const deltaX = touch.clientX - touchStateRef.current.startX;
 
-      // iPhone/Safari-optimized: More aggressive preventDefault
+      // Only preventDefault on vertical swipes to avoid blocking horizontal scroll
       const isVerticalSwipe = Math.abs(deltaY) > Math.abs(deltaX) * 1.2;
-      const hasAnyMovement = Math.abs(deltaY) > 5; // Lower threshold
+      const hasAnyMovement = Math.abs(deltaY) > 5;
 
-      // For iPhone, prevent default on any potential vertical swipe
       if (isVerticalSwipe && hasAnyMovement) {
         event.preventDefault();
         event.stopPropagation();
-
-        // iPhone-specific: Also prevent body scroll
-        if (typeof document !== "undefined") {
-          document.body.style.overflow = "hidden";
-          setTimeout(() => {
-            document.body.style.overflow = "";
-          }, 100);
-        }
-
-        if (isSafari()) {
-          console.log("[Safari] Aggressive preventDefault for vertical swipe", {
-            deltaY,
-            deltaX,
-            isVerticalSwipe,
-          });
-        }
       }
 
-      setTouchState((prev) => ({
-        ...prev,
-        currentY: touch.clientY,
-      }));
+      // Update ref directly — no re-render
+      touchStateRef.current.currentY = touch.clientY;
     },
-    [touchState.isDragging, touchState.startY, touchState.startX],
+    [],
   );
 
   const handleTouchEnd = useCallback(
     (event) => {
-      if (!touchState.isDragging) return;
+      if (!touchStateRef.current.isDragging) return;
 
-      logTouchEvent("touchend", event);
-
-      const deltaY = touchState.currentY - touchState.startY;
-      const deltaX = Math.abs(touchState.startX - touchState.currentY); // Fixed calculation
+      const ts = touchStateRef.current;
+      const deltaY = ts.currentY - ts.startY;
       const actualDeltaX = Math.abs(
-        touchState.startX -
-          (event.changedTouches?.[0]?.clientX || touchState.startX),
+        ts.startX -
+          (event.changedTouches?.[0]?.clientX || ts.startX),
       );
-      const deltaTime = Date.now() - touchState.startTime;
+      const deltaTime = Date.now() - ts.startTime;
       const velocity = Math.abs(deltaY) / deltaTime;
 
-      // Very lenient swipe detection for debugging
-      const minSwipeDistance = 15; // Much lower threshold
-      const maxSwipeTime = 2000; // More time allowed
-      const minVelocity = 0.01; // Very low velocity requirement
+      const minSwipeDistance = 15;
+      const maxSwipeTime = 2000;
+      const minVelocity = 0.01;
 
-      // More lenient vertical detection
       const isVertical = Math.abs(deltaY) > actualDeltaX * 0.8;
 
       const isValidSwipe =
@@ -850,31 +818,10 @@ export const VideoProvider = ({
         velocity > minVelocity &&
         isVertical;
 
-      // Simple fallback - just check for basic vertical movement
       const isBasicSwipe = Math.abs(deltaY) > 30;
 
-      console.log("[Touch Debug] Swipe analysis:", {
-        deltaY,
-        deltaX,
-        actualDeltaX,
-        deltaTime,
-        velocity,
-        isVertical,
-        isValidSwipe,
-        isBasicSwipe,
-        minSwipeDistance,
-        maxSwipeTime,
-        minVelocity,
-        isSafari: isSafari(),
-        touchState: touchState,
-        currentIndex,
-        videosLength: videos.length,
-      });
-
-      // Use either the sophisticated detection or the basic fallback
       if (isValidSwipe || isBasicSwipe) {
         if (deltaY > 0) {
-          // Swipe down - go to previous video
           if (currentIndex > 0) {
             triggerSwipeHaptic("previous", true);
             scrollToVideo("previous");
@@ -882,7 +829,6 @@ export const VideoProvider = ({
             triggerSwipeHaptic("previous", false);
           }
         } else {
-          // Swipe up - go to next video
           if (currentIndex < videos.length - 1) {
             triggerSwipeHaptic("next", true);
             scrollToVideo("next");
@@ -892,32 +838,26 @@ export const VideoProvider = ({
         }
       }
 
-      // Reset touch state
-      setTouchState({
+      // Reset touch state via ref — no re-render
+      touchStateRef.current = {
         startY: 0,
         startX: 0,
         startTime: 0,
         isDragging: false,
         currentY: 0,
-      });
+      };
     },
-    [
-      touchState,
-      currentIndex,
-      videos.length,
-      scrollToVideo,
-      showSwipeIndicator,
-    ],
+    [currentIndex, videos.length, scrollToVideo],
   );
 
   const handleTouchCancel = useCallback(() => {
-    setTouchState({
+    touchStateRef.current = {
       startY: 0,
       startX: 0,
       startTime: 0,
       isDragging: false,
       currentY: 0,
-    });
+    };
   }, []);
 
   const value = {
@@ -952,7 +892,6 @@ export const VideoProvider = ({
     handleTouchMove,
     handleTouchEnd,
     handleTouchCancel,
-    touchState,
     swipeIndicator,
     showSwipeIndicator,
     refreshVideos,
