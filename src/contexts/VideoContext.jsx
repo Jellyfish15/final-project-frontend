@@ -34,6 +34,7 @@ export const VideoProvider = ({
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Start muted to allow autoplay
+  const userWantsMutedRef = useRef(true); // Track user's mute preference across videos
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
   const [focusedVideos, setFocusedVideos] = useState(null); // New state for focused feed
   const videoRef = useRef(null);
@@ -99,20 +100,30 @@ export const VideoProvider = ({
     }
   }, [currentIndex, videos]);
 
-  // Sync play/pause state with the video element
+  // Track whether currentVideo._id has changed so we can skip
+  // the sync effect on initial mount (let autoPlay handle it)
+  const lastVideoIdRef = useRef(null);
+
+  // Sync play/pause state with the video element.
+  // IMPORTANT: On iOS Safari, we must NOT call play() when a new video mounts
+  // because the <video> element already has autoPlay. Calling play() during
+  // the browser's autoplay initialization causes a silent abort and freeze.
+  // This effect should ONLY act on user-initiated play/pause toggles.
   useEffect(() => {
     if (!videoRef.current || currentVideo?.videoType === "youtube") return;
+
+    const videoId = currentVideo?._id;
+    const isNewVideo = videoId !== lastVideoIdRef.current;
+    lastVideoIdRef.current = videoId;
+
+    // Skip play() on new video mount — autoPlay attribute handles it
+    if (isNewVideo) return;
+
     const videoElement = videoRef.current;
 
     if (isPlaying) {
       if (videoElement.paused) {
-        const tryPlay = () => videoElement.play().catch(() => {});
-        if (videoElement.readyState >= 3) {
-          tryPlay();
-        } else {
-          videoElement.addEventListener("canplay", tryPlay, { once: true });
-          return () => videoElement.removeEventListener("canplay", tryPlay);
-        }
+        videoElement.play().catch(() => {});
       }
     } else {
       if (!videoElement.paused) {
@@ -120,6 +131,32 @@ export const VideoProvider = ({
       }
     }
   }, [isPlaying, currentVideo?._id, currentVideo?.videoType]);
+
+  // After a new video starts playing (via autoPlay), restore the user's mute preference.
+  // iOS Safari requires videos to start muted for autoplay to work.
+  // Once playing, we can safely unmute via JavaScript (user gesture propagates).
+  useEffect(() => {
+    if (!videoRef.current || currentVideo?.videoType === "youtube") return;
+    if (userWantsMutedRef.current) return; // User wants muted, nothing to do
+
+    const videoElement = videoRef.current;
+
+    const unmuteAfterPlay = () => {
+      if (!userWantsMutedRef.current && videoElement.muted) {
+        videoElement.muted = false;
+        setIsMuted(false);
+      }
+    };
+
+    // If already playing, unmute now
+    if (!videoElement.paused && videoElement.readyState >= 3) {
+      unmuteAfterPlay();
+    } else {
+      // Wait for the video to start playing, then unmute
+      videoElement.addEventListener("playing", unmuteAfterPlay, { once: true });
+      return () => videoElement.removeEventListener("playing", unmuteAfterPlay);
+    }
+  }, [currentVideo?._id, currentVideo?.videoType]);
 
 
   const scrollToVideo = useCallback(
@@ -207,14 +244,19 @@ export const VideoProvider = ({
           videoRef.current.pause();
         }
 
-        // Ensure isPlaying is true for the new video
-        setIsPlaying(true);
+        // Don't set isPlaying here — let it stay true.
+        // The new <video> element's autoPlay attribute handles playback.
+        // Calling setIsPlaying would trigger syncPlayback which fights with autoPlay on iOS.
+
+        // iOS Safari BLOCKS autoplay on unmuted videos.
+        // Always mount new videos muted so autoPlay works, then unmute after playback starts.
+        setIsMuted(true);
 
         // Switch video immediately — no artificial delay
         setIsVideoSwitching(true);
         setCurrentIndex(newIndex);
 
-        // Clear the switching flag after a short paint cycle
+        // Clear the switching flag after a paint cycle
         requestAnimationFrame(() => {
           setIsVideoSwitching(false);
         });
@@ -402,8 +444,12 @@ export const VideoProvider = ({
     if (videoRef.current && currentVideo?.videoType !== "youtube") {
       videoRef.current.muted = !videoRef.current.muted;
       setIsMuted(videoRef.current.muted);
+      userWantsMutedRef.current = videoRef.current.muted;
     } else {
-      setIsMuted((prev) => !prev);
+      setIsMuted((prev) => {
+        userWantsMutedRef.current = !prev;
+        return !prev;
+      });
     }
   }, [currentVideo?.videoType]);
 
