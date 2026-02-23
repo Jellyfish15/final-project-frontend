@@ -96,29 +96,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   // Reset interaction tracker when video changes
   useEffect(() => {
     hasBeenUnmutedRef.current = false;
-
-    // For non-first videos, auto-unmute and ensure playback
-    // Only do this if the user has unmuted at least once (indicated by isFirstVideoEverRef being false)
-    if (currentVideo && !isFirstVideoEverRef.current && videoRef.current) {
-      if (currentVideo?.videoType !== "youtube") {
-        const videoElement = videoRef.current;
-
-        // Auto-unmute non-first videos
-        if (videoElement.muted) {
-          videoElement.muted = false;
-          toggleMute();
-
-          // Ensure the video plays after unmuting
-          // Use a tiny delay to let the mute update process
-          setTimeout(() => {
-            if (videoElement.paused) {
-              videoElement.play().catch(() => {});
-            }
-          }, 5);
-        }
-      }
-    }
-  }, [currentVideo, toggleMute]);
+  }, [currentVideo]);
 
   // Handle custom feed types (profile or similar)
   useEffect(() => {

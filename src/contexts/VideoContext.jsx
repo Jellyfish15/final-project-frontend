@@ -99,68 +99,35 @@ export const VideoProvider = ({
     }
   }, [currentIndex, videos]);
 
-  // CRITICAL: Sync actual video playback with React state to prevent freeze
-  // This ensures the video element actually plays/pauses when state changes
+  // Force-load new video source when video changes
+  // Mobile browsers often don't reload when React updates the src attribute
   useEffect(() => {
-    if (!videoRef.current || currentVideo?.videoType === "youtube") {
-      return; // YouTube handled separately
-    }
+    if (!videoRef.current || currentVideo?.videoType === "youtube") return;
+    // Explicitly load the new source — critical for mobile
+    videoRef.current.load();
+  }, [currentVideo?._id, currentVideo?.videoType]);
 
+  // Sync play/pause state with the video element
+  useEffect(() => {
+    if (!videoRef.current || currentVideo?.videoType === "youtube") return;
     const videoElement = videoRef.current;
 
-    // Function to safely play or pause with error handling
-    const syncPlayback = async () => {
-      try {
-        if (isPlaying) {
-          if (videoElement.paused === false) {
-            return;
-          }
-
-          const playPromise = videoElement.play();
-
-          if (playPromise !== undefined) {
-            await playPromise.catch((err) => {
-              // Autoplay restrictions are expected on iOS/Safari
-            });
-          }
+    if (isPlaying) {
+      if (videoElement.paused) {
+        const tryPlay = () => videoElement.play().catch(() => {});
+        if (videoElement.readyState >= 3) {
+          tryPlay();
         } else {
-          if (videoElement.paused === false) {
-            videoElement.pause();
-          }
+          videoElement.addEventListener("canplay", tryPlay, { once: true });
+          return () => videoElement.removeEventListener("canplay", tryPlay);
         }
-      } catch (err) {
-        // Unexpected error during playback sync
       }
-    };
-
-    syncPlayback();
-  }, [isPlaying, currentVideo?.videoType, currentVideo?._id]);
-
-  // Force video to play when it becomes canPlay (ready to play)
-  // This is critical for iOS where autoplay might have failed initially
-  useEffect(() => {
-    if (!videoRef.current || currentVideo?.videoType === "youtube") {
-      return;
+    } else {
+      if (!videoElement.paused) {
+        videoElement.pause();
+      }
     }
-
-    const videoElement = videoRef.current;
-
-    const handleCanPlay = async () => {
-      if (isPlaying && videoElement.paused) {
-        try {
-          await videoElement.play();
-        } catch (err) {
-          // Autoplay may be restricted
-        }
-      }
-    };
-
-    videoElement.addEventListener("canplay", handleCanPlay);
-
-    return () => {
-      videoElement.removeEventListener("canplay", handleCanPlay);
-    };
-  }, [isPlaying, currentVideo, currentVideo?._id]);
+  }, [isPlaying, currentVideo?._id, currentVideo?.videoType]);
 
 
   const scrollToVideo = useCallback(
@@ -247,6 +214,9 @@ export const VideoProvider = ({
         if (videoRef.current && currentVideo?.videoType !== "youtube") {
           videoRef.current.pause();
         }
+
+        // Ensure isPlaying is true for the new video
+        setIsPlaying(true);
 
         // Switch video immediately — no artificial delay
         setIsVideoSwitching(true);
