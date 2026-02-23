@@ -243,49 +243,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
           {currentVideo && (
             <>
-              {/* Invisible fullscreen clickable area for first unmute */}
-              {isMuted && !hasBeenUnmutedRef.current && (
-                <div
-                  onClick={handleMuteClick}
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                    const touch = e.touches[0];
-                    touchStartRef.current = {
-                      x: touch.clientX,
-                      y: touch.clientY,
-                      time: Date.now(),
-                    };
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const touch = e.changedTouches[0];
-                    const deltaX = Math.abs(
-                      touch.clientX - touchStartRef.current.x,
-                    );
-                    const deltaY = Math.abs(
-                      touch.clientY - touchStartRef.current.y,
-                    );
-                    const deltaTime = Date.now() - touchStartRef.current.time;
-
-                    // Only unmute if it's a tap (not a swipe)
-                    if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
-                      handleMuteClick();
-                    }
-                  }}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    zIndex: 10,
-                    cursor: "pointer",
-                  }}
-                  aria-label="Unmute video"
-                />
-              )}
-
               <button
                 className="video-page__mute-btn"
                 onClick={handleMuteClick}
@@ -374,8 +331,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     controls={false}
                     onClick={togglePlay}
                     style={{
-                      pointerEvents:
-                        isMuted && !hasBeenUnmutedRef.current ? "none" : "auto",
+                      pointerEvents: "auto",
                     }}
                     onTouchStart={(e) => {
                       const touch = e.touches[0];

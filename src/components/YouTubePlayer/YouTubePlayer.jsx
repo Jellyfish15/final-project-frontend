@@ -124,12 +124,20 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
       }
     };
 
-    if (!window.YT) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      const firstScriptTag = document.getElementsByTagName("script")[0];
-      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-      window.onYouTubeIframeAPIReady = initializePlayer;
+    if (!window.YT || !window.YT.Player) {
+      // YT API not loaded yet — load script if needed, wait for ready
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName("script")[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      }
+      // Always (re)set the callback — previous mounts may have consumed it
+      const prevCallback = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (prevCallback) prevCallback();
+        initializePlayer();
+      };
     } else {
       initializePlayer();
     }
