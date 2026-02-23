@@ -99,14 +99,6 @@ export const VideoProvider = ({
     }
   }, [currentIndex, videos]);
 
-  // Force-load new video source when video changes
-  // Mobile browsers often don't reload when React updates the src attribute
-  useEffect(() => {
-    if (!videoRef.current || currentVideo?.videoType === "youtube") return;
-    // Explicitly load the new source — critical for mobile
-    videoRef.current.load();
-  }, [currentVideo?._id, currentVideo?.videoType]);
-
   // Sync play/pause state with the video element
   useEffect(() => {
     if (!videoRef.current || currentVideo?.videoType === "youtube") return;

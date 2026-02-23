@@ -301,6 +301,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     currentVideo.videoUrl?.split("/").pop().split("?")[0];
                   return (
                     <div
+                      key={extractedVideoId}
                       className="video-page__youtube-wrapper"
                       style={{
                         position: "relative",
@@ -358,6 +359,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
               ) : (
                 <>
                   <video
+                    key={currentVideo._id || currentVideo.id || currentVideo.videoUrl}
                     ref={videoRef}
                     className="video-page__video"
                     src={currentVideo.videoUrl}
@@ -367,7 +369,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     playsInline
                     preload="auto"
                     controls={false}
-                    crossOrigin="anonymous"
                     onClick={togglePlay}
                     style={{
                       pointerEvents:
