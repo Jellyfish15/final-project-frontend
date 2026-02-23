@@ -5,6 +5,7 @@ import React, {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
 } from "react";
 import { triggerSwipeHaptic } from "../utils/hapticFeedback";
 // touchDebug import removed — debug logging disabled for performance
@@ -107,67 +108,28 @@ export const VideoProvider = ({
 
     const videoElement = videoRef.current;
 
-    console.log("[VideoContext SYNC] isPlaying state changed to:", isPlaying, {
-      videoElement_paused: videoElement.paused,
-      readyState: videoElement.readyState,
-      networkState: videoElement.networkState,
-      hasVideo: !!videoElement.videoTracks?.length,
-    });
-
     // Function to safely play or pause with error handling
     const syncPlayback = async () => {
       try {
         if (isPlaying) {
-          console.log("[VideoContext SYNC] Attempting to PLAY video...");
-
-          // Check current state
           if (videoElement.paused === false) {
-            console.log(
-              "[VideoContext SYNC] Video already playing, no action needed",
-            );
             return;
           }
 
-          // Attempt to play, with specific error handling for autoplay restrictions
           const playPromise = videoElement.play();
 
           if (playPromise !== undefined) {
-            await playPromise
-              .then(() => {
-                console.log(
-                  "[VideoContext SYNC] ✅ VIDEO PLAYING AFTER STATE SYNC",
-                );
-              })
-              .catch((err) => {
-                // Handle autoplay restrictions gracefully
-                if (
-                  err.name === "NotAllowedError" ||
-                  err.name === "NotSupportedError"
-                ) {
-                  console.warn(
-                    "[VideoContext SYNC] ⚠️ Autoplay restricted (iOS/Safari):",
-                    err.message,
-                  );
-                  // Video will play once user interacts, which is fine
-                } else {
-                  console.error("[VideoContext SYNC] ❌ Error playing video:", {
-                    errorName: err.name,
-                    errorMessage: err.message,
-                    videoReadyState: videoElement.readyState,
-                    videoNetworkState: videoElement.networkState,
-                  });
-                }
-              });
+            await playPromise.catch((err) => {
+              // Autoplay restrictions are expected on iOS/Safari
+            });
           }
         } else {
-          // Pause immediately
           if (videoElement.paused === false) {
             videoElement.pause();
-            console.log("[VideoContext SYNC] ⏸️ VIDEO PAUSED");
           }
         }
       } catch (err) {
-        console.error("[VideoContext SYNC] Unexpected error:", err);
+        // Unexpected error during playback sync
       }
     };
 
@@ -184,25 +146,11 @@ export const VideoProvider = ({
     const videoElement = videoRef.current;
 
     const handleCanPlay = async () => {
-      console.log("[VideoContext CANPLAY] Video is ready to play!", {
-        isPlaying,
-        videoElement_paused: videoElement.paused,
-        readyState: videoElement.readyState,
-      });
-
-      // If state says it should be playing, force it to play
       if (isPlaying && videoElement.paused) {
         try {
-          console.log(
-            "[VideoContext CANPLAY] Forcing play from canPlay event...",
-          );
           await videoElement.play();
-          console.log("[VideoContext CANPLAY] ✅ Successfully forced play!");
         } catch (err) {
-          console.warn("[VideoContext CANPLAY] ⚠️ Could not force play:", {
-            errorName: err.name,
-            errorMessage: err.message,
-          });
+          // Autoplay may be restricted
         }
       }
     };
@@ -214,20 +162,6 @@ export const VideoProvider = ({
     };
   }, [isPlaying, currentVideo, currentVideo?._id]);
 
-  // Debug current video changes
-  useEffect(() => {
-    console.log("[VideoContext] Current index changed to:", currentIndex);
-    console.log(
-      "[VideoContext] Current video is now:",
-      currentVideo
-        ? {
-            id: currentVideo._id,
-            title: currentVideo.title,
-            type: currentVideo.videoType,
-          }
-        : "none",
-    );
-  }, [currentIndex, currentVideo]);
 
   const scrollToVideo = useCallback(
     async (direction) => {
@@ -243,9 +177,6 @@ export const VideoProvider = ({
         focusedVideos
       ) {
         // Reached end of custom feed, append more videos from cache
-        console.log(
-          "[VideoContext] End of custom feed reached, fetching more cached videos",
-        );
 
         // Get videos from full feed that aren't already in the custom feed
         const customFeedIds = new Set(focusedVideos.map((v) => v._id || v.id));
@@ -258,19 +189,11 @@ export const VideoProvider = ({
           const videosToAdd = additionalVideos.slice(0, 10);
           const expandedFeed = [...focusedVideos, ...videosToAdd];
 
-          console.log("[VideoContext] Appending videos from initialVideos:", {
-            currentFeedSize: focusedVideos.length,
-            videosAdded: videosToAdd.length,
-            newFeedSize: expandedFeed.length,
-          });
 
           setFocusedVideos(expandedFeed);
           newIndex = currentIndex + 1; // Move to the first newly added video
         } else {
           // No more videos in initialVideos, try fetching more from cache
-          console.log(
-            "[VideoContext] No more videos in initialVideos, fetching random videos from cache...",
-          );
 
           try {
             const response = await videosAPI.getRandomCachedVideos(50);
@@ -283,22 +206,10 @@ export const VideoProvider = ({
               if (newVideos.length > 0) {
                 const expandedFeed = [...focusedVideos, ...newVideos];
 
-                console.log(
-                  "[VideoContext] Appending random videos from cache:",
-                  {
-                    currentFeedSize: focusedVideos.length,
-                    fetchedFromCache: response.videos.length,
-                    afterFiltering: newVideos.length,
-                    newFeedSize: expandedFeed.length,
-                  },
-                );
 
                 setFocusedVideos(expandedFeed);
                 newIndex = currentIndex + 1;
               } else {
-                console.log(
-                  "[VideoContext] All cached videos already in feed, fetching more...",
-                );
                 // All 50 videos were duplicates, try fetching more
                 const response2 = await videosAPI.getRandomCachedVideos(50);
                 if (response2?.videos && response2.videos.length > 0) {
@@ -308,17 +219,9 @@ export const VideoProvider = ({
 
                   if (newVideos2.length > 0) {
                     const expandedFeed = [...focusedVideos, ...newVideos2];
-                    console.log(
-                      "[VideoContext] Second attempt - added",
-                      newVideos2.length,
-                      "videos",
-                    );
                     setFocusedVideos(expandedFeed);
                     newIndex = currentIndex + 1;
                   } else {
-                    console.log(
-                      "[VideoContext] All cached videos have been shown",
-                    );
                     return;
                   }
                 } else {
@@ -326,14 +229,9 @@ export const VideoProvider = ({
                 }
               }
             } else {
-              console.log("[VideoContext] No more videos available");
               return;
             }
           } catch (error) {
-            console.error(
-              "[VideoContext] Error fetching more cached videos:",
-              error,
-            );
             return;
           }
         }
@@ -372,36 +270,21 @@ export const VideoProvider = ({
 
   const setVideoById = useCallback(
     async (videoId, createFocusedFeed = false) => {
-      console.log(
-        "[VideoContext] setVideoById called with:",
-        videoId,
-        "createFocusedFeed:",
-        createFocusedFeed,
-      );
-      console.log("[VideoContext] Available videos:", initialVideos.length);
 
       const videoIndex = initialVideos.findIndex(
         (video) => video._id === videoId || video.id === videoId,
       );
-      console.log("[VideoContext] Found video at index:", videoIndex);
 
       if (videoIndex !== -1) {
         if (createFocusedFeed) {
           // Create a focused feed starting with the clicked video, then add random cached videos
           const clickedVideo = initialVideos[videoIndex];
-          console.log(
-            "[VideoContext] Creating focused feed starting with:",
-            clickedVideo.title,
-          );
 
           // Start with just the clicked video
           let focusedVideosFeed = [clickedVideo];
 
           // Fetch random videos from cache to fill the feed
           try {
-            console.log(
-              "[VideoContext] Fetching random videos to populate feed...",
-            );
             const response = await videosAPI.getRandomCachedVideos(50);
 
             if (response?.videos && response.videos.length > 0) {
@@ -413,21 +296,9 @@ export const VideoProvider = ({
               // Add the random videos after the clicked video
               focusedVideosFeed = [clickedVideo, ...additionalVideos];
 
-              console.log("[VideoContext] Focused feed created:", {
-                totalVideos: focusedVideosFeed.length,
-                firstVideo: focusedVideosFeed[0]?.title,
-                videosFromCache: additionalVideos.length,
-              });
             } else {
-              console.log(
-                "[VideoContext] No cached videos available, using only clicked video",
-              );
             }
           } catch (error) {
-            console.error(
-              "[VideoContext] Error fetching random videos:",
-              error,
-            );
             // Continue with just the clicked video if fetch fails
           }
 
@@ -445,13 +316,6 @@ export const VideoProvider = ({
           setIsVideoSwitching(false);
         }, 300);
       } else {
-        console.log(
-          "[VideoContext] Video with ID not found in current feed:",
-          videoId,
-        );
-        console.log(
-          "[VideoContext] Attempting to fetch video directly from API...",
-        );
 
         // Try to fetch the specific video from the API
         fetchSingleVideo(videoId, createFocusedFeed);
@@ -468,10 +332,6 @@ export const VideoProvider = ({
         const response = await videosAPI.getVideo(videoId);
 
         if (response.success && response.video) {
-          console.log(
-            "[VideoContext] Successfully fetched video:",
-            response.video,
-          );
 
           // Fix video URLs for uploaded videos
           const backendURL = "http://localhost:5000";
@@ -503,9 +363,6 @@ export const VideoProvider = ({
             const contextVideos = initialVideos.slice(0, 9); // Get first 9 videos as context
             const focusedVideosFeed = [video, ...contextVideos];
 
-            console.log(
-              "[VideoContext] Creating focused feed with fetched video at index 0",
-            );
             setFocusedVideos(focusedVideosFeed);
             setCurrentIndex(0);
           } else {
@@ -520,29 +377,20 @@ export const VideoProvider = ({
             setIsVideoSwitching(false);
           }, 300);
         } else {
-          console.error("[VideoContext] Failed to fetch video:", response);
         }
       } catch (error) {
-        console.error("[VideoContext] Error fetching single video:", error);
       }
     },
     [initialVideos],
   );
 
   const resetToFullFeed = useCallback(() => {
-    console.log("[VideoContext] Resetting to full feed");
     setFocusedVideos(null);
     setCurrentIndex(0);
   }, []);
 
   // New function to set a custom feed of videos
   const setCustomFeed = useCallback((videos, startIndex = 0) => {
-    console.log("[VideoContext] Setting custom feed:", {
-      videoCount: videos.length,
-      startIndex: startIndex,
-      firstVideo: videos[0]?.title,
-      allVideoIds: videos.map((v) => v._id || v.id),
-    });
 
     // Deduplicate videos by ID
     const uniqueVideos = [];
@@ -554,18 +402,9 @@ export const VideoProvider = ({
         seenIds.add(videoId);
         uniqueVideos.push(video);
       } else {
-        console.log(
-          "[VideoContext] Removing duplicate video:",
-          video.title,
-          videoId,
-        );
       }
     }
 
-    console.log("[VideoContext] After deduplication:", {
-      originalCount: videos.length,
-      uniqueCount: uniqueVideos.length,
-    });
 
     setFocusedVideos(uniqueVideos);
     setCurrentIndex(startIndex);
@@ -578,46 +417,29 @@ export const VideoProvider = ({
   const togglePlay = () => {
     if (currentVideo?.videoType === "youtube") {
       // For YouTube videos, just toggle the state - YouTubePlayer will handle it
-      console.log("[togglePlay] YouTube video toggle to:", !isPlaying);
       setIsPlaying(!isPlaying);
     } else if (videoRef.current) {
       // For uploaded videos, ensure we actually play/pause the element
       const videoElement = videoRef.current;
 
-      console.log("[togglePlay] Current state before toggle:", {
-        isPlaying,
-        videoElement_paused: videoElement.paused,
-        readyState: videoElement.readyState,
-        networkState: videoElement.networkState,
-      });
 
       if (videoElement.paused) {
-        console.log("[togglePlay] Video is paused, attempting to PLAY...");
         // Try to play
         videoElement
           .play()
           .then(() => {
-            console.log("[togglePlay] ✅ VIDEO STARTED PLAYING");
             setIsPlaying(true);
           })
           .catch((err) => {
-            console.warn("[togglePlay] ⚠️ Could not play:", {
-              errorName: err.name,
-              errorMessage: err.message,
-              readyState: videoElement.readyState,
-            });
             // Still update state in case of autoplay restrictions
             setIsPlaying(true);
           });
       } else {
-        console.log("[togglePlay] Video is playing, attempting to PAUSE...");
         // Pause immediately
         videoElement.pause();
-        console.log("[togglePlay] ⏸️ VIDEO PAUSED");
         setIsPlaying(false);
       }
     } else {
-      console.warn("[togglePlay] ⚠️ No video element available!");
     }
   };
 
@@ -635,7 +457,6 @@ export const VideoProvider = ({
 
     // Don't allow liking YouTube videos (they're not in our database)
     if (currentVideo.videoType === "youtube") {
-      console.log("Cannot like YouTube videos");
       return;
     }
 
@@ -678,7 +499,6 @@ export const VideoProvider = ({
         );
       }
     } catch (error) {
-      console.error("Failed to update like:", error);
       // Revert on error
       setIsLiked(!newLikedState);
       setLikeCount((prev) =>
@@ -694,7 +514,6 @@ export const VideoProvider = ({
 
     // Don't track shares for YouTube videos in our database
     if (currentVideo.videoType === "youtube") {
-      console.log("Sharing YouTube video (not tracked in database)");
       return;
     }
 
@@ -708,7 +527,6 @@ export const VideoProvider = ({
     // Call backend API to increment share count
     const videoId = currentVideo._id || currentVideo.id;
     videosAPI.shareVideo(videoId).catch((error) => {
-      console.error("Failed to track share:", error);
     });
   };
 
@@ -717,7 +535,6 @@ export const VideoProvider = ({
 
     // Don't allow commenting on YouTube videos (they're not in our database)
     if (currentVideo.videoType === "youtube") {
-      console.log("Cannot comment on YouTube videos");
       return;
     }
 
@@ -860,42 +677,77 @@ export const VideoProvider = ({
     };
   }, []);
 
-  const value = {
-    videos,
-    currentVideo,
-    currentIndex,
-    isPlaying,
-    isLiked,
-    isMuted,
-    isLoading,
-    isVideoSwitching,
-    error,
-    videoRef,
-    likeCount,
-    commentCount,
-    isCommentModalOpen,
-    setIsCommentModalOpen,
-    isShareModalOpen,
-    setIsShareModalOpen,
-    scrollToVideo,
-    setVideoById,
-    setCustomFeed,
-    resetToFullFeed,
-    isFocusedFeed: focusedVideos !== null,
-    togglePlay,
-    toggleMute,
-    handleLike,
-    handleShare,
-    handleComment,
-    handleWheel,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
-    handleTouchCancel,
-    swipeIndicator,
-    showSwipeIndicator,
-    refreshVideos,
-  };
+  const value = useMemo(
+    () => ({
+      videos,
+      currentVideo,
+      currentIndex,
+      isPlaying,
+      isLiked,
+      isMuted,
+      isLoading,
+      isVideoSwitching,
+      error,
+      videoRef,
+      likeCount,
+      commentCount,
+      isCommentModalOpen,
+      setIsCommentModalOpen,
+      isShareModalOpen,
+      setIsShareModalOpen,
+      scrollToVideo,
+      setVideoById,
+      setCustomFeed,
+      resetToFullFeed,
+      isFocusedFeed: focusedVideos !== null,
+      togglePlay,
+      toggleMute,
+      handleLike,
+      handleShare,
+      handleComment,
+      handleWheel,
+      handleTouchStart,
+      handleTouchMove,
+      handleTouchEnd,
+      handleTouchCancel,
+      swipeIndicator,
+      showSwipeIndicator,
+      refreshVideos,
+    }),
+    [
+      videos,
+      currentVideo,
+      currentIndex,
+      isPlaying,
+      isLiked,
+      isMuted,
+      isLoading,
+      isVideoSwitching,
+      error,
+      likeCount,
+      commentCount,
+      isCommentModalOpen,
+      isShareModalOpen,
+      scrollToVideo,
+      setVideoById,
+      setCustomFeed,
+      resetToFullFeed,
+      focusedVideos,
+      togglePlay,
+      toggleMute,
+      handleLike,
+      handleShare,
+      handleComment,
+      handleWheel,
+      handleTouchStart,
+      handleTouchMove,
+      handleTouchEnd,
+      handleTouchCancel,
+      swipeIndicator,
+      showSwipeIndicator,
+      refreshVideos,
+    ],
+  );
 
   return (
     <VideoContext.Provider value={value}>{children}</VideoContext.Provider>

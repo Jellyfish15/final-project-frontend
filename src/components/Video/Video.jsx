@@ -54,7 +54,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   // Handle unplayable videos (embedding disabled, not found, etc.)
   useEffect(() => {
     const handleSkipVideo = (event) => {
-      console.log("[Video] Skipping unplayable video:", event.detail.videoId);
       // Automatically move to next video
       scrollToVideo("next");
     };
@@ -83,7 +82,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
         // Ensure video plays immediately after unmuting
         if (videoElement.paused) {
           videoElement.play().catch((err) => {
-            console.log("[Video] Could not play:", err.message);
           });
         }
 
@@ -109,23 +107,13 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
         // Auto-unmute non-first videos
         if (videoElement.muted) {
           videoElement.muted = false;
-          // Update React state to match the video element's actual muted state
           toggleMute();
-          console.log(
-            "[Video] Auto-unmuting non-first video:",
-            currentVideo?.title,
-          );
 
           // Ensure the video plays after unmuting
           // Use a tiny delay to let the mute update process
           setTimeout(() => {
             if (videoElement.paused) {
-              videoElement.play().catch((err) => {
-                console.log(
-                  "[Video] Could not autoplay after unmute:",
-                  err.message,
-                );
-              });
+              videoElement.play().catch(() => {});
             }
           }, 5);
         }
@@ -140,139 +128,25 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
     const videoElement = videoRef.current;
 
-    console.log("[Video] 🎥 NEW VIDEO LOADED:", {
-      title: currentVideo.title,
-      url: currentVideo.videoUrl,
-      hasVideoSrc: !!videoElement.src,
-      currentSrc: videoElement.src?.slice(0, 100),
-      paused: videoElement.paused,
-      muted: videoElement.muted,
-      readyState: videoElement.readyState,
-      readyStateLabel: [
-        "HAVE_NOTHING",
-        "HAVE_METADATA",
-        "HAVE_CURRENT_DATA",
-        "HAVE_FUTURE_DATA",
-        "HAVE_ENOUGH_DATA",
-      ][videoElement.readyState],
-      networkState: videoElement.networkState,
-      networkStateLabel: [
-        "NETWORK_EMPTY",
-        "NETWORK_IDLE",
-        "NETWORK_LOADING",
-        "NETWORK_NO_SOURCE",
-      ][videoElement.networkState],
-    });
-
     // Wait for the video to be ready before forcing play
     const forcePlayWhenReady = async () => {
       // Initial delay to ensure src is set
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      console.log("[Video] Attempting to force play...", {
-        readyState: videoElement.readyState,
-        networkState: videoElement.networkState,
-        paused: videoElement.paused,
-        duration: videoElement.duration,
-      });
-
       try {
-        // Try to play immediately
         const playPromise = videoElement.play();
         if (playPromise !== undefined) {
           await playPromise;
-          console.log("[Video] ✅ FORCE PLAY SUCCESS!");
         }
       } catch (err) {
-        console.warn("[Video] ⚠️ Force play failed:", {
-          errorName: err.name,
-          errorMessage: err.message,
-          errorCode: err.code,
-        });
+        // Autoplay failures are expected on some browsers
       }
     };
 
     forcePlayWhenReady();
   }, [currentVideo?._id, currentVideo?.videoUrl]);
 
-  // DEBUG: Monitor video element state every 2 seconds
-  useEffect(() => {
-    if (!videoRef.current || currentVideo?.videoType === "youtube") return;
 
-    const videoElement = videoRef.current;
-    let debugIntervalId = null;
-
-    const debugVideoState = () => {
-      console.log("[Video MONITOR] State snapshot:", {
-        src: videoElement.src?.slice(0, 100),
-        paused: videoElement.paused,
-        muted: videoElement.muted,
-        readyState: videoElement.readyState,
-        networkState: videoElement.networkState,
-        duration: videoElement.duration,
-        currentTime: videoElement.currentTime,
-        canPlayType_mp4: videoElement.canPlayType("video/mp4"),
-      });
-    };
-
-    // Log immediately
-    debugVideoState();
-
-    // Log every 2 seconds
-    debugIntervalId = setInterval(debugVideoState, 2000);
-
-    return () => {
-      if (debugIntervalId) clearInterval(debugIntervalId);
-    };
-  }, [currentVideo?._id]);
-
-  // DEBUG: Comprehensive event logging
-  useEffect(() => {
-    if (!videoRef.current || currentVideo?.videoType === "youtube") return;
-
-    const videoElement = videoRef.current;
-
-    const handlers = {
-      loadstart: () => console.log("[Video EVENT] LOADSTART 🔄"),
-      progress: () =>
-        console.log(
-          "[Video EVENT] PROGRESS",
-          videoElement.buffered.length > 0
-            ? `${videoElement.buffered.end(0).toFixed(2)}s buffered`
-            : "",
-        ),
-      canplay: () =>
-        console.log("[Video EVENT] CANPLAY 🟢 VIDEO CAN PLAY NOW!"),
-      canplaythrough: () => console.log("[Video EVENT] CANPLAYTHROUGH"),
-      playing: () => console.log("[Video EVENT] PLAYING ▶️"),
-      pause: () => console.log("[Video EVENT] PAUSE ⏸️"),
-      ended: () => console.log("[Video EVENT] ENDED"),
-      loadedmetadata: () =>
-        console.log(
-          "[Video EVENT] LOADEDMETADATA, duration:",
-          videoElement.duration,
-        ),
-      loadeddata: () => console.log("[Video EVENT] LOADEDDATA"),
-      error: () =>
-        console.error(
-          "[Video EVENT] ERROR:",
-          videoElement.error?.message || "Unknown error",
-        ),
-      stalled: () => console.log("[Video EVENT] STALLED ⚠️"),
-      durationchange: () =>
-        console.log("[Video EVENT] DURATIONCHANGE:", videoElement.duration),
-    };
-
-    Object.entries(handlers).forEach(([event, handler]) => {
-      videoElement.addEventListener(event, handler);
-    });
-
-    return () => {
-      Object.entries(handlers).forEach(([event, handler]) => {
-        videoElement.removeEventListener(event, handler);
-      });
-    };
-  }, [currentVideo?._id]);
 
   // Handle custom feed types (profile or similar)
   useEffect(() => {
@@ -291,11 +165,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
         processingVideoChange.current ||
         loadedFeedRef.current === feedKey
       ) {
-        console.log("[Video] Skipping custom feed load:", {
-          feedType,
-          processing: processingVideoChange.current,
-          alreadyLoaded: loadedFeedRef.current === feedKey,
-        });
         return;
       }
 
@@ -305,16 +174,9 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
       try {
         if (feedType === "profile" && username) {
-          // Load profile feed
-          console.log("[Video] Loading profile feed for:", username);
           const response = await videosAPI.getProfileFeed(username, 10);
 
           if (response.success && response.videos) {
-            console.log("[Video] Profile feed loaded:", {
-              total: response.videos.length,
-              userVideos: response.feedInfo.userVideos,
-              similarVideos: response.feedInfo.similarVideos,
-            });
 
             // Find the clicked video's index
             const startIndex = response.videos.findIndex(
@@ -324,15 +186,9 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
             setCustomFeed(response.videos, Math.max(0, startIndex));
           }
         } else if (feedType === "similar" && videoId) {
-          // Load similar videos feed
-          console.log("[Video] Loading similar videos for:", videoId);
           const response = await videosAPI.getSimilarVideos(videoId, 20);
 
           if (response.success && response.videos) {
-            console.log(
-              "[Video] Similar videos loaded:",
-              response.videos.length,
-            );
 
             // Fetch the source video and add it to the beginning
             try {
@@ -348,7 +204,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
           }
         }
       } catch (error) {
-        console.error("[Video] Error loading custom feed:", error);
         loadedFeedRef.current = null; // Reset on error
       } finally {
         setTimeout(() => {
@@ -370,35 +225,20 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     // Skip if it's a custom feed (handled by previous useEffect)
     if (feedType) return;
 
-    // Skip if we're already in a focused feed - don't let URL override it
+    // Skip if we're already in a focused feed
     if (isFocusedFeed) {
-      console.log("[Video] Already in focused feed, ignoring URL videoId");
       return;
     }
 
-    // Skip if video is currently switching to avoid conflicts
+    // Skip if video is currently switching
     if (isVideoSwitching) {
-      console.log("[Video] Video is switching, skipping URL processing");
       return;
     }
 
     // Reset loaded feed ref when switching to non-custom feed
     if (loadedFeedRef.current) {
-      console.log("[Video] Resetting custom feed tracking");
       loadedFeedRef.current = null;
     }
-
-    console.log("[Video] URL changed:", location.search);
-    console.log("[Video] Extracted videoId:", videoId);
-    console.log(
-      "[Video] Previously processed videoId:",
-      processedVideoIdRef.current,
-    );
-    console.log("[Video] Videos available:", videos.length);
-    console.log(
-      "[Video] Processing video change:",
-      processingVideoChange.current,
-    );
 
     // Only process if this is a NEW videoId that we haven't processed before
     if (
@@ -407,12 +247,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       !processingVideoChange.current &&
       videoId !== processedVideoIdRef.current
     ) {
-      console.log(
-        "[Video] Calling setVideoById with focused feed for:",
-        videoId,
-      );
       processingVideoChange.current = true;
-      processedVideoIdRef.current = videoId; // Mark this videoId as processed
+      processedVideoIdRef.current = videoId;
 
       // Create focused feed when navigating from thumbnail click
       setVideoById(videoId, true);
@@ -421,46 +257,17 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       setTimeout(() => {
         processingVideoChange.current = false;
       }, 1000);
-    } else if (videoId && videos.length === 0) {
-      console.log("[Video] VideoId found but no videos loaded yet");
-    } else if (videoId === processedVideoIdRef.current) {
-      console.log(
-        "[Video] VideoId already processed, skipping to avoid jumping back",
-      );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, videos.length, isFocusedFeed, isVideoSwitching]); // setVideoById is stable, removed from deps to prevent re-runs
+  }, [location.search, videos.length, isFocusedFeed, isVideoSwitching]);
 
   // Reset processed video ID when component unmounts or URL changes to a non-video page
   useEffect(() => {
     return () => {
-      // Cleanup when leaving the video page
-      console.log("[Video] Component unmounting, resetting processed video ID");
       processedVideoIdRef.current = null;
     };
   }, []);
 
-  // Debug current video changes
-  useEffect(() => {
-    console.log("[Video] Current video changed:", {
-      index: currentIndex,
-      id: currentVideo?._id,
-      title: currentVideo?.title,
-      url: currentVideo?.videoUrl,
-      type: currentVideo?.videoType,
-      isFocused: isFocusedFeed,
-      totalVideos: videos.length,
-    });
 
-    // Additional debugging for video URLs
-    if (currentVideo?.videoType === "uploaded") {
-      console.log("[Video] Uploaded video details:", {
-        originalVideoUrl: currentVideo.videoUrl,
-        isFullUrl: currentVideo.videoUrl.startsWith("http"),
-        backendUrl: import.meta.env.VITE_API_URL || "http://localhost:5000",
-      });
-    }
-  }, [currentVideo, currentIndex, isFocusedFeed, videos]);
 
   // Handle autoplay for uploaded videos when they load
   useEffect(() => {
@@ -472,14 +279,12 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       // Simply ensure the video is playing when it's the current one
       const ensurePlayback = async () => {
         try {
-          // Play the video if it exists
           const playPromise = videoRef.current.play();
           if (playPromise !== undefined) {
             await playPromise;
-            console.log("[Video] Video is now playing");
           }
         } catch (error) {
-          console.log("[Video] Could not autoplay:", error.message);
+          // Autoplay may be blocked by browser policy
         }
       };
 
@@ -501,18 +306,9 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       >
         <div
           className="video-page__video-container"
-          onTouchStart={(e) => {
-            console.log("[Video Container] Touch start on video container");
-            handleTouchStart(e);
-          }}
-          onTouchMove={(e) => {
-            console.log("[Video Container] Touch move on video container");
-            handleTouchMove(e);
-          }}
-          onTouchEnd={(e) => {
-            console.log("[Video Container] Touch end on video container");
-            handleTouchEnd(e);
-          }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           {(isLoading || isVideoSwitching) && (
             <VideoLoader
@@ -582,12 +378,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                   const extractedVideoId =
                     currentVideo.id ||
                     currentVideo.videoUrl?.split("/").pop().split("?")[0];
-                  console.log("[Video] YouTube video ID:", {
-                    id: currentVideo.id,
-                    videoUrl: currentVideo.videoUrl,
-                    extracted: extractedVideoId,
-                    title: currentVideo.title,
-                  });
                   return (
                     <div
                       className="video-page__youtube-wrapper"
@@ -685,43 +475,9 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                         togglePlay();
                       }
                     }}
-                    onLoadStart={() =>
-                      console.log("[Video] Load start:", currentVideo?.videoUrl)
-                    }
-                    onLoadedData={() => {
-                      console.log("[Video] Loaded data successfully");
-                      console.log(
-                        "[Video] Duration:",
-                        videoRef.current?.duration,
-                      );
-                      console.log(
-                        "[Video] Has audio:",
-                        videoRef.current?.mozHasAudio !== false,
-                      );
-                    }}
                     onError={(e) => {
                       const error = e.target.error;
-                      console.error(
-                        "[Video] Error loading video:",
-                        {
-                          code: error?.code,
-                          message: error?.message,
-                          MEDIA_ERR_ABORTED: error?.code === 1,
-                          MEDIA_ERR_NETWORK: error?.code === 2,
-                          MEDIA_ERR_DECODE: error?.code === 3,
-                          MEDIA_ERR_SRC_NOT_SUPPORTED: error?.code === 4,
-                        },
-                        currentVideo?.videoUrl,
-                      );
                     }}
-                    onCanPlay={async () => {
-                      console.log("[Video] Can play - video is ready");
-                    }}
-                    onPlay={() => console.log("[Video] Started playing")}
-                    onPause={() => console.log("[Video] Paused")}
-                    onLoadedMetadata={() =>
-                      console.log("[Video] Metadata loaded")
-                    }
                   >
                     <source
                       src={currentVideo.videoUrl}
@@ -733,12 +489,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                             : "video/mp4"
                       }
                       onError={(e) => {
-                        console.error(
-                          "[Video] Source error for:",
-                          currentVideo.videoUrl,
-                          "Error:",
-                          e.target.error,
-                        );
                       }}
                     />
                     <div className="video-page__video-placeholder">
