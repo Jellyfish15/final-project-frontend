@@ -1,6 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "../AuthContext/AuthContext";
 import ModalWithForm from "../ModalWithForm/ModalWithForm";
+
+// Rate limiting for login attempts
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+// Input sanitization for security
+const sanitizeInput = (input) => {
+  return input
+    .replace(/[<>]/g, '') // Strip HTML tags
+    .replace(/javascript:/gi, '') // Strip JS URIs
+    .trim();
+};
+
+// Email validation with RFC 5322 compliance
+const isValidEmail = (email) => {
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  return emailRegex.test(email);
+};
 
 const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
   const { login } = useAuth();

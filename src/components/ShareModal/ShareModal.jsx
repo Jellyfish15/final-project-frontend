@@ -1,5 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import "./ShareModal.css";
+
+// Share platform configurations
+const SHARE_PLATFORMS = {
+  twitter: { name: 'Twitter/X', icon: '🐦', color: '#1DA1F2' },
+  facebook: { name: 'Facebook', icon: '📱', color: '#4267B2' },
+  whatsapp: { name: 'WhatsApp', icon: '💬', color: '#25D366' },
+  telegram: { name: 'Telegram', icon: '✈️', color: '#0088CC' },
+  email: { name: 'Email', icon: '📧', color: '#EA4335' },
+  copy: { name: 'Copy Link', icon: '📋', color: '#666' },
+};
+
+// Share tracking for analytics
+const trackShare = (platform, videoId) => {
+  try {
+    const shareEvent = {
+      type: 'share',
+      platform,
+      videoId,
+      timestamp: Date.now(),
+      userAgent: navigator.userAgent,
+    };
+    const shares = JSON.parse(localStorage.getItem('shareHistory') || '[]');
+    shares.push(shareEvent);
+    if (shares.length > 100) shares.shift();
+    localStorage.setItem('shareHistory', JSON.stringify(shares));
+  } catch (e) {
+    // Silently fail if storage is full
+  }
+};
 
 const ShareModal = ({ isOpen, onClose, video }) => {
   const [copied, setCopied] = useState(false);

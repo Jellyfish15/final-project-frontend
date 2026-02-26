@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useVideo } from "../../contexts/VideoContext";
-import { useAuth } from "../AuthContext/AuthContext";
+import { useVideo } from "../../contexts/useVideo";
 import { searchYouTubeVideos } from "../../../services/youtubeService";
 import { API_BASE_URL } from "../../services/config";
 import SearchIcon from "../../images/search.svg";
@@ -15,100 +14,15 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [featuredVideos, setFeaturedVideos] = useState([]);
   const [isLoadingFeatured, setIsLoadingFeatured] = useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [currentEducatorIndex, setCurrentEducatorIndex] = useState(0);
-
-  // Sample popular educators data
-  const popularEducators = [
-    {
-      id: 1,
-      name: "Dr. Sarah Chen",
-      subject: "Computer Science",
-      avatar:
-        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=face",
-      followers: "2.4M",
-      videos: 127,
-    },
-    {
-      id: 2,
-      name: "Prof. Michael Johnson",
-      subject: "Mathematics",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-      followers: "1.8M",
-      videos: 89,
-    },
-    {
-      id: 3,
-      name: "Dr. Emily Rodriguez",
-      subject: "Physics",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-      followers: "1.2M",
-      videos: 156,
-    },
-    {
-      id: 4,
-      name: "Prof. David Kim",
-      subject: "Chemistry",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-      followers: "950K",
-      videos: 73,
-    },
-    {
-      id: 5,
-      name: "Dr. Lisa Thompson",
-      subject: "Biology",
-      avatar:
-        "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=150&h=150&fit=crop&crop=face",
-      followers: "1.6M",
-      videos: 112,
-    },
-    {
-      id: 6,
-      name: "Prof. James Wilson",
-      subject: "History",
-      avatar:
-        "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face",
-      followers: "780K",
-      videos: 94,
-    },
-  ];
 
   const navigate = useNavigate();
   const { videos, setVideoById } = useVideo();
-  const { isAuthenticated } = useAuth();
-
-  // Helper function to determine font size class based on text length
-  const getTextSizeClass = (text, type) => {
-    const length = text.length;
-
-    if (type === "name") {
-      if (length <= 12) return "name-short";
-      if (length <= 18) return "name-medium";
-      if (length <= 25) return "name-long";
-      return "name-very-long";
-    } else if (type === "subject") {
-      if (length <= 10) return "subject-short";
-      if (length <= 16) return "subject-medium";
-      return "subject-long";
-    }
-    return "";
-  };
 
   const searchInputRef = useRef(null);
-  const suggestionsTimeoutRef = useRef(null);
-
-  // Load recent searches and featured videos on component mount
-  useEffect(() => {
-    loadRecentSearches();
-    loadFeaturedVideos();
-  }, []);
 
   // Load featured videos for the empty state
-  const loadFeaturedVideos = async () => {
+  const loadFeaturedVideos = useCallback(async () => {
     setIsLoadingFeatured(true);
     try {
       console.log("Total videos available in context:", videos?.length || 0);
@@ -123,7 +37,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
       const youtubeNeeded = Math.max(0, 20 - uploadedCount);
 
       console.log(
-        `Using ${uploadedCount} uploaded videos, loading ${youtubeNeeded} from YouTube...`
+        `Using ${uploadedCount} uploaded videos, loading ${youtubeNeeded} from YouTube...`,
       );
 
       // Load additional videos from YouTube Shorts if needed
@@ -132,7 +46,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
           console.log(`Loading ${youtubeNeeded} educational YouTube Shorts...`);
           const youtubeResults = await searchYouTubeVideos(
             "educational quick lesson",
-            youtubeNeeded
+            youtubeNeeded,
           );
 
           if (youtubeResults && youtubeResults.length > 0) {
@@ -142,7 +56,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
           } else {
             // If YouTube fails, just use uploaded videos
             console.log(
-              "YouTube Shorts load failed, using only uploaded videos"
+              "YouTube Shorts load failed, using only uploaded videos",
             );
             selectedVideos = uploadedVideos;
           }
@@ -190,7 +104,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
       console.log("Featured videos data structure:", processedVideos[0]);
       console.log(
         "Available properties:",
-        Object.keys(processedVideos[0] || {})
+        Object.keys(processedVideos[0] || {}),
       );
       console.log("Final thumbnail URL:", processedVideos[0]?.thumbnailUrl);
       console.log("Total featured videos loaded:", processedVideos.length);
@@ -205,7 +119,13 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     } finally {
       setIsLoadingFeatured(false);
     }
-  };
+  }, [videos]);
+
+  // Load recent searches and featured videos on component mount
+  useEffect(() => {
+    loadRecentSearches();
+    loadFeaturedVideos();
+  }, [loadFeaturedVideos]);
 
   const loadRecentSearches = () => {
     const recent = JSON.parse(localStorage.getItem("recentSearches") || "[]");
@@ -245,7 +165,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
             ?.toLowerCase()
             .includes(searchLower);
           const tagsMatch = video.tags?.some((tag) =>
-            tag.toLowerCase().includes(searchLower)
+            tag.toLowerCase().includes(searchLower),
           );
           return titleMatch || descMatch || categoryMatch || tagsMatch;
         });
@@ -255,12 +175,12 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
         let youtubeResults = [];
         try {
           console.log(
-            `[Search] Searching YouTube API directly for: "${query}"`
+            `[Search] Searching YouTube API directly for: "${query}"`,
           );
           console.log("[Search] This is a LIVE search, not from cache");
           youtubeResults = await searchYouTubeVideos(query, 20);
           console.log(
-            `[Search] ✅ Found ${youtubeResults.length} YouTube Shorts from live API`
+            `[Search] ✅ Found ${youtubeResults.length} YouTube Shorts from live API`,
           );
           if (youtubeResults.length > 0) {
             console.log("[Search] Sample result:", youtubeResults[0]?.title);
@@ -277,7 +197,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
         ];
 
         console.log(
-          `Total search results: ${combinedResults.length} (${localResults.length} local, ${youtubeResults.length} YouTube Shorts)`
+          `Total search results: ${combinedResults.length} (${localResults.length} local, ${youtubeResults.length} YouTube Shorts)`,
         );
         setSearchResults(combinedResults);
       } catch (error) {
@@ -297,7 +217,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
         setIsSearching(false);
       }
     },
-    [videos, saveRecentSearch]
+    [videos, saveRecentSearch],
   );
 
   const handleSearch = (e) => {
@@ -321,27 +241,13 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     }
   };
 
-  const nextEducator = () => {
-    setCurrentEducatorIndex((prev) =>
-      prev >= popularEducators.length - 3 ? 0 : prev + 1
-    );
-  };
-
-  const prevEducator = () => {
-    setCurrentEducatorIndex((prev) =>
-      prev <= 0 ? popularEducators.length - 3 : prev - 1
-    );
-  };
-
   const handleInputFocus = () => {
-    setIsInputFocused(true);
     setShowDropdown(true);
   };
 
   const handleInputBlur = () => {
     // Delay hiding dropdown to allow clicks
     setTimeout(() => {
-      setIsInputFocused(false);
       setShowDropdown(false);
     }, 200);
   };
@@ -588,7 +494,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
                     e.stopPropagation();
                     if (video.creator._id || video.creator.id) {
                       navigate(
-                        `/profile/${video.creator._id || video.creator.id}`
+                        `/profile/${video.creator._id || video.creator.id}`,
                       );
                     }
                   }}

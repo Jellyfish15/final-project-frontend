@@ -1,11 +1,51 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import VideoLoader from "../VideoLoader/VideoLoader";
+
+// YT Player state machine constants
+const PLAYER_STATES = {
+  UNSTARTED: -1,
+  ENDED: 0,
+  PLAYING: 1,
+  PAUSED: 2,
+  BUFFERING: 3,
+  CUED: 5,
+};
+
+const PLAYER_ERROR_CODES = {
+  INVALID_PARAM: 2,
+  HTML5_ERROR: 5,
+  NOT_FOUND: 100,
+  EMBED_DISABLED: 101,
+  EMBED_DISABLED_ALT: 150,
+};
 
 const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
   const playerRef = useRef(null);
   const playerInstanceRef = useRef(null);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(true);
+  const [playerError, setPlayerError] = useState(null);
+  const retryCountRef = useRef(0);
+  const playbackQualityRef = useRef("auto");
+  const bufferingStartRef = useRef(null);
+  const totalBufferTimeRef = useRef(0);
+
+  // Calculate optimal player dimensions based on container
+  const playerDimensions = useMemo(() => {
+    const aspectRatio = 9 / 16; // Vertical video
+    const maxWidth = window.innerWidth;
+    const maxHeight = window.innerHeight;
+    return {
+      width: Math.min(maxWidth, maxHeight / aspectRatio),
+      height: Math.min(maxHeight, maxWidth * aspectRatio),
+    };
+  }, []);
 
   useEffect(() => {
     // Validate videoId before attempting to load
@@ -81,7 +121,7 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
                     }
                   } catch (error) {
                     console.log(
-                      "[YouTubePlayer] Auto-unmute blocked by browser"
+                      "[YouTubePlayer] Auto-unmute blocked by browser",
                     );
                   }
                 }, 500);
@@ -100,22 +140,22 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
 
               if (event.data === 101 || event.data === 150) {
                 console.log(
-                  "[YouTubePlayer] Video playback disabled on other sites, skipping..."
+                  "[YouTubePlayer] Video playback disabled on other sites, skipping...",
                 );
                 // Trigger skip to next video
                 window.dispatchEvent(
                   new CustomEvent("skipUnplayableVideo", {
                     detail: { videoId },
-                  })
+                  }),
                 );
               } else if (event.data === 100) {
                 console.log(
-                  "[YouTubePlayer] Video not found or private, skipping..."
+                  "[YouTubePlayer] Video not found or private, skipping...",
                 );
                 window.dispatchEvent(
                   new CustomEvent("skipUnplayableVideo", {
                     detail: { videoId },
-                  })
+                  }),
                 );
               }
             },
@@ -126,7 +166,11 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
 
     if (!window.YT || !window.YT.Player) {
       // YT API not loaded yet — load script if needed, wait for ready
-      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+      if (
+        !document.querySelector(
+          'script[src="https://www.youtube.com/iframe_api"]',
+        )
+      ) {
         const tag = document.createElement("script");
         tag.src = "https://www.youtube.com/iframe_api";
         const firstScriptTag = document.getElementsByTagName("script")[0];

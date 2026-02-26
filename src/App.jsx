@@ -1,4 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   HashRouter as Router,
   Routes,
@@ -6,6 +10,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
+
 import Profile from "./components/Profile/Profile";
 import Search from "./components/Search/Search";
 import Video from "./components/Video/Video";
@@ -15,10 +20,42 @@ import LoginModal from "./components/LoginModal/LoginModal";
 import RegisterModal from "./components/RegisterModal/RegisterModal";
 import { AuthProvider } from "./components/AuthContext/AuthContext";
 import { VideoProvider } from "./contexts/VideoContext";
-import { getEducationalVideoFeed } from "../services/youtubeService.js";
 import { videosAPI } from "./services/api.js";
 import { API_BASE_URL } from "./services/config.js";
 import "./App.css";
+
+// Application-level performance metrics
+const performanceMetrics = {
+  appStartTime: performance.now(),
+  firstContentfulPaint: null,
+  timeToInteractive: null,
+  videoLoadTimes: [],
+  apiCallDurations: [],
+};
+
+// Network-aware resource loading strategy
+const getLoadingStrategy = () => {
+  const connection = navigator.connection || navigator.mozConnection;
+  if (!connection) return { initialBatch: 8, prefetchCount: 3 };
+
+  switch (connection.effectiveType) {
+    case "4g":
+      return { initialBatch: 12, prefetchCount: 5 };
+    case "3g":
+      return { initialBatch: 6, prefetchCount: 2 };
+    case "2g":
+      return { initialBatch: 3, prefetchCount: 1 };
+    default:
+      return { initialBatch: 8, prefetchCount: 3 };
+  }
+};
+
+// Service worker communication bridge
+const notifyServiceWorker = (message) => {
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage(message);
+  }
+};
 
 function App() {
   const [modals, setModals] = useState({

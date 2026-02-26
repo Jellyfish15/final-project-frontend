@@ -1,12 +1,12 @@
 import React, {
   createContext,
-  useContext,
   useState,
   useRef,
   useCallback,
   useEffect,
   useMemo,
 } from "react";
+
 import { triggerSwipeHaptic } from "../utils/hapticFeedback";
 // touchDebug import removed — debug logging disabled for performance
 import userInteractionService from "../services/userInteractionService";
@@ -15,14 +15,6 @@ import { videosAPI } from "../services/api";
 import { API_BASE_URL } from "../services/config";
 
 const VideoContext = createContext();
-
-export const useVideo = () => {
-  const context = useContext(VideoContext);
-  if (!context) {
-    throw new Error("useVideo must be used within a VideoProvider");
-  }
-  return context;
-};
 
 export const VideoProvider = ({
   children,
@@ -39,7 +31,6 @@ export const VideoProvider = ({
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
   const [focusedVideos, setFocusedVideos] = useState(null); // New state for focused feed
   const videoRef = useRef(null);
-  const [watchTracker, setWatchTracker] = useState(null);
   const [likeCount, setLikeCount] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
@@ -58,6 +49,8 @@ export const VideoProvider = ({
     isDragging: false,
     currentY: 0,
   });
+  const touchMoveAnimationFrameRef = useRef(null);
+  const latestTouchYRef = useRef(0);
 
   // Swipe feedback state
   const [swipeIndicator, setSwipeIndicator] = useState({
@@ -85,21 +78,29 @@ export const VideoProvider = ({
   // Preload upcoming videos for faster transitions
   useEffect(() => {
     if (videos.length > 0) {
-      // Preload thumbnails for next 3-5 videos
-      const upcomingVideos = videos.slice(currentIndex + 1, currentIndex + 5);
+      // Preload a smaller window on mobile to reduce memory pressure
+      const upcomingVideos = videos.slice(currentIndex + 1, currentIndex + 3);
 
       if (upcomingVideos.length > 0) {
         performanceOptimizationService.batchPreloadThumbnails(
           upcomingVideos,
-          3,
+          2,
         );
         performanceOptimizationService.batchPreloadVideoMetadata(
           upcomingVideos,
-          2,
+          1,
         );
       }
     }
   }, [currentIndex, videos]);
+
+  useEffect(() => {
+    return () => {
+      if (touchMoveAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(touchMoveAnimationFrameRef.current);
+      }
+    };
+  }, []);
 
   // Sync play/pause state with the video element.
   // We always call play() programmatically instead of relying on the autoPlay
@@ -157,7 +158,6 @@ export const VideoProvider = ({
     }
   }, [currentVideo?._id, currentVideo?.videoType]);
 
-
   const scrollToVideo = useCallback(
     async (direction) => {
       let newIndex = currentIndex;
@@ -184,7 +184,6 @@ export const VideoProvider = ({
           const videosToAdd = additionalVideos.slice(0, 10);
           const expandedFeed = [...focusedVideos, ...videosToAdd];
 
-
           setFocusedVideos(expandedFeed);
           newIndex = currentIndex + 1; // Move to the first newly added video
         } else {
@@ -200,7 +199,6 @@ export const VideoProvider = ({
 
               if (newVideos.length > 0) {
                 const expandedFeed = [...focusedVideos, ...newVideos];
-
 
                 setFocusedVideos(expandedFeed);
                 newIndex = currentIndex + 1;
@@ -233,11 +231,6 @@ export const VideoProvider = ({
       }
 
       if (newIndex !== currentIndex) {
-        // Clean up previous watch tracker
-        if (watchTracker) {
-          watchTracker.complete();
-        }
-
         // Pause and release the old video immediately to free memory/CPU
         if (videoRef.current && currentVideo?.videoType !== "youtube") {
           videoRef.current.pause();
@@ -267,12 +260,71 @@ export const VideoProvider = ({
         );
       }
     },
-    [currentIndex, videos.length, watchTracker, focusedVideos, initialVideos],
+    [
+      currentIndex,
+      videos.length,
+      focusedVideos,
+      initialVideos,
+      currentVideo?.videoType,
+    ],
+  );
+
+  // Function to fetch a single video by ID and add it to the context
+  const fetchSingleVideo = useCallback(
+    async (videoId, createFocusedFeed = false) => {
+      try {
+        const response = await videosAPI.getVideo(videoId);
+
+        if (response.success && response.video) {
+          const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
+          let video = response.video;
+
+          if (video.id && !video._id) {
+            video._id = video.id;
+          }
+
+          if (video.videoUrl && !video.videoUrl.startsWith("http")) {
+            const videoUrl = video.videoUrl.startsWith("/api/")
+              ? video.videoUrl.replace("/api/", "/")
+              : video.videoUrl;
+            video.videoUrl = `${backendURL}${videoUrl}`;
+          }
+
+          if (video.thumbnailUrl && !video.thumbnailUrl.startsWith("http")) {
+            const thumbnailUrl = video.thumbnailUrl.startsWith("/api/")
+              ? video.thumbnailUrl.replace("/api/", "/")
+              : video.thumbnailUrl;
+            video.thumbnailUrl = `${backendURL}${thumbnailUrl}`;
+          }
+
+          video.videoType = "uploaded";
+
+          if (createFocusedFeed) {
+            const contextVideos = initialVideos.slice(0, 9);
+            const focusedVideosFeed = [video, ...contextVideos];
+
+            setFocusedVideos(focusedVideosFeed);
+            setCurrentIndex(0);
+          } else {
+            const updatedVideos = [video, ...initialVideos];
+            setFocusedVideos(updatedVideos);
+            setCurrentIndex(0);
+          }
+
+          setIsVideoSwitching(true);
+          setTimeout(() => {
+            setIsVideoSwitching(false);
+          }, 300);
+        }
+      } catch (error) {
+        // Keep current feed if the fetch fails.
+      }
+    },
+    [initialVideos],
   );
 
   const setVideoById = useCallback(
     async (videoId, createFocusedFeed = false) => {
-
       const videoIndex = initialVideos.findIndex(
         (video) => video._id === videoId || video.id === videoId,
       );
@@ -297,8 +349,6 @@ export const VideoProvider = ({
 
               // Add the random videos after the clicked video
               focusedVideosFeed = [clickedVideo, ...additionalVideos];
-
-            } else {
             }
           } catch (error) {
             // Continue with just the clicked video if fetch fails
@@ -318,72 +368,11 @@ export const VideoProvider = ({
           setIsVideoSwitching(false);
         }, 300);
       } else {
-
         // Try to fetch the specific video from the API
         fetchSingleVideo(videoId, createFocusedFeed);
       }
     },
-    [initialVideos],
-  );
-
-  // Function to fetch a single video by ID and add it to the context
-  const fetchSingleVideo = useCallback(
-    async (videoId, createFocusedFeed = false) => {
-      try {
-        const videosAPI = (await import("../services/api")).videosAPI;
-        const response = await videosAPI.getVideo(videoId);
-
-        if (response.success && response.video) {
-
-          // Fix video URLs for uploaded videos
-          const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
-          let video = response.video;
-
-          // Ensure the video has the right structure (_id vs id)
-          if (video.id && !video._id) {
-            video._id = video.id;
-          }
-
-          if (video.videoUrl && !video.videoUrl.startsWith("http")) {
-            let videoUrl = video.videoUrl.startsWith("/api/")
-              ? video.videoUrl.replace("/api/", "/")
-              : video.videoUrl;
-            video.videoUrl = `${backendURL}${videoUrl}`;
-          }
-
-          if (video.thumbnailUrl && !video.thumbnailUrl.startsWith("http")) {
-            let thumbnailUrl = video.thumbnailUrl.startsWith("/api/")
-              ? video.thumbnailUrl.replace("/api/", "/")
-              : video.thumbnailUrl;
-            video.thumbnailUrl = `${backendURL}${thumbnailUrl}`;
-          }
-
-          video.videoType = "uploaded"; // Mark as uploaded video
-
-          if (createFocusedFeed) {
-            // Create a focused feed with just this video and some context from existing videos
-            const contextVideos = initialVideos.slice(0, 9); // Get first 9 videos as context
-            const focusedVideosFeed = [video, ...contextVideos];
-
-            setFocusedVideos(focusedVideosFeed);
-            setCurrentIndex(0);
-          } else {
-            // Add video to existing feed and navigate to it
-            const updatedVideos = [video, ...initialVideos];
-            setFocusedVideos(updatedVideos);
-            setCurrentIndex(0);
-          }
-
-          setIsVideoSwitching(true);
-          setTimeout(() => {
-            setIsVideoSwitching(false);
-          }, 300);
-        } else {
-        }
-      } catch (error) {
-      }
-    },
-    [initialVideos],
+    [initialVideos, fetchSingleVideo],
   );
 
   const resetToFullFeed = useCallback(() => {
@@ -393,7 +382,6 @@ export const VideoProvider = ({
 
   // New function to set a custom feed of videos
   const setCustomFeed = useCallback((videos, startIndex = 0) => {
-
     // Deduplicate videos by ID
     const uniqueVideos = [];
     const seenIds = new Set();
@@ -403,10 +391,8 @@ export const VideoProvider = ({
       if (!seenIds.has(videoId)) {
         seenIds.add(videoId);
         uniqueVideos.push(video);
-      } else {
       }
     }
-
 
     setFocusedVideos(uniqueVideos);
     setCurrentIndex(startIndex);
@@ -451,7 +437,7 @@ export const VideoProvider = ({
     }
   }, [currentVideo?.videoType]);
 
-  const handleLike = async () => {
+  const handleLike = useCallback(async () => {
     if (!currentVideo) return;
 
     // Don't allow liking YouTube videos (they're not in our database)
@@ -504,9 +490,9 @@ export const VideoProvider = ({
         newLikedState ? Math.max(0, prev - 1) : prev + 1,
       );
     }
-  };
+  }, [currentVideo, isLiked, focusedVideos]);
 
-  const handleShare = () => {
+  const handleShare = useCallback(() => {
     if (!currentVideo) return;
 
     setIsShareModalOpen(true);
@@ -525,11 +511,10 @@ export const VideoProvider = ({
 
     // Call backend API to increment share count
     const videoId = currentVideo._id || currentVideo.id;
-    videosAPI.shareVideo(videoId).catch((error) => {
-    });
-  };
+    videosAPI.shareVideo(videoId).catch(() => {});
+  }, [currentVideo]);
 
-  const handleComment = () => {
+  const handleComment = useCallback(() => {
     if (!currentVideo) return;
 
     // Don't allow commenting on YouTube videos (they're not in our database)
@@ -545,16 +530,19 @@ export const VideoProvider = ({
       "comment",
       { source: "video_player" },
     );
-  };
+  }, [currentVideo]);
 
-  const handleWheel = (e) => {
-    e.preventDefault();
-    if (e.deltaY > 0) {
-      scrollToVideo("next");
-    } else {
-      scrollToVideo("previous");
-    }
-  };
+  const handleWheel = useCallback(
+    (e) => {
+      e.preventDefault();
+      if (e.deltaY > 0) {
+        scrollToVideo("next");
+      } else {
+        scrollToVideo("previous");
+      }
+    },
+    [scrollToVideo],
+  );
 
   // Show swipe feedback indicator
   const showSwipeIndicator = useCallback((direction, message) => {
@@ -577,6 +565,7 @@ export const VideoProvider = ({
   // Touch event handlers for mobile swipe gestures
   const handleTouchStart = useCallback((e) => {
     const touch = e.touches[0];
+    latestTouchYRef.current = touch.clientY;
     touchStateRef.current = {
       startY: touch.clientY,
       startX: touch.clientX,
@@ -586,38 +575,46 @@ export const VideoProvider = ({
     };
   }, []);
 
-  const handleTouchMove = useCallback(
-    (event) => {
+  const handleTouchMove = useCallback((event) => {
+    if (!touchStateRef.current.isDragging) return;
+
+    const touch = event.touches[0];
+    latestTouchYRef.current = touch.clientY;
+    const deltaY = touch.clientY - touchStateRef.current.startY;
+    const deltaX = touch.clientX - touchStateRef.current.startX;
+
+    // Only preventDefault on vertical swipes to avoid blocking horizontal scroll
+    const isVerticalSwipe = Math.abs(deltaY) > Math.abs(deltaX) * 1.2;
+    const hasAnyMovement = Math.abs(deltaY) > 5;
+
+    if (isVerticalSwipe && hasAnyMovement) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    if (touchMoveAnimationFrameRef.current !== null) return;
+
+    touchMoveAnimationFrameRef.current = requestAnimationFrame(() => {
+      touchMoveAnimationFrameRef.current = null;
       if (!touchStateRef.current.isDragging) return;
-
-      const touch = event.touches[0];
-      const deltaY = touch.clientY - touchStateRef.current.startY;
-      const deltaX = touch.clientX - touchStateRef.current.startX;
-
-      // Only preventDefault on vertical swipes to avoid blocking horizontal scroll
-      const isVerticalSwipe = Math.abs(deltaY) > Math.abs(deltaX) * 1.2;
-      const hasAnyMovement = Math.abs(deltaY) > 5;
-
-      if (isVerticalSwipe && hasAnyMovement) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-
-      // Update ref directly — no re-render
-      touchStateRef.current.currentY = touch.clientY;
-    },
-    [],
-  );
+      touchStateRef.current.currentY = latestTouchYRef.current;
+    });
+  }, []);
 
   const handleTouchEnd = useCallback(
     (event) => {
       if (!touchStateRef.current.isDragging) return;
 
+      if (touchMoveAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(touchMoveAnimationFrameRef.current);
+        touchMoveAnimationFrameRef.current = null;
+      }
+
       const ts = touchStateRef.current;
+      ts.currentY = latestTouchYRef.current;
       const deltaY = ts.currentY - ts.startY;
       const actualDeltaX = Math.abs(
-        ts.startX -
-          (event.changedTouches?.[0]?.clientX || ts.startX),
+        ts.startX - (event.changedTouches?.[0]?.clientX || ts.startX),
       );
       const deltaTime = Date.now() - ts.startTime;
       const velocity = Math.abs(deltaY) / deltaTime;
@@ -667,6 +664,11 @@ export const VideoProvider = ({
   );
 
   const handleTouchCancel = useCallback(() => {
+    if (touchMoveAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(touchMoveAnimationFrameRef.current);
+      touchMoveAnimationFrameRef.current = null;
+    }
+
     touchStateRef.current = {
       startY: 0,
       startX: 0,

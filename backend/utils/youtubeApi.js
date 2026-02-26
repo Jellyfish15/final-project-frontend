@@ -93,7 +93,7 @@ const searchVideosByKeywords = async (
 ) => {
   // Request 2x results since we'll filter by English
   const requestCount = maxResults * 2;
-  
+
   const searchParams = new URLSearchParams({
     part: "snippet",
     q: query,
@@ -118,21 +118,23 @@ const searchVideosByKeywords = async (
   }
 
   const searchData = await searchResponse.json();
-  
+
   // Filter by English language
   if (searchData.items) {
-    searchData.items = searchData.items.filter((item) => {
-      const title = item.snippet?.title || "";
-      const description = item.snippet?.description || "";
-      const text = `${title} ${description}`;
-      return isEnglish(text);
-    }).slice(0, maxResults);
-    
+    searchData.items = searchData.items
+      .filter((item) => {
+        const title = item.snippet?.title || "";
+        const description = item.snippet?.description || "";
+        const text = `${title} ${description}`;
+        return isEnglish(text);
+      })
+      .slice(0, maxResults);
+
     console.log(
-      `[YouTube API] Filtered to ${searchData.items.length} English videos from ${requestCount} results`
+      `[YouTube API] Filtered to ${searchData.items.length} English videos from ${requestCount} results`,
     );
   }
-  
+
   return searchData;
 };
 
@@ -273,21 +275,23 @@ const searchEducationalVideos = async (maxResults = 10, pageToken = "") => {
   }
 
   const searchData = await searchResponse.json();
-  
+
   // Filter by English language
   if (searchData.items) {
-    searchData.items = searchData.items.filter((item) => {
-      const title = item.snippet?.title || "";
-      const description = item.snippet?.description || "";
-      const text = `${title} ${description}`;
-      return isEnglish(text);
-    }).slice(0, maxResults);
-    
+    searchData.items = searchData.items
+      .filter((item) => {
+        const title = item.snippet?.title || "";
+        const description = item.snippet?.description || "";
+        const text = `${title} ${description}`;
+        return isEnglish(text);
+      })
+      .slice(0, maxResults);
+
     console.log(
-      `[YouTube API] Filtered to ${searchData.items.length} English educational videos from ${requestCount} results`
+      `[YouTube API] Filtered to ${searchData.items.length} English educational videos from ${requestCount} results`,
     );
   }
-  
+
   return searchData;
 };
 
@@ -379,9 +383,7 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
         }
 
         // Get video details to filter by duration
-        const videoIds = englishItems
-          .map((item) => item.id.videoId)
-          .join(",");
+        const videoIds = englishItems.map((item) => item.id.videoId).join(",");
         const detailsData = await getVideoDetails(videoIds);
 
         // Find first video under 15 minutes
@@ -411,7 +413,7 @@ const getDiverseEducationalFeed = async (count = 10, publishedAfter = null) => {
     // Filter out nulls and return valid videos
     const validVideos = results.filter((video) => video !== null);
     console.log(
-      `[YouTube API] Found ${validVideos.length} diverse English educational videos`
+      `[YouTube API] Found ${validVideos.length} diverse English educational videos`,
     );
     return validVideos;
   } catch (error) {

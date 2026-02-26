@@ -11,7 +11,10 @@ const rateLimit = require("express-rate-limit");
 const path = require("path");
 require("dotenv").config();
 
-const { initializeScheduledTasks, stopScheduledTasks } = require("./scheduledTasks");
+const {
+  initializeScheduledTasks,
+  stopScheduledTasks,
+} = require("./scheduledTasks");
 
 const upload = multer({ dest: "uploads/" });
 const app = express();
@@ -234,12 +237,12 @@ app.use("*", (req, res) => {
 // Graceful shutdown
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received. Shutting down gracefully...");
-  
+
   // Stop scheduled tasks
   if (scheduledTasks) {
     stopScheduledTasks(scheduledTasks);
   }
-  
+
   await mongoose.connection.close();
   console.log("MongoDB connection closed.");
   process.exit(0);
@@ -248,10 +251,10 @@ process.on("SIGTERM", async () => {
 // Start server
 const startServer = async () => {
   await connectDB();
-  
+
   // Initialize scheduled tasks
   scheduledTasks = initializeScheduledTasks();
-  
+
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import "./Video.css";
-import { useVideo } from "../../contexts/VideoContext";
+import { useVideo } from "../../contexts/useVideo";
 import { useLocation } from "react-router-dom";
+
 import YouTubePlayer from "../YouTubePlayer/YouTubePlayer";
 import VideoLoader from "../VideoLoader/VideoLoader";
 import VideoSidebar from "../VideoSidebar/VideoSidebar";
@@ -11,12 +12,12 @@ import { videosAPI } from "../../services/api";
 
 const Video = ({ onOpenLogin, onOpenRegister }) => {
   const containerRef = useRef(null);
-  const processingVideoChange = useRef(false); // Prevent multiple simultaneous video changes
-  const loadedFeedRef = useRef(null); // Track which custom feed has been loaded
-  const processedVideoIdRef = useRef(null); // Track which videoId from URL has been processed
-  const hasBeenUnmutedRef = useRef(false); // Track if video has been unmuted by user click
-  const isFirstVideoEverRef = useRef(true); // Track if this is the very first video loaded
-  const touchStartRef = useRef({ x: 0, y: 0, time: 0 }); // Track touch start for tap detection
+  const processingVideoChange = useRef(false);
+  const loadedFeedRef = useRef(null);
+  const processedVideoIdRef = useRef(null);
+  const hasBeenUnmutedRef = useRef(false);
+  const isFirstVideoEverRef = useRef(true);
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
   const location = useLocation();
   const {
     currentVideo,
@@ -37,7 +38,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     scrollToVideo,
     setVideoById,
     setCustomFeed,
-    resetToFullFeed,
     isFocusedFeed,
     togglePlay,
     toggleMute,
@@ -53,7 +53,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
   // Handle unplayable videos (embedding disabled, not found, etc.)
   useEffect(() => {
-    const handleSkipVideo = (event) => {
+    const handleSkipVideo = () => {
       // Automatically move to next video
       scrollToVideo("next");
     };
@@ -81,7 +81,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
         // Ensure video plays immediately after unmuting
         if (videoElement.paused) {
-          videoElement.play().catch((err) => {});
+          videoElement.play().catch(() => {});
         }
 
         // Toggle mute state for UI update (button emoji, etc)
@@ -206,7 +206,13 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
         processingVideoChange.current = false;
       }, 1000);
     }
-  }, [location.search, videos.length, isFocusedFeed, isVideoSwitching]);
+  }, [
+    location.search,
+    videos.length,
+    isFocusedFeed,
+    isVideoSwitching,
+    setVideoById,
+  ]);
 
   // Reset processed video ID when component unmounts or URL changes to a non-video page
   useEffect(() => {
@@ -230,6 +236,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchCancel}
         >
           {(isLoading || isVideoSwitching) && (
             <VideoLoader
@@ -357,9 +364,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                         togglePlay();
                       }
                     }}
-                    onError={(e) => {
-                      const error = e.target.error;
-                    }}
+                    onError={() => {}}
                   >
                     <div className="video-page__video-placeholder">
                       <div className="video-page__placeholder-content">

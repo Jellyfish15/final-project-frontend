@@ -53,7 +53,9 @@
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  /* Removed heavy CSS transition — was causing 300ms freeze on mobile */
+  /* Keep video swaps instant on mobile */
+  transition: none;
+  will-change: auto;
   overflow: hidden;
 }
 

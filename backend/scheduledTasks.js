@@ -14,22 +14,20 @@ const initializeScheduledTasks = () => {
     console.log("[Scheduler] 🔄 Starting daily cache refresh...");
     try {
       const result = await youtubeCacheService.cacheNewVideos(50);
-      
+
       if (result.success) {
         console.log(
-          `[Scheduler] ✅ Successfully cached ${result.cachedCount} new videos`
+          `[Scheduler] ✅ Successfully cached ${result.cachedCount} new videos`,
         );
         console.log(`[Scheduler] Total fetched: ${result.totalFetched}`);
-        
+
         if (result.errors && result.errors.length > 0) {
           console.warn(
-            `[Scheduler] ⚠️ Encountered ${result.errors.length} errors during caching`
+            `[Scheduler] ⚠️ Encountered ${result.errors.length} errors during caching`,
           );
         }
       } else {
-        console.error(
-          `[Scheduler] ❌ Failed to cache videos: ${result.error}`
-        );
+        console.error(`[Scheduler] ❌ Failed to cache videos: ${result.error}`);
       }
 
       // Log cache stats after refresh
@@ -43,7 +41,7 @@ const initializeScheduledTasks = () => {
     } catch (error) {
       console.error(
         "[Scheduler] ❌ Error during daily cache refresh:",
-        error.message
+        error.message,
       );
     }
   });
@@ -60,12 +58,8 @@ const initializeScheduledTasks = () => {
   //   // Runs every Sunday at 3 AM
   // });
 
-  console.log(
-    "[Scheduler] ✅ Scheduled tasks initialized:"
-  );
-  console.log(
-    "  📅 Daily Cache Refresh: Every day at 2:00 AM (50 videos)"
-  );
+  console.log("[Scheduler] ✅ Scheduled tasks initialized:");
+  console.log("  📅 Daily Cache Refresh: Every day at 2:00 AM (50 videos)");
   console.log("  🕐 Timezone: Server local time");
 
   return {

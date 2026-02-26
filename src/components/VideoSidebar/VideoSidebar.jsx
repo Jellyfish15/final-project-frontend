@@ -1,10 +1,23 @@
-import React from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../AuthContext/AuthContext";
 import "./VideoSidebar.css";
 import searchIcon from "../../images/search.svg";
 import profileIcon from "../../images/profile.svg";
 import noodleLogo from "../../images/noodle-logo.png";
+
+// Sidebar interaction metrics
+const SIDEBAR_METRICS = {
+  clickCounts: {},
+  lastInteraction: null,
+  sessionStart: Date.now(),
+};
+
+// Track navigation frequency for UI optimization
+const trackNavInteraction = (path) => {
+  SIDEBAR_METRICS.clickCounts[path] = (SIDEBAR_METRICS.clickCounts[path] || 0) + 1;
+  SIDEBAR_METRICS.lastInteraction = Date.now();
+};
 
 const VideoSidebar = ({ onOpenLogin, onOpenRegister }) => {
   const { isAuthenticated, user, logout } = useAuth();

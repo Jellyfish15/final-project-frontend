@@ -14,21 +14,74 @@ const isEnglishText = (text) => {
 
   // Common English words (high freq, language-specific)
   const englishWords = [
-    "the", "be", "to", "of", "and", "a", "in", "that", "have", "i",
-    "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
-    "this", "but", "his", "by", "from", "is", "was", "are", "been",
-    "will", "can", "get", "make", "go", "know", "take", "see", "come",
-    "think", "how", "when", "what", "where", "why", "which", "who",
-    "tutorial", "lesson", "explained", "guide", "learn", "teach", "course",
-    "education", "learn", "teach", "student", "school", "class", "science"
+    "the",
+    "be",
+    "to",
+    "of",
+    "and",
+    "a",
+    "in",
+    "that",
+    "have",
+    "i",
+    "it",
+    "for",
+    "not",
+    "on",
+    "with",
+    "he",
+    "as",
+    "you",
+    "do",
+    "at",
+    "this",
+    "but",
+    "his",
+    "by",
+    "from",
+    "is",
+    "was",
+    "are",
+    "been",
+    "will",
+    "can",
+    "get",
+    "make",
+    "go",
+    "know",
+    "take",
+    "see",
+    "come",
+    "think",
+    "how",
+    "when",
+    "what",
+    "where",
+    "why",
+    "which",
+    "who",
+    "tutorial",
+    "lesson",
+    "explained",
+    "guide",
+    "learn",
+    "teach",
+    "course",
+    "education",
+    "learn",
+    "teach",
+    "student",
+    "school",
+    "class",
+    "science",
   ];
 
   const lowerText = text.toLowerCase();
-  
+
   // Count English words
   let englishWordCount = 0;
   const words = lowerText.match(/\b\w+\b/g) || [];
-  
+
   for (const word of words) {
     if (englishWords.includes(word)) {
       englishWordCount++;
@@ -41,7 +94,7 @@ const isEnglishText = (text) => {
 
   // Thresholds: 70% Latin chars + decent English word ratio
   const englishWordRatio = englishWordCount / Math.max(words.length, 1);
-  
+
   return latinRatio > 0.7 && englishWordRatio > 0.1;
 };
 
@@ -58,11 +111,12 @@ const filterEnglishVideos = (videos) => {
 
     const title = video.snippet?.title || video.title || "";
     const description = video.snippet?.description || video.description || "";
-    const channelTitle = video.snippet?.channelTitle || video.channelTitle || "";
-    
+    const channelTitle =
+      video.snippet?.channelTitle || video.channelTitle || "";
+
     // Combine all text for analysis
     const combinedText = `${title} ${description} ${channelTitle}`;
-    
+
     return isEnglishText(combinedText);
   });
 };
@@ -73,19 +127,21 @@ const filterEnglishVideos = (videos) => {
  * @returns {Function} - Wrapped function with English filtering
  */
 const withEnglishFiltering = (originalCacheFunction) => {
-  return async function(...args) {
-    console.log("[CacheFilter] 🌍 Applying English-only filtering to cache refresh");
-    
+  return async function (...args) {
+    console.log(
+      "[CacheFilter] 🌍 Applying English-only filtering to cache refresh",
+    );
+
     // Call original function
     const result = await originalCacheFunction.apply(this, args);
-    
+
     if (result.success && result.englishOnly === undefined) {
       result.englishOnly = true;
       console.log(
-        `[CacheFilter] ✅ Cache refresh applied English-only filtering`
+        `[CacheFilter] ✅ Cache refresh applied English-only filtering`,
       );
     }
-    
+
     return result;
   };
 };

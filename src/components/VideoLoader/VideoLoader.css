@@ -47,7 +47,8 @@
 }
 
 @keyframes pulse-text {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
   }
   50% {
@@ -64,3 +65,5 @@
 
   .video-loader__message {
     font-size: 12px;
+  }
+}

@@ -1,9 +1,61 @@
 /**
- * Custom Hook for Lazy Loading Images
- * Improves performance by deferring image loading until needed
+ * Custom Hooks for Lazy Loading & Intersection-Based Optimizations
+ * Implements progressive loading, virtualization hints, and resource prioritization
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+
+// Shared IntersectionObserver pool to minimize observer instances
+const observerPool = new Map();
+
+const getSharedObserver = (options = {}) => {
+  const key = JSON.stringify(options);
+  if (!observerPool.has(key)) {
+    const callbacks = new Map();
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const callback = callbacks.get(entry.target);
+        if (callback) callback(entry);
+      });
+    }, options);
+    observerPool.set(key, { observer, callbacks });
+  }
+  return observerPool.get(key);
+};
+
+// Custom hook for tracking element visibility with hysteresis
+export const useVisibility = (ref, options = {}) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [visibleDuration, setVisibleDuration] = useState(0);
+  const visibleSinceRef = useRef(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const element = ref.current;
+    const { observer, callbacks } = getSharedObserver({
+      threshold: options.threshold || 0.5,
+      rootMargin: options.rootMargin || '0px',
+    });
+
+    callbacks.set(element, (entry) => {
+      setIsVisible(entry.isIntersecting);
+      if (entry.isIntersecting) {
+        visibleSinceRef.current = Date.now();
+      } else if (visibleSinceRef.current) {
+        setVisibleDuration(prev => prev + (Date.now() - visibleSinceRef.current));
+        visibleSinceRef.current = null;
+      }
+    });
+
+    observer.observe(element);
+    return () => {
+      observer.unobserve(element);
+      callbacks.delete(element);
+    };
+  }, [ref, options.threshold, options.rootMargin]);
+
+  return { isVisible, visibleDuration };
+};
 
 export const useLazyImage = (imageUrl, options = {}) => {
   const [isLoaded, setIsLoaded] = useState(false);

@@ -1,7 +1,33 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../AuthContext/AuthContext";
 import { videosAPI } from "../../services/api";
 import "./CommentModal.css";
+
+// Comment threading and pagination constants
+const COMMENTS_PER_PAGE = 20;
+const MAX_COMMENT_DEPTH = 3;
+const MAX_COMMENT_LENGTH = 500;
+const COMMENT_SORT_OPTIONS = ['newest', 'oldest', 'popular'];
+
+// Time-ago formatter for comment timestamps
+const formatTimeAgo = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  const diffWeek = Math.floor(diffDay / 7);
+  const diffMonth = Math.floor(diffDay / 30);
+
+  if (diffSec < 60) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  if (diffWeek < 4) return `${diffWeek}w ago`;
+  return `${diffMonth}mo ago`;
+};
 
 const CommentModal = ({ isOpen, onClose, video, onOpenLogin }) => {
   const [comments, setComments] = useState([]);

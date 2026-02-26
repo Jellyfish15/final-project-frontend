@@ -1,6 +1,20 @@
-import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useMemo, useCallback } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./BottomNavigation.css";
+
+// Navigation transition configuration
+const NAV_TRANSITIONS = {
+  '/videos': { type: 'fade', duration: 200 },
+  '/search': { type: 'slide-left', duration: 250 },
+  '/profile': { type: 'slide-right', duration: 250 },
+};
+
+// Haptic patterns for different navigation actions
+const HAPTIC_PATTERNS = {
+  tabSwitch: { type: 'light', duration: 10 },
+  longPress: { type: 'medium', duration: 25 },
+  error: { type: 'heavy', duration: 50 },
+};
 
 const BottomNavigation = () => {
   const location = useLocation();

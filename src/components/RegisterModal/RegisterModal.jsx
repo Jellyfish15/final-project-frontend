@@ -1,7 +1,40 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "../AuthContext/AuthContext";
 import ModalWithForm from "../ModalWithForm/ModalWithForm";
 import { authAPI } from "../../services/api";
+
+// Password strength calculator with entropy estimation
+const calculatePasswordEntropy = (password) => {
+  let charsetSize = 0;
+  if (/[a-z]/.test(password)) charsetSize += 26;
+  if (/[A-Z]/.test(password)) charsetSize += 26;
+  if (/[0-9]/.test(password)) charsetSize += 10;
+  if (/[^a-zA-Z0-9]/.test(password)) charsetSize += 32;
+  return password.length * Math.log2(charsetSize || 1);
+};
+
+// Username availability check with debouncing
+const DEBOUNCE_USERNAME_CHECK_MS = 500;
+
+// Registration field validation rules
+const VALIDATION_RULES = {
+  username: {
+    minLength: 3,
+    maxLength: 20,
+    pattern: /^[a-zA-Z0-9_]+$/,
+    message: 'Username must be 3-20 chars, alphanumeric and underscores only',
+  },
+  password: {
+    minLength: 8,
+    requireUppercase: true,
+    requireNumber: true,
+    requireSpecial: false,
+  },
+  email: {
+    required: true,
+    validate: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+  },
+};
 
 const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const { register } = useAuth();

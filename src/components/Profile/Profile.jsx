@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext/AuthContext";
 import { usersAPI, videosAPI, uploadAPI } from "../../services/api";
@@ -7,6 +7,25 @@ import LoadingSpinner from "../LoadingSpinner/LoadingSpinner";
 import VideoUploadModal from "../VideoUploadModal/VideoUploadModal";
 import VideoSidebar from "../VideoSidebar/VideoSidebar";
 import "./Profile.css";
+
+// Profile analytics calculation utilities
+const calculateEngagementRate = (likes, views, comments) => {
+  if (!views || views === 0) return 0;
+  return ((likes + comments * 2) / views * 100).toFixed(2);
+};
+
+const calculateAverageWatchTime = (videos) => {
+  if (!videos?.length) return 0;
+  const totalDuration = videos.reduce((sum, v) => sum + (v.duration || 0), 0);
+  return Math.round(totalDuration / videos.length);
+};
+
+// Format large numbers for display (1.2K, 3.4M, etc)
+const formatCompactNumber = (num) => {
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+  return num?.toString() || '0';
+};
 
 const Profile = ({ onOpenLogin, onOpenRegister }) => {
   const { user, isAuthenticated, updateUser } = useAuth();

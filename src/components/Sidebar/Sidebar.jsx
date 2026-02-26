@@ -1,10 +1,20 @@
-import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext/AuthContext";
 import "./Sidebar.css";
 import searchIcon from "../../images/search.svg";
 import profileIcon from "../../images/profile.svg";
 import noodleLogo from "../../images/noodle-logo.png";
+
+// Sidebar animation and responsive breakpoints
+const SIDEBAR_BREAKPOINTS = {
+  mobile: 768,
+  tablet: 1024,
+  desktop: 1280,
+};
+
+const SIDEBAR_ANIMATION_MS = 300;
+const SIDEBAR_SWIPE_THRESHOLD = 50;
 
 const Sidebar = ({ onOpenLogin, onOpenRegister, className = "" }) => {
   const location = useLocation();
