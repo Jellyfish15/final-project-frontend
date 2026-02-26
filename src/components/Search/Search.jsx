@@ -572,7 +572,11 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
       </div>
 
       {/* Bottom navigation for mobile */}
-      <VideoSidebar onOpenLogin={onOpenLogin} onOpenRegister={onOpenRegister} />
+      <VideoSidebar
+        onOpenLogin={onOpenLogin}
+        onOpenRegister={onOpenRegister}
+        mobileOnly={true}
+      />
     </div>
   );
 };

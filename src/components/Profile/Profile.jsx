@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext/AuthContext";
 import { usersAPI, videosAPI, uploadAPI } from "../../services/api";
@@ -11,7 +17,7 @@ import "./Profile.css";
 // Profile analytics calculation utilities
 const calculateEngagementRate = (likes, views, comments) => {
   if (!views || views === 0) return 0;
-  return ((likes + comments * 2) / views * 100).toFixed(2);
+  return (((likes + comments * 2) / views) * 100).toFixed(2);
 };
 
 const calculateAverageWatchTime = (videos) => {
@@ -24,7 +30,7 @@ const calculateAverageWatchTime = (videos) => {
 const formatCompactNumber = (num) => {
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
   if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
-  return num?.toString() || '0';
+  return num?.toString() || "0";
 };
 
 const Profile = ({ onOpenLogin, onOpenRegister }) => {
@@ -419,6 +425,7 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
         <VideoSidebar
           onOpenLogin={onOpenLogin}
           onOpenRegister={onOpenRegister}
+          mobileOnly={true}
         />
       </div>
     );
@@ -435,6 +442,7 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
         <VideoSidebar
           onOpenLogin={onOpenLogin}
           onOpenRegister={onOpenRegister}
+          mobileOnly={true}
         />
       </div>
     );
@@ -742,7 +750,11 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
       )}
 
       {/* Bottom navigation for mobile */}
-      <VideoSidebar onOpenLogin={onOpenLogin} onOpenRegister={onOpenRegister} />
+      <VideoSidebar
+        onOpenLogin={onOpenLogin}
+        onOpenRegister={onOpenRegister}
+        mobileOnly={true}
+      />
     </div>
   );
 };

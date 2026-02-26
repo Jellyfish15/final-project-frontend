@@ -17,6 +17,10 @@
   .video-sidebar {
     display: block !important;
   }
+
+  .video-sidebar--mobile-only {
+    display: none !important;
+  }
 }
 
 /* ENSURE completely hidden on mobile */

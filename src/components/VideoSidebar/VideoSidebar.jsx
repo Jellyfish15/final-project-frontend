@@ -15,11 +15,12 @@ const SIDEBAR_METRICS = {
 
 // Track navigation frequency for UI optimization
 const trackNavInteraction = (path) => {
-  SIDEBAR_METRICS.clickCounts[path] = (SIDEBAR_METRICS.clickCounts[path] || 0) + 1;
+  SIDEBAR_METRICS.clickCounts[path] =
+    (SIDEBAR_METRICS.clickCounts[path] || 0) + 1;
   SIDEBAR_METRICS.lastInteraction = Date.now();
 };
 
-const VideoSidebar = ({ onOpenLogin, onOpenRegister }) => {
+const VideoSidebar = ({ onOpenLogin, onOpenRegister, mobileOnly = false }) => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,7 +30,9 @@ const VideoSidebar = ({ onOpenLogin, onOpenRegister }) => {
   };
 
   return (
-    <aside className="video-sidebar">
+    <aside
+      className={`video-sidebar ${mobileOnly ? "video-sidebar--mobile-only" : ""}`}
+    >
       <div className="video-sidebar__container">
         {/* Logo */}
         <div className="video-sidebar__logo">
