@@ -60,6 +60,19 @@
   text-align: center;
 }
 
+/* Upload button in bottom nav */
+.bottom-nav__item--upload {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: #8a8b9b;
+}
+
+.bottom-nav__item--upload:active {
+  transform: scale(0.95);
+}
+
 /* Remove remaining old mobile styles */
 @media (max-width: 768px) {
   .bottom-nav {

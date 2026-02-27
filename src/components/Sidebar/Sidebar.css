@@ -180,6 +180,16 @@
   display: none;
 }
 
+/* Upload button accent */
+.sidebar__link--upload {
+  color: #8b5cf6;
+}
+
+.sidebar__link--upload:hover {
+  color: #7c3aed;
+  background-color: rgba(139, 92, 246, 0.08);
+}
+
 .sidebar__icon {
   width: 24px;
   height: 24px;

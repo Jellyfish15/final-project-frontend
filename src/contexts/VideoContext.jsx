@@ -11,7 +11,7 @@ import { triggerSwipeHaptic } from "../utils/hapticFeedback";
 // touchDebug import removed — debug logging disabled for performance
 import userInteractionService from "../services/userInteractionService";
 import performanceOptimizationService from "../services/performanceOptimizationService";
-import { videosAPI } from "../services/api";
+import { videosAPI, engagementAPI, feedAPI } from "../services/api";
 import { API_BASE_URL } from "../services/config";
 
 const VideoContext = createContext();
@@ -40,6 +40,84 @@ export const VideoProvider = ({
   useEffect(() => {
     userInteractionService.initializeSession();
   }, []);
+
+  // ── Engagement tracking ──
+  // Track how long users watch each video so the ranking algorithm improves.
+  const engagementRef = useRef({
+    videoId: null,
+    startTime: null,
+    pauseCount: 0,
+    seekCount: 0,
+    replays: 0,
+  });
+  const sessionIdRef = useRef(
+    `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  );
+
+  // Flush current engagement data to the backend
+  const flushEngagement = useCallback(() => {
+    const e = engagementRef.current;
+    if (!e.videoId || !e.startTime) return;
+
+    const watchTime = (Date.now() - e.startTime) / 1000; // seconds
+    const totalDuration = currentVideo?.duration || 0;
+    const completionRate =
+      totalDuration > 0
+        ? Math.min(Math.round((watchTime / totalDuration) * 100), 100)
+        : 0;
+
+    // Fire-and-forget — don't block UI
+    engagementAPI
+      .track({
+        videoId: e.videoId,
+        watchTime: Math.round(watchTime),
+        totalDuration,
+        completionRate,
+        pauseCount: e.pauseCount,
+        seekCount: e.seekCount,
+        replays: e.replays,
+        category: currentVideo?.category || currentVideo?.subject || "",
+        sessionId: sessionIdRef.current,
+        ...(watchTime < 3 && totalDuration > 10
+          ? { skippedAt: Math.round(watchTime), skipReason: "not-interested" }
+          : {}),
+      })
+      .catch(() => {}); // silent
+
+    // Reset
+    engagementRef.current = {
+      videoId: null,
+      startTime: null,
+      pauseCount: 0,
+      seekCount: 0,
+      replays: 0,
+    };
+  }, [currentVideo]);
+
+  // Start tracking whenever the current video changes
+  useEffect(() => {
+    if (!currentVideo) return;
+    // Flush previous video's engagement
+    flushEngagement();
+    // Start tracking new video
+    engagementRef.current = {
+      videoId: currentVideo._id || currentVideo.id || currentVideo.videoId,
+      startTime: Date.now(),
+      pauseCount: 0,
+      seekCount: 0,
+      replays: 0,
+    };
+  }, [currentVideo?._id, currentVideo?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Flush engagement when the page is about to unload
+  useEffect(() => {
+    const handleBeforeUnload = () => flushEngagement();
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      flushEngagement();
+    };
+  }, [flushEngagement]);
 
   // Touch handling state
   const touchStateRef = useRef({
@@ -187,13 +265,24 @@ export const VideoProvider = ({
           setFocusedVideos(expandedFeed);
           newIndex = currentIndex + 1; // Move to the first newly added video
         } else {
-          // No more videos in initialVideos, try fetching more from cache
+          // No more videos in initialVideos, try fetching more from unified feed or cache
 
           try {
-            const response = await videosAPI.getRandomCachedVideos(50);
-            if (response?.videos && response.videos.length > 0) {
+            // Try unified feed first, fall back to cache
+            let newBatch = [];
+            try {
+              const feedRes = await feedAPI.getUnifiedFeed(1, 50);
+              if (feedRes?.videos?.length > 0) {
+                newBatch = feedRes.videos;
+              }
+            } catch {
+              const response = await videosAPI.getRandomCachedVideos(50);
+              if (response?.videos) newBatch = response.videos;
+            }
+
+            if (newBatch.length > 0) {
               // Filter out videos already in the focused feed
-              const newVideos = response.videos.filter(
+              const newVideos = newBatch.filter(
                 (v) => !customFeedIds.has(v._id || v.id),
               );
 
@@ -203,21 +292,25 @@ export const VideoProvider = ({
                 setFocusedVideos(expandedFeed);
                 newIndex = currentIndex + 1;
               } else {
-                // All 50 videos were duplicates, try fetching more
-                const response2 = await videosAPI.getRandomCachedVideos(50);
-                if (response2?.videos && response2.videos.length > 0) {
-                  const newVideos2 = response2.videos.filter(
-                    (v) => !customFeedIds.has(v._id || v.id),
-                  );
+                // All videos were duplicates, try fetching another batch
+                try {
+                  const response2 = await videosAPI.getRandomCachedVideos(50);
+                  if (response2?.videos && response2.videos.length > 0) {
+                    const newVideos2 = response2.videos.filter(
+                      (v) => !customFeedIds.has(v._id || v.id),
+                    );
 
-                  if (newVideos2.length > 0) {
-                    const expandedFeed = [...focusedVideos, ...newVideos2];
-                    setFocusedVideos(expandedFeed);
-                    newIndex = currentIndex + 1;
+                    if (newVideos2.length > 0) {
+                      const expandedFeed = [...focusedVideos, ...newVideos2];
+                      setFocusedVideos(expandedFeed);
+                      newIndex = currentIndex + 1;
+                    } else {
+                      return;
+                    }
                   } else {
                     return;
                   }
-                } else {
+                } catch {
                   return;
                 }
               }
@@ -420,6 +513,8 @@ export const VideoProvider = ({
       } else {
         videoElement.pause();
         setIsPlaying(false);
+        // Track pause for engagement
+        engagementRef.current.pauseCount += 1;
       }
     }
   }, [currentVideo?.videoType]);

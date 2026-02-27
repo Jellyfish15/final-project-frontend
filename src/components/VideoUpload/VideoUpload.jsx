@@ -208,13 +208,18 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
 
       // Call finalize-video endpoint
       const finalizeData = {
-        videoFilename: uploadedVideoData.filename,
+        videoFilename: uploadedVideoData.cloudinary
+          ? uploadedVideoData.videoUrl
+          : uploadedVideoData.filename,
         title: formData.title.trim(),
         description: formData.description.trim(),
         category: formData.category,
         tags: JSON.stringify(formData.tags),
         isPrivate: formData.isPrivate,
         selectedThumbnailUrl,
+        ...(uploadedVideoData.cloudinary
+          ? { cloudinary: "true", videoUrl: uploadedVideoData.videoUrl }
+          : {}),
       };
 
       const response = await uploadAPI.finalizeVideo(finalizeData);

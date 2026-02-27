@@ -126,6 +126,8 @@ app.use("/api/users", require("./routes/users"));
 app.use("/api/videos", require("./routes/videos"));
 app.use("/api/upload", require("./routes/upload"));
 app.use("/api/youtube-cache", require("./routes/youtubeCache"));
+app.use("/api/feed", require("./routes/feed"));
+app.use("/api/engagement", require("./routes/engagement"));
 
 // Video streaming route with range request support
 app.get("/stream/video/:filename", (req, res) => {

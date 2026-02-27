@@ -16,7 +16,7 @@ const SIDEBAR_BREAKPOINTS = {
 const SIDEBAR_ANIMATION_MS = 300;
 const SIDEBAR_SWIPE_THRESHOLD = 50;
 
-const Sidebar = ({ onOpenLogin, onOpenRegister, className = "" }) => {
+const Sidebar = ({ onOpenLogin, onOpenRegister, onOpenUpload, className = "" }) => {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
 
@@ -65,6 +65,16 @@ const Sidebar = ({ onOpenLogin, onOpenRegister, className = "" }) => {
               <span>🎥</span>
               <span>Videos</span>
             </Link>
+
+            {isAuthenticated && onOpenUpload && (
+              <button
+                className="sidebar__link sidebar__link--upload"
+                onClick={onOpenUpload}
+              >
+                <span>➕</span>
+                <span>Upload</span>
+              </button>
+            )}
           </div>
         </div>
 

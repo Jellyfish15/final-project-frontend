@@ -6,19 +6,21 @@ const { body, validationResult } = require("express-validator");
 const Video = require("../models/Video");
 const { auth } = require("../middleware/auth");
 const ffmpeg = require("fluent-ffmpeg");
+const {
+  isCloudinaryConfigured,
+  getVideoStorage,
+  getImageStorage,
+  resolveUrl,
+  deleteResource,
+  videosDir,
+  thumbnailsDir,
+  avatarsDir,
+} = require("../services/cloudStorage");
 
 const router = express.Router();
 
-// Configure ffmpeg paths (optional, ffmpeg should be in PATH)
-// ffmpeg.setFfmpegPath('/path/to/ffmpeg');
-// ffmpeg.setFfprobePath('/path/to/ffprobe');
-
-// Create uploads directory if it doesn't exist
+// Create uploads directory if it doesn't exist (local fallback)
 const uploadsDir = path.join(__dirname, "../uploads");
-const videosDir = path.join(uploadsDir, "videos");
-const thumbnailsDir = path.join(uploadsDir, "thumbnails");
-const avatarsDir = path.join(uploadsDir, "avatars");
-
 [uploadsDir, videosDir, thumbnailsDir, avatarsDir].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -63,32 +65,14 @@ const imageFilter = (req, file, cb) => {
   }
 };
 
-// Multer configuration for video upload
-const videoStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, videosDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `video-${uniqueSuffix}${path.extname(file.originalname)}`);
-  },
-});
+// Multer configuration for video upload — uses Cloudinary when configured
+const videoStorage = getVideoStorage();
 
-// Multer configuration for image upload
-const imageStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    if (file.fieldname === "avatar") {
-      cb(null, avatarsDir);
-    } else {
-      cb(null, thumbnailsDir);
-    }
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const prefix = file.fieldname === "avatar" ? "avatar" : "thumb";
-    cb(null, `${prefix}-${uniqueSuffix}${path.extname(file.originalname)}`);
-  },
-});
+// Multer configuration for image upload — uses Cloudinary when configured
+const imageStorage = getImageStorage("thumbnails");
+
+// Avatar-specific storage
+const avatarStorage = getImageStorage("avatars");
 
 const uploadVideo = multer({
   storage: videoStorage,
@@ -122,6 +106,36 @@ router.post(
         });
       }
 
+      // ── Cloudinary path: video already uploaded, generate thumbnails via URL transforms ──
+      if (isCloudinaryConfigured() && req.file.path && req.file.path.startsWith("http")) {
+        const cloudUrl = req.file.path; // full Cloudinary URL
+        const filename = req.file.filename || path.basename(cloudUrl);
+
+        // Cloudinary can generate thumbnails from video by changing the extension to .jpg
+        // and adding a time-offset transformation (so_<seconds>)
+        const baseUrl = cloudUrl.replace(/\.[^/.]+$/, ""); // strip extension
+        const thumbnailUrls = [
+          `${baseUrl}.jpg`, // first frame
+          // Use Cloudinary transformation to grab frames at 25%, 50%, 75%
+          cloudUrl.replace("/upload/", "/upload/so_2,w_640,c_fill/").replace(/\.[^/.]+$/, ".jpg"),
+          cloudUrl.replace("/upload/", "/upload/so_5,w_640,c_fill/").replace(/\.[^/.]+$/, ".jpg"),
+        ];
+
+        return res.status(200).json({
+          success: true,
+          message: "Video uploaded to cloud and thumbnails generated",
+          videoData: {
+            filename,
+            videoUrl: cloudUrl,
+            fileSize: req.file.size || 0,
+            thumbnailUrls,
+            thumbnailPrefix: filename,
+            cloudinary: true,
+          },
+        });
+      }
+
+      // ── Local storage path: original FFmpeg-based flow ──
       const videoPath = path.join(videosDir, req.file.filename);
       const originalFilename = req.file.filename;
 
@@ -408,10 +422,19 @@ router.post(
         thumbnailUrl = thumbnailUrl.replace(/^https?:\/\/[^\/]+/, "");
       }
 
+      // If Cloudinary URLs are detected, use them directly
+      const isCloudVideo = videoFilename.startsWith("http") || req.body.cloudinary === "true";
+      const finalVideoUrl = isCloudVideo
+        ? (req.body.videoUrl || videoFilename)
+        : videoUrl;
+      const finalThumbnailUrl = thumbnailUrl.startsWith("http")
+        ? thumbnailUrl
+        : thumbnailUrl;
+
       console.log("Finalizing video:", {
         title,
-        videoUrl,
-        thumbnailUrl,
+        videoUrl: finalVideoUrl,
+        thumbnailUrl: finalThumbnailUrl,
         category,
         creator: req.user.userId,
       });
@@ -420,8 +443,8 @@ router.post(
       const video = new Video({
         title: title.trim(),
         description: description?.trim() || "",
-        videoUrl,
-        thumbnailUrl,
+        videoUrl: finalVideoUrl,
+        thumbnailUrl: finalThumbnailUrl,
         videoType: "uploaded",
         duration: 0,
         fileSize: 0,

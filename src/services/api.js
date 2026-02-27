@@ -360,6 +360,28 @@ export const uploadAPI = {
   deleteVideo: (videoId) => apiService.delete(`/upload/video/${videoId}`),
 };
 
+// Engagement API
+export const engagementAPI = {
+  // Track a single engagement event
+  track: (data) => apiService.post("/engagement/track", data),
+
+  // Batch-track multiple events (e.g. on page unload)
+  batchTrack: (events) => apiService.post("/engagement/batch", { events }),
+
+  // Get user's category preferences derived from engagement
+  getPreferences: () => apiService.get("/engagement/preferences"),
+};
+
+// Unified Feed API (merges user uploads + YouTube cache with ranking)
+export const feedAPI = {
+  // Get ranked, unified feed
+  getUnifiedFeed: (page = 1, limit = 20, category = null) => {
+    let url = `/feed?page=${page}&limit=${limit}`;
+    if (category) url += `&category=${category}`;
+    return apiService.get(url);
+  },
+};
+
 // Health check
 export const healthAPI = {
   check: () => apiService.get("/health", { includeAuth: false }),

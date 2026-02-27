@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../AuthContext/AuthContext";
 import "./BottomNavigation.css";
 
 // Navigation transition configuration
@@ -16,8 +17,9 @@ const HAPTIC_PATTERNS = {
   error: { type: 'heavy', duration: 50 },
 };
 
-const BottomNavigation = () => {
+const BottomNavigation = ({ onOpenUpload }) => {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const isVideosPage = location.pathname === "/videos";
 
   const navItems = [
@@ -33,6 +35,18 @@ const BottomNavigation = () => {
       label: "Search",
       isActive: location.pathname === "/search",
     },
+    // Upload button (only for authenticated users) — not a route, triggers modal
+    ...(isAuthenticated && onOpenUpload
+      ? [
+          {
+            action: onOpenUpload,
+            icon: "➕",
+            label: "Upload",
+            isActive: false,
+            isButton: true,
+          },
+        ]
+      : []),
     {
       path: "/profile",
       icon: "👤",
@@ -44,18 +58,29 @@ const BottomNavigation = () => {
   return (
     <nav className={`bottom-nav ${isVideosPage ? "bottom-nav--videos" : ""}`}>
       <div className="bottom-nav__container">
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`bottom-nav__item ${
-              item.isActive ? "bottom-nav__item--active" : ""
-            }`}
-          >
-            <span className="bottom-nav__icon">{item.icon}</span>
-            <span className="bottom-nav__label">{item.label}</span>
-          </Link>
-        ))}
+        {navItems.map((item) =>
+          item.isButton ? (
+            <button
+              key="upload"
+              className="bottom-nav__item bottom-nav__item--upload"
+              onClick={item.action}
+            >
+              <span className="bottom-nav__icon">{item.icon}</span>
+              <span className="bottom-nav__label">{item.label}</span>
+            </button>
+          ) : (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`bottom-nav__item ${
+                item.isActive ? "bottom-nav__item--active" : ""
+              }`}
+            >
+              <span className="bottom-nav__icon">{item.icon}</span>
+              <span className="bottom-nav__label">{item.label}</span>
+            </Link>
+          ),
+        )}
       </div>
     </nav>
   );

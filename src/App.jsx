@@ -1,8 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   HashRouter as Router,
   Routes,
@@ -18,9 +14,10 @@ import Sidebar from "./components/Sidebar/Sidebar";
 import BottomNavigation from "./components/BottomNavigation/BottomNavigation";
 import LoginModal from "./components/LoginModal/LoginModal";
 import RegisterModal from "./components/RegisterModal/RegisterModal";
+import VideoUploadModal from "./components/VideoUploadModal/VideoUploadModal";
 import { AuthProvider } from "./components/AuthContext/AuthContext";
 import { VideoProvider } from "./contexts/VideoContext";
-import { videosAPI } from "./services/api.js";
+import { videosAPI, feedAPI } from "./services/api.js";
 import { API_BASE_URL } from "./services/config.js";
 import "./App.css";
 
@@ -62,6 +59,7 @@ function App() {
     login: false,
     register: false,
   });
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const [videos, setVideos] = useState([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(true);
@@ -77,200 +75,173 @@ function App() {
       const isMobile = /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent);
       console.log(
         `[App] Loading videos on ${isMobile ? "MOBILE" : "DESKTOP"}...`,
-        { startTime },
       );
 
-      // Progressive loading strategy:
-      // 1. Load first 3-5 videos immediately for fast display
-      // 2. Load rest in background
-      const INITIAL_QUICK_LOAD = isMobile ? 3 : 5; // Load 3-5 videos immediately
-      const FULL_LOAD_COUNT = isMobile ? 12 : 28; // Full batch size
+      const INITIAL_QUICK_LOAD = isMobile ? 10 : 20;
+      const FULL_LOAD_COUNT = isMobile ? 20 : 40;
 
-      console.log(
-        `[App] Progressive loading: ${INITIAL_QUICK_LOAD} initial + ${FULL_LOAD_COUNT} total`,
-      );
+      // Derive backend server root from API_BASE_URL (strip trailing /api)
+      const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
 
-      // First, load initial videos quickly + uploaded videos
-      const [initialFeedResponse, uploadedVideosResponse] =
-        await Promise.allSettled([
-          videosAPI.getFeedWithCaching(INITIAL_QUICK_LOAD).catch((err) => {
-            console.log("Feed with caching unavailable:", err.message);
-            return videosAPI
-              .getCachedVideos(INITIAL_QUICK_LOAD)
-              .catch(() => ({ videos: [], count: 0 }));
-          }),
-          videosAPI.getFeed(1, 20), // Get uploaded videos
-        ]);
+      // Helper: resolve local URLs to full backend URLs
+      const resolveUrl = (url) => {
+        if (!url) return url;
+        if (url.startsWith("http")) return url;
+        const cleaned = url.startsWith("/api/")
+          ? url.replace("/api/", "/")
+          : url;
+        return `${backendURL}${cleaned}`;
+      };
 
+      // Helper: normalise a video from the unified feed response
+      const normalizeVideo = (video) => {
+        let avatarUrl =
+          video.avatar || "https://via.placeholder.com/40x40?text=U";
+        if (
+          avatarUrl &&
+          !avatarUrl.startsWith("http") &&
+          !avatarUrl.includes("placeholder")
+        ) {
+          avatarUrl = resolveUrl(avatarUrl);
+        }
+
+        return {
+          ...video,
+          _id: video._id || video.id || video.videoId,
+          videoUrl:
+            video.videoType === "uploaded"
+              ? resolveUrl(video.videoUrl)
+              : video.videoUrl,
+          thumbnailUrl: resolveUrl(video.thumbnailUrl),
+          avatar: avatarUrl,
+        };
+      };
+
+      // ── PHASE 1: Try unified feed (merges user uploads + YouTube cache) ──
       let allVideos = [];
-      let initialVideos = [];
+      let usedUnifiedFeed = false;
 
-      // PHASE 1: Process initial quick-loaded videos
-      console.log(
-        "[App] Initial feed response status:",
-        initialFeedResponse.status,
-      );
-      console.log(
-        "[App] Initial feed response value:",
-        initialFeedResponse.value,
-      );
-
-      if (
-        initialFeedResponse.status === "fulfilled" &&
-        initialFeedResponse.value?.videos?.length > 0
-      ) {
-        initialVideos = [...initialFeedResponse.value.videos];
-
-        if (initialFeedResponse.value.newlyCached > 0) {
-          console.log(
-            `✅ Successfully cached ${initialFeedResponse.value.newlyCached} new YouTube videos`,
-          );
-        }
-        if (initialFeedResponse.value.quotaExceeded) {
-          console.log(
-            "⚠️ YouTube API quota exceeded. Using cached videos only.",
-          );
-          setYoutubeApiDisabled(true);
-        }
-
-        console.log(
-          "Successfully loaded",
-          initialFeedResponse.value.videos.length,
-          "initial YouTube videos",
+      try {
+        const unifiedResponse = await feedAPI.getUnifiedFeed(
+          1,
+          INITIAL_QUICK_LOAD,
         );
-      } else {
-        console.log("No initial YouTube videos available");
-        if (initialFeedResponse.status === "rejected") {
-          console.error(
-            "[App] Initial feed rejected:",
-            initialFeedResponse.reason,
+
+        if (unifiedResponse?.success && unifiedResponse.videos?.length > 0) {
+          allVideos = unifiedResponse.videos.map(normalizeVideo);
+          usedUnifiedFeed = true;
+          console.log(
+            `[App] Unified feed loaded ${allVideos.length} videos (${unifiedResponse.meta?.uploadedCount || 0} uploaded, ${unifiedResponse.meta?.youtubeCount || 0} YouTube)`,
           );
         }
+      } catch (err) {
+        console.log(
+          "[App] Unified feed unavailable, falling back to legacy:",
+          err.message,
+        );
       }
 
-      // Process uploaded videos immediately
-      let uploadedVideos = [];
-      console.log(
-        "[App] Uploaded videos response status:",
-        uploadedVideosResponse.status,
-      );
+      // ── PHASE 1b: Fallback to legacy endpoints if unified feed failed ──
+      if (!usedUnifiedFeed) {
+        const [initialFeedResponse, uploadedVideosResponse] =
+          await Promise.allSettled([
+            videosAPI.getFeedWithCaching(INITIAL_QUICK_LOAD).catch((err) => {
+              console.log("Feed with caching unavailable:", err.message);
+              return videosAPI
+                .getCachedVideos(INITIAL_QUICK_LOAD)
+                .catch(() => ({ videos: [], count: 0 }));
+            }),
+            videosAPI.getFeed(1, 20),
+          ]);
 
-      if (
-        uploadedVideosResponse.status === "fulfilled" &&
-        uploadedVideosResponse.value?.videos?.length > 0
-      ) {
-        // Derive backend server root from API_BASE_URL (strip trailing /api)
-        const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
-        uploadedVideos = uploadedVideosResponse.value.videos.map((video) => {
-          let videoUrl = video.videoUrl;
-          let thumbnailUrl = video.thumbnailUrl;
-
-          if (!videoUrl.startsWith("http")) {
-            videoUrl = videoUrl.startsWith("/api/")
-              ? videoUrl.replace("/api/", "/")
-              : videoUrl;
-            videoUrl = `${backendURL}${videoUrl}`;
+        let initialVideos = [];
+        if (
+          initialFeedResponse.status === "fulfilled" &&
+          initialFeedResponse.value?.videos?.length > 0
+        ) {
+          initialVideos = initialFeedResponse.value.videos;
+          if (initialFeedResponse.value.quotaExceeded) {
+            setYoutubeApiDisabled(true);
           }
+        }
 
-          if (!thumbnailUrl.startsWith("http")) {
-            thumbnailUrl = thumbnailUrl.startsWith("/api/")
-              ? thumbnailUrl.replace("/api/", "/")
-              : thumbnailUrl;
-            thumbnailUrl = `${backendURL}${thumbnailUrl}`;
-          }
-
-          let avatarUrl =
-            video.creator?.avatar || "https://via.placeholder.com/40x40?text=U";
-          if (
-            avatarUrl &&
-            !avatarUrl.startsWith("http") &&
-            !avatarUrl.includes("placeholder")
-          ) {
-            avatarUrl = avatarUrl.startsWith("/api/")
-              ? avatarUrl.replace("/api/", "/")
-              : avatarUrl;
-            avatarUrl = `${backendURL}${avatarUrl}`;
-          }
-
-          return {
+        let uploadedVideos = [];
+        if (
+          uploadedVideosResponse.status === "fulfilled" &&
+          uploadedVideosResponse.value?.videos?.length > 0
+        ) {
+          uploadedVideos = uploadedVideosResponse.value.videos.map((video) => ({
             ...video,
             _id: video.id || video._id,
-            videoUrl,
-            thumbnailUrl,
+            videoUrl: resolveUrl(video.videoUrl),
+            thumbnailUrl: resolveUrl(video.thumbnailUrl),
             videoType: "uploaded",
             creator: video.creator?.username || video.creator || "Unknown",
-            avatar: avatarUrl,
+            avatar: resolveUrl(
+              video.creator?.avatar ||
+                "https://via.placeholder.com/40x40?text=U",
+            ),
             isVerified: video.creator?.isVerified || false,
-          };
-        });
+          }));
+        }
 
-        console.log(
-          "Successfully loaded",
-          uploadedVideos.length,
-          "uploaded videos",
-        );
-      } else {
-        console.log("No uploaded videos available");
+        allVideos = [...initialVideos, ...uploadedVideos];
       }
 
-      // PHASE 2: Set initial videos immediately so user sees content fast
-      allVideos = [...initialVideos, ...uploadedVideos];
+      // ── PHASE 2: Set initial videos immediately ──
       if (allVideos.length > 0) {
-        const initialLoadTime = (performance.now() - startTime) / 1000;
         setVideos(allVideos);
         setIsLoadingVideos(false);
         console.log(
-          `[App] ✅ Initial videos displayed in ${initialLoadTime.toFixed(2)}s:`,
-          allVideos.length,
+          `[App] ✅ Initial videos displayed in ${((performance.now() - startTime) / 1000).toFixed(2)}s: ${allVideos.length}`,
         );
       } else {
-        const fallbackVideos = getFallbackVideos();
-        setVideos(fallbackVideos);
+        setVideos(getFallbackVideos());
         setIsLoadingVideos(false);
-        console.warn(
-          "No initial videos available, showing",
-          fallbackVideos.length,
-          "fallback videos",
-        );
+        console.warn("[App] No videos available, showing fallback");
       }
 
-      // PHASE 3: Load rest of videos in background (if not already loaded)
-      const VIDEOS_ALREADY_LOADED = allVideos.length;
-      if (VIDEOS_ALREADY_LOADED < FULL_LOAD_COUNT) {
-        console.log(
-          `[App] Loading additional videos in background... (have ${VIDEOS_ALREADY_LOADED}, need ${FULL_LOAD_COUNT})`,
-        );
+      // ── PHASE 3: Load more in background ──
+      if (allVideos.length < FULL_LOAD_COUNT) {
+        try {
+          let moreVideos = [];
 
-        // Load more videos asynchronously
-        const additionalFeedResponse = await videosAPI
-          .getFeedWithCaching(FULL_LOAD_COUNT)
-          .catch((err) => {
-            console.log("Additional feed unavailable:", err.message);
-            return videosAPI
-              .getCachedVideos(FULL_LOAD_COUNT)
-              .catch(() => ({ videos: [], count: 0 }));
-          });
-
-        if (
-          additionalFeedResponse?.videos &&
-          additionalFeedResponse.videos.length > INITIAL_QUICK_LOAD
-        ) {
-          // Get videos we haven't already loaded
-          const existingIds = new Set(allVideos.map((v) => v._id || v.id));
-          const newYoutubeVideos = additionalFeedResponse.videos.filter(
-            (v) => !existingIds.has(v._id || v.id),
-          );
-
-          if (newYoutubeVideos.length > 0) {
-            const updatedVideos = [...allVideos, ...newYoutubeVideos];
-            setVideos(updatedVideos);
-
-            const totalTime = (performance.now() - startTime) / 1000;
-            console.log(
-              `[App] ✅ Additional videos loaded in background (total: ${totalTime.toFixed(2)}s):`,
-              updatedVideos.length,
+          if (usedUnifiedFeed) {
+            const moreResponse = await feedAPI.getUnifiedFeed(
+              2,
+              FULL_LOAD_COUNT,
             );
+            if (moreResponse?.videos?.length > 0) {
+              moreVideos = moreResponse.videos.map(normalizeVideo);
+            }
+          } else {
+            const additionalFeed = await videosAPI
+              .getFeedWithCaching(FULL_LOAD_COUNT)
+              .catch(() =>
+                videosAPI
+                  .getCachedVideos(FULL_LOAD_COUNT)
+                  .catch(() => ({ videos: [] })),
+              );
+            if (additionalFeed?.videos?.length > 0) {
+              moreVideos = additionalFeed.videos;
+            }
           }
+
+          if (moreVideos.length > 0) {
+            const existingIds = new Set(allVideos.map((v) => v._id || v.id));
+            const newVideos = moreVideos.filter(
+              (v) => !existingIds.has(v._id || v.id),
+            );
+            if (newVideos.length > 0) {
+              const combined = [...allVideos, ...newVideos];
+              setVideos(combined);
+              console.log(
+                `[App] ✅ Background load complete, total: ${combined.length}`,
+              );
+            }
+          }
+        } catch (err) {
+          console.log("[App] Background load failed:", err.message);
         }
       }
     } catch (err) {
@@ -360,12 +331,17 @@ function App() {
   const handleRegister = async (userData) => {
     try {
       console.log("Processing registration for:", userData.username);
-      // The actual registration is now handled by AuthContext
-      // This is just for UI feedback
       closeModal("register");
     } catch (error) {
       console.error("Registration failed:", error);
     }
+  };
+
+  const handleUploadSuccess = (video) => {
+    console.log("[App] Video uploaded successfully:", video?.title);
+    setShowUploadModal(false);
+    // Refresh the feed so the new video appears
+    loadVideos();
   };
 
   const videoApiProps = {
@@ -401,6 +377,7 @@ function App() {
           <Sidebar
             onOpenLogin={() => openModal("login")}
             onOpenRegister={() => openModal("register")}
+            onOpenUpload={() => setShowUploadModal(true)}
           />
         )}
         <main
@@ -437,7 +414,7 @@ function App() {
             />
           </Routes>
         </main>
-        <BottomNavigation />
+        <BottomNavigation onOpenUpload={() => setShowUploadModal(true)} />
 
         <LoginModal
           isOpen={modals.login}
@@ -449,6 +426,12 @@ function App() {
           isOpen={modals.register}
           onClose={() => closeModal("register")}
           onSwitchToLogin={switchToLogin}
+        />
+
+        <VideoUploadModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onUploadSuccess={handleUploadSuccess}
         />
       </div>
     );
