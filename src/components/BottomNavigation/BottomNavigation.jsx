@@ -5,16 +5,16 @@ import "./BottomNavigation.css";
 
 // Navigation transition configuration
 const NAV_TRANSITIONS = {
-  '/videos': { type: 'fade', duration: 200 },
-  '/search': { type: 'slide-left', duration: 250 },
-  '/profile': { type: 'slide-right', duration: 250 },
+  "/videos": { type: "fade", duration: 200 },
+  "/search": { type: "slide-left", duration: 250 },
+  "/profile": { type: "slide-right", duration: 250 },
 };
 
 // Haptic patterns for different navigation actions
 const HAPTIC_PATTERNS = {
-  tabSwitch: { type: 'light', duration: 10 },
-  longPress: { type: 'medium', duration: 25 },
-  error: { type: 'heavy', duration: 50 },
+  tabSwitch: { type: "light", duration: 10 },
+  longPress: { type: "medium", duration: 25 },
+  error: { type: "heavy", duration: 50 },
 };
 
 const BottomNavigation = ({ onOpenUpload }) => {

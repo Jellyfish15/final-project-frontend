@@ -16,7 +16,12 @@ const SIDEBAR_BREAKPOINTS = {
 const SIDEBAR_ANIMATION_MS = 300;
 const SIDEBAR_SWIPE_THRESHOLD = 50;
 
-const Sidebar = ({ onOpenLogin, onOpenRegister, onOpenUpload, className = "" }) => {
+const Sidebar = ({
+  onOpenLogin,
+  onOpenRegister,
+  onOpenUpload,
+  className = "",
+}) => {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
 

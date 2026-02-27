@@ -26,8 +26,8 @@ export const VideoProvider = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
-  const [isMuted, setIsMuted] = useState(true); // Start muted to allow autoplay
-  const userWantsMutedRef = useRef(true); // Track user's mute preference across videos
+  const [isMuted, setIsMuted] = useState(false); // Start unmuted — always play with sound
+  const userWantsMutedRef = useRef(false); // Track user's mute preference across videos
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
   const [focusedVideos, setFocusedVideos] = useState(null); // New state for focused feed
   const videoRef = useRef(null);
@@ -183,8 +183,8 @@ export const VideoProvider = ({
   // Sync play/pause state with the video element.
   // We always call play() programmatically instead of relying on the autoPlay
   // HTML attribute, which is unreliable across browsers.
-  // Videos always mount muted (isMuted=true) so play() is allowed by all
-  // browsers' autoplay policies. Unmuting happens in a separate effect below.
+  // Videos start unmuted. If the browser blocks unmuted autoplay, we fall back
+  // to muted playback and let the user tap the unmute button.
   useEffect(() => {
     if (!videoRef.current || currentVideo?.videoType === "youtube") return;
 
@@ -193,7 +193,15 @@ export const VideoProvider = ({
     if (isPlaying) {
       if (videoElement.paused) {
         const doPlay = () => {
-          videoElement.play().catch(() => {});
+          videoElement.muted = isMuted;
+          videoElement.play().catch(() => {
+            // Browser blocked unmuted autoplay — fall back to muted
+            if (!videoElement.muted) {
+              videoElement.muted = true;
+              setIsMuted(true);
+              videoElement.play().catch(() => {});
+            }
+          });
         };
         // Wait for enough data before playing
         if (videoElement.readyState >= 3) {
@@ -208,7 +216,7 @@ export const VideoProvider = ({
         videoElement.pause();
       }
     }
-  }, [isPlaying, currentVideo?._id, currentVideo?.videoType]);
+  }, [isPlaying, currentVideo?._id, currentVideo?.videoType, isMuted]);
 
   // After a new video starts playing (via autoPlay), restore the user's mute preference.
   // iOS Safari requires videos to start muted for autoplay to work.
@@ -332,9 +340,8 @@ export const VideoProvider = ({
         // Ensure isPlaying is true so the sync effect will call play()
         setIsPlaying(true);
 
-        // iOS Safari BLOCKS autoplay on unmuted videos.
-        // Always mount new videos muted so autoPlay works, then unmute after playback starts.
-        setIsMuted(true);
+        // Restore user's mute preference for the new video
+        setIsMuted(userWantsMutedRef.current);
 
         // Switch video immediately — no artificial delay
         setIsVideoSwitching(true);

@@ -107,7 +107,11 @@ router.post(
       }
 
       // ── Cloudinary path: video already uploaded, generate thumbnails via URL transforms ──
-      if (isCloudinaryConfigured() && req.file.path && req.file.path.startsWith("http")) {
+      if (
+        isCloudinaryConfigured() &&
+        req.file.path &&
+        req.file.path.startsWith("http")
+      ) {
         const cloudUrl = req.file.path; // full Cloudinary URL
         const filename = req.file.filename || path.basename(cloudUrl);
 
@@ -117,8 +121,12 @@ router.post(
         const thumbnailUrls = [
           `${baseUrl}.jpg`, // first frame
           // Use Cloudinary transformation to grab frames at 25%, 50%, 75%
-          cloudUrl.replace("/upload/", "/upload/so_2,w_640,c_fill/").replace(/\.[^/.]+$/, ".jpg"),
-          cloudUrl.replace("/upload/", "/upload/so_5,w_640,c_fill/").replace(/\.[^/.]+$/, ".jpg"),
+          cloudUrl
+            .replace("/upload/", "/upload/so_2,w_640,c_fill/")
+            .replace(/\.[^/.]+$/, ".jpg"),
+          cloudUrl
+            .replace("/upload/", "/upload/so_5,w_640,c_fill/")
+            .replace(/\.[^/.]+$/, ".jpg"),
         ];
 
         return res.status(200).json({
@@ -423,9 +431,10 @@ router.post(
       }
 
       // If Cloudinary URLs are detected, use them directly
-      const isCloudVideo = videoFilename.startsWith("http") || req.body.cloudinary === "true";
+      const isCloudVideo =
+        videoFilename.startsWith("http") || req.body.cloudinary === "true";
       const finalVideoUrl = isCloudVideo
-        ? (req.body.videoUrl || videoFilename)
+        ? req.body.videoUrl || videoFilename
         : videoUrl;
       const finalThumbnailUrl = thumbnailUrl.startsWith("http")
         ? thumbnailUrl

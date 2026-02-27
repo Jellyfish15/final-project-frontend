@@ -76,7 +76,7 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
             showinfo: 0,
             loop: 1,
             playlist: videoId,
-            mute: 1, // Start muted to allow autoplay
+            mute: 0, // Start unmuted — play with sound
             preload: "auto",
           },
           events: {
@@ -84,8 +84,10 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
               console.log("[YouTubePlayer] Player ready");
               setIsPlayerReady(true);
               setIsVideoLoading(false);
-              // Start muted and try to play
-              event.target.mute();
+              // Unmute and play immediately
+              if (!isMuted) {
+                event.target.unMute();
+              }
 
               // Try to play immediately
               try {

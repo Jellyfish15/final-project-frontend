@@ -63,9 +63,7 @@ function getVideoStorage() {
         folder: "nudl/videos",
         resource_type: "video",
         allowed_formats: ["mp4", "webm", "mov", "mpeg"],
-        transformation: [
-          { quality: "auto", fetch_format: "mp4" },
-        ],
+        transformation: [{ quality: "auto", fetch_format: "mp4" }],
       },
     });
   }
