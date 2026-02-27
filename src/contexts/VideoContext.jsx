@@ -98,21 +98,6 @@ export const VideoProvider = ({
     };
   }, []); // no deps — reads from refs only
 
-  // Start tracking whenever the current video changes
-  useEffect(() => {
-    if (!currentVideo) return;
-    // Flush previous video's engagement
-    flushEngagement();
-    // Start tracking new video
-    engagementRef.current = {
-      videoId: currentVideo._id || currentVideo.id || currentVideo.videoId,
-      startTime: Date.now(),
-      pauseCount: 0,
-      seekCount: 0,
-      replays: 0,
-    };
-  }, [currentVideo?._id, currentVideo?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Flush engagement when the page is about to unload
   useEffect(() => {
     const handleBeforeUnload = () => flushEngagement();
@@ -150,6 +135,22 @@ export const VideoProvider = ({
 
   // Keep ref in sync so flushEngagement can read it
   currentVideoRef.current = currentVideo;
+
+  // Start tracking whenever the current video changes
+  useEffect(() => {
+    const vid = currentVideoRef.current;
+    if (!vid) return;
+    // Flush previous video's engagement
+    flushEngagement();
+    // Start tracking new video
+    engagementRef.current = {
+      videoId: vid._id || vid.id || vid.videoId,
+      startTime: Date.now(),
+      pauseCount: 0,
+      seekCount: 0,
+      replays: 0,
+    };
+  }, [currentVideo?._id, currentVideo?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync like state and counts with current video
   useEffect(() => {
