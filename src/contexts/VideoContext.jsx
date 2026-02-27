@@ -53,14 +53,18 @@ export const VideoProvider = ({
   const sessionIdRef = useRef(
     `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   );
+  // Keep a ref to the current video so flushEngagement (defined before
+  // currentVideo) can read it without a TDZ error.
+  const currentVideoRef = useRef(null);
 
   // Flush current engagement data to the backend
   const flushEngagement = useCallback(() => {
     const e = engagementRef.current;
     if (!e.videoId || !e.startTime) return;
 
+    const vid = currentVideoRef.current;
     const watchTime = (Date.now() - e.startTime) / 1000; // seconds
-    const totalDuration = currentVideo?.duration || 0;
+    const totalDuration = vid?.duration || 0;
     const completionRate =
       totalDuration > 0
         ? Math.min(Math.round((watchTime / totalDuration) * 100), 100)
@@ -76,7 +80,7 @@ export const VideoProvider = ({
         pauseCount: e.pauseCount,
         seekCount: e.seekCount,
         replays: e.replays,
-        category: currentVideo?.category || currentVideo?.subject || "",
+        category: vid?.category || vid?.subject || "",
         sessionId: sessionIdRef.current,
         ...(watchTime < 3 && totalDuration > 10
           ? { skippedAt: Math.round(watchTime), skipReason: "not-interested" }
@@ -92,7 +96,7 @@ export const VideoProvider = ({
       seekCount: 0,
       replays: 0,
     };
-  }, [currentVideo]);
+  }, []); // no deps — reads from refs only
 
   // Start tracking whenever the current video changes
   useEffect(() => {
@@ -143,6 +147,9 @@ export const VideoProvider = ({
   const error = videosError;
 
   const currentVideo = videos[currentIndex] || null;
+
+  // Keep ref in sync so flushEngagement can read it
+  currentVideoRef.current = currentVideo;
 
   // Sync like state and counts with current video
   useEffect(() => {
