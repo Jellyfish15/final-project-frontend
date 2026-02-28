@@ -192,7 +192,7 @@ export const VideoProvider = ({
   // We always call play() programmatically instead of relying on the autoPlay
   // HTML attribute, which is unreliable across browsers.
   // Videos start unmuted. If the browser blocks unmuted autoplay, we fall back
-  // to muted playback and let the user tap the unmute button.
+  // to muted playback and auto-unmute on the first user gesture.
   useEffect(() => {
     if (!videoRef.current || currentVideo?.videoType === "youtube") return;
 
@@ -203,11 +203,23 @@ export const VideoProvider = ({
         const doPlay = () => {
           videoElement.muted = isMuted;
           videoElement.play().catch(() => {
-            // Browser blocked unmuted autoplay — fall back to muted
+            // Browser blocked unmuted autoplay — play muted, then unmute on first tap
             if (!videoElement.muted) {
               videoElement.muted = true;
               setIsMuted(true);
               videoElement.play().catch(() => {});
+
+              // Auto-unmute as soon as the user taps anywhere on the page
+              const unmuteOnGesture = () => {
+                if (videoRef.current && videoRef.current.muted && !userWantsMutedRef.current) {
+                  videoRef.current.muted = false;
+                  setIsMuted(false);
+                }
+                document.removeEventListener("touchstart", unmuteOnGesture, true);
+                document.removeEventListener("click", unmuteOnGesture, true);
+              };
+              document.addEventListener("touchstart", unmuteOnGesture, { once: true, capture: true });
+              document.addEventListener("click", unmuteOnGesture, { once: true, capture: true });
             }
           });
         };

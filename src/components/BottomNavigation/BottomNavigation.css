@@ -1,6 +1,37 @@
 .bottom-nav {
-  /* Hide on desktop - navigation is in header */
+  /* Hide on desktop - navigation is in sidebar */
   display: none;
+}
+
+/* Show bottom nav on mobile */
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: block !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* On the videos page, use a dark/transparent style */
+  .bottom-nav--videos {
+    background: rgba(0, 0, 0, 0.85);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .bottom-nav--videos .bottom-nav__item {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .bottom-nav--videos .bottom-nav__item--active {
+    color: #fff;
+  }
 }
 
 .bottom-nav__container {
@@ -71,24 +102,6 @@
 
 .bottom-nav__item--upload:active {
   transform: scale(0.95);
-}
-
-/* Remove remaining old mobile styles */
-@media (max-width: 768px) {
-  .bottom-nav {
-    /* BottomNavigation is now hidden - Header handles bottom navigation on mobile */
-    display: none !important;
-  }
-
-  /* Add bottom padding to main content for header at bottom */
-  .app__main {
-    padding-bottom: 70px;
-  }
-
-  /* No padding on videos page since header is hidden */
-  .app__main--videos {
-    padding-bottom: 0;
-  }
 }
 
 /* Dark theme support */
