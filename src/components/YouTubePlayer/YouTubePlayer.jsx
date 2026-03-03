@@ -76,7 +76,7 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
             showinfo: 0,
             loop: 1,
             playlist: videoId,
-            mute: 0, // Start unmuted — play with sound
+            mute: 1, // Start muted to guarantee autoplay on all browsers
             preload: "auto",
           },
           events: {

@@ -26,8 +26,9 @@ export const VideoProvider = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
-  const [isMuted, setIsMuted] = useState(false); // Start unmuted — always play with sound
+  const [isMuted, setIsMuted] = useState(true); // Start muted to guarantee autoplay works
   const userWantsMutedRef = useRef(false); // Track user's mute preference across videos
+  const hasUserInteractedRef = useRef(false); // Track if user has interacted with the page
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
   const [focusedVideos, setFocusedVideos] = useState(null); // New state for focused feed
   const videoRef = useRef(null);
@@ -188,11 +189,39 @@ export const VideoProvider = ({
     };
   }, []);
 
+  // Auto-unmute on first user interaction (tap/click anywhere on page)
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      hasUserInteractedRef.current = true;
+      // Unmute if user hasn't explicitly chosen mute
+      if (!userWantsMutedRef.current) {
+        if (videoRef.current && videoRef.current.muted) {
+          videoRef.current.muted = false;
+        }
+        setIsMuted(false);
+      }
+      document.removeEventListener("touchstart", handleFirstInteraction, true);
+      document.removeEventListener("click", handleFirstInteraction, true);
+    };
+
+    document.addEventListener("touchstart", handleFirstInteraction, {
+      once: true,
+      capture: true,
+    });
+    document.addEventListener("click", handleFirstInteraction, {
+      once: true,
+      capture: true,
+    });
+
+    return () => {
+      document.removeEventListener("touchstart", handleFirstInteraction, true);
+      document.removeEventListener("click", handleFirstInteraction, true);
+    };
+  }, []);
+
   // Sync play/pause state with the video element.
-  // We always call play() programmatically instead of relying on the autoPlay
-  // HTML attribute, which is unreliable across browsers.
-  // Videos start unmuted. If the browser blocks unmuted autoplay, we fall back
-  // to muted playback and auto-unmute on the first user gesture.
+  // Videos start MUTED to guarantee autoplay on all browsers.
+  // Once the user taps anywhere, we unmute automatically.
   useEffect(() => {
     if (!videoRef.current || currentVideo?.videoType === "youtube") return;
 
@@ -201,41 +230,17 @@ export const VideoProvider = ({
     if (isPlaying) {
       if (videoElement.paused) {
         const doPlay = () => {
+          // Always set muted state from React state
           videoElement.muted = isMuted;
-          videoElement.play().catch(() => {
-            // Browser blocked unmuted autoplay — play muted, then unmute on first tap
-            if (!videoElement.muted) {
+          const playPromise = videoElement.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {
+              // If play still fails (very rare with muted), force muted play
               videoElement.muted = true;
               setIsMuted(true);
               videoElement.play().catch(() => {});
-
-              // Auto-unmute as soon as the user taps anywhere on the page
-              const unmuteOnGesture = () => {
-                if (
-                  videoRef.current &&
-                  videoRef.current.muted &&
-                  !userWantsMutedRef.current
-                ) {
-                  videoRef.current.muted = false;
-                  setIsMuted(false);
-                }
-                document.removeEventListener(
-                  "touchstart",
-                  unmuteOnGesture,
-                  true,
-                );
-                document.removeEventListener("click", unmuteOnGesture, true);
-              };
-              document.addEventListener("touchstart", unmuteOnGesture, {
-                once: true,
-                capture: true,
-              });
-              document.addEventListener("click", unmuteOnGesture, {
-                once: true,
-                capture: true,
-              });
-            }
-          });
+            });
+          }
         };
         // Wait for enough data before playing
         if (videoElement.readyState >= 3) {
@@ -251,32 +256,6 @@ export const VideoProvider = ({
       }
     }
   }, [isPlaying, currentVideo?._id, currentVideo?.videoType, isMuted]);
-
-  // After a new video starts playing (via autoPlay), restore the user's mute preference.
-  // iOS Safari requires videos to start muted for autoplay to work.
-  // Once playing, we can safely unmute via JavaScript (user gesture propagates).
-  useEffect(() => {
-    if (!videoRef.current || currentVideo?.videoType === "youtube") return;
-    if (userWantsMutedRef.current) return; // User wants muted, nothing to do
-
-    const videoElement = videoRef.current;
-
-    const unmuteAfterPlay = () => {
-      if (!userWantsMutedRef.current && videoElement.muted) {
-        videoElement.muted = false;
-        setIsMuted(false);
-      }
-    };
-
-    // If already playing, unmute now
-    if (!videoElement.paused && videoElement.readyState >= 3) {
-      unmuteAfterPlay();
-    } else {
-      // Wait for the video to start playing, then unmute
-      videoElement.addEventListener("playing", unmuteAfterPlay, { once: true });
-      return () => videoElement.removeEventListener("playing", unmuteAfterPlay);
-    }
-  }, [currentVideo?._id, currentVideo?.videoType]);
 
   const scrollToVideo = useCallback(
     async (direction) => {

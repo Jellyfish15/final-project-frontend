@@ -331,8 +331,9 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     ref={videoRef}
                     className="video-page__video"
                     src={currentVideo.videoUrl}
+                    autoPlay
                     loop
-                    muted={isMuted}
+                    muted
                     playsInline
                     preload="auto"
                     controls={false}
@@ -420,15 +421,13 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                 </>
               )}
 
-              {/* Show play button overlay when paused for both video types */}
+              {/* Minimal play indicator when paused — tap anywhere to resume */}
               {!isPlaying && (
                 <div
                   className="video-page__play-overlay"
                   onClick={togglePlay}
                   style={{ zIndex: 2, position: "absolute" }}
-                >
-                  <div className="video-page__play-button">▶</div>
-                </div>
+                />
               )}
             </>
           )}
