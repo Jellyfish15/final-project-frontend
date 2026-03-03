@@ -140,6 +140,9 @@ const startKeepAlive = () => {
 };
 
 app.post("/upload", upload.single("video"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No video file provided" });
+  }
   const videoPath = req.file.path;
   const thumbnailPath = `thumbnails/${req.file.filename}.png`;
 

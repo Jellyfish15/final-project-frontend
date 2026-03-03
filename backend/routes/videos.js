@@ -93,7 +93,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
 
     // Check if video is accessible
     if (video.isPrivate || video.status !== "approved") {
-      if (!req.user || video.creator._id.toString() !== req.user.userId) {
+      if (!req.user || !video.creator || video.creator._id.toString() !== req.user.userId) {
         return res.status(403).json({
           success: false,
           message: "Video not accessible",
@@ -101,9 +101,9 @@ router.get("/:id", optionalAuth, async (req, res) => {
       }
     }
 
-    // Increment view count
-    video.views += 1;
-    await video.save();
+    // Increment view count atomically
+    await Video.updateOne({ _id: video._id }, { $inc: { views: 1 } });
+    video.views += 1; // update local copy for response
 
     const formattedVideo = {
       id: video._id,
@@ -114,12 +114,12 @@ router.get("/:id", optionalAuth, async (req, res) => {
       duration: video.duration,
       category: video.category,
       tags: video.tags,
-      creator: {
+      creator: video.creator ? {
         username: video.creator.username,
         displayName: video.creator.displayName,
         avatar: video.creator.avatar,
         isVerified: video.creator.isVerified,
-      },
+      } : { username: "deleted", displayName: "Deleted User", avatar: null, isVerified: false },
       views: video.views,
       likes: video.likes.length,
       comments: video.comments.length,
@@ -311,6 +311,53 @@ router.get("/:id/comments", async (req, res) => {
   }
 });
 
+// @route   DELETE /api/videos/:id/comments/:commentId
+// @desc    Delete a comment from a video
+// @access  Private (comment author only)
+router.delete("/:id/comments/:commentId", auth, async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+
+    const video = await Video.findById(id);
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: "Video not found",
+      });
+    }
+
+    const comment = video.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: "Comment not found",
+      });
+    }
+
+    // Only the comment author can delete it
+    if (comment.user.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete this comment",
+      });
+    }
+
+    video.comments.pull(commentId);
+    await video.save();
+
+    res.json({
+      success: true,
+      message: "Comment deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete comment error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
 // @route   POST /api/videos/:id/share
 // @desc    Increment share count
 // @access  Public
@@ -326,9 +373,8 @@ router.post("/:id/share", async (req, res) => {
       });
     }
 
-    video.shares += 1;
-    video.calculateEngagementRate();
-    await video.save();
+    await Video.updateOne({ _id: video._id }, { $inc: { shares: 1 } });
+    video.shares += 1; // update local copy for response
 
     res.json({
       success: true,

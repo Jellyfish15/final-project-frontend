@@ -258,8 +258,8 @@ export const videosAPI = {
   // Like video
   likeVideo: (videoId) => apiService.post(`/videos/${videoId}/like`),
 
-  // Unlike video
-  unlikeVideo: (videoId) => apiService.delete(`/videos/${videoId}/like`),
+  // Unlike video (backend uses POST toggle, same endpoint as like)
+  unlikeVideo: (videoId) => apiService.post(`/videos/${videoId}/like`),
 
   // Add view
   addView: (videoId) => apiService.post(`/videos/${videoId}/view`),

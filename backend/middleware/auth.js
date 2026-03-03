@@ -3,6 +3,10 @@ const User = require('../models/User');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('\n⚠️  CRITICAL: JWT_SECRET is not set! Using insecure default. Set JWT_SECRET in environment variables.\n');
+}
+
 const auth = async (req, res, next) => {
   try {
     // Get token from header

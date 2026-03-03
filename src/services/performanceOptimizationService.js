@@ -69,10 +69,15 @@ class PerformanceOptimizationService {
 
       video.onloadedmetadata = () => {
         this.preloadedVideos.add(id);
+        // Free memory: clear the source now that we've confirmed it's loadable
+        video.removeAttribute("src");
+        video.load();
         console.log(`[Performance] Video metadata preloaded: ${id}`);
       };
 
       video.onerror = (err) => {
+        video.removeAttribute("src");
+        video.load();
         console.warn(
           `[Performance] Failed to preload video metadata: ${id}`,
           err,
@@ -82,7 +87,8 @@ class PerformanceOptimizationService {
       // Set a timeout to prevent memory leaks
       setTimeout(() => {
         if (!this.preloadedVideos.has(id)) {
-          video.src = ""; // Clear to free memory
+          video.removeAttribute("src");
+          video.load();
         }
       }, 30000); // 30 second timeout
     } catch (err) {

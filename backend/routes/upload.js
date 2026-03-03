@@ -90,6 +90,14 @@ const uploadImage = multer({
   },
 });
 
+const uploadAvatar = multer({
+  storage: avatarStorage,
+  fileFilter: imageFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
+  },
+});
+
 // @route   POST /api/upload/temp-video
 // @desc    Upload video temporarily and generate 3 thumbnail options
 // @access  Private
@@ -601,36 +609,11 @@ router.post(
         })
         .on("end", async () => {
           console.log("Thumbnail generation completed successfully");
-
-          // Create video record in database
-          const video = new Video({
-            title,
-            description: description || "",
-            videoUrl,
-            thumbnailUrl: primaryThumbnailUrl,
-            thumbnailOptions: [primaryThumbnailUrl],
-            videoType: "uploaded",
-            duration: 0,
-            fileSize,
-            category,
-            tags: tags,
-            creator: req.user.userId,
-            isPrivate: isPrivate === "true" || isPrivate === true,
-            status: "approved",
-            uploadedAt: new Date(),
-            publishedAt: new Date(),
-          });
-
-          try {
-            await video.save();
-            console.log("Video saved to database with thumbnail");
-          } catch (dbError) {
-            console.error("Error saving video to database:", dbError);
-          }
+          // Thumbnail file is now on disk; the video record is saved below.
         })
         .on("error", (err) => {
-          console.error("FFmpeg error:", err.message);
-          console.error("Full error:", err);
+          console.error("FFmpeg thumbnail error:", err.message);
+          // Non-fatal: the video is still saved without a generated thumbnail.
         })
         .screenshots({
           timestamps: ["20%"],
@@ -763,7 +746,7 @@ router.post(
 // @route   POST /api/upload/avatar
 // @desc    Upload user avatar
 // @access  Private
-router.post("/avatar", auth, uploadImage.single("avatar"), async (req, res) => {
+router.post("/avatar", auth, uploadAvatar.single("avatar"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -783,8 +766,10 @@ router.post("/avatar", auth, uploadImage.single("avatar"), async (req, res) => {
       });
     }
 
-    // Update user avatar
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    // Update user avatar (use cloud URL if available, else local path)
+    const avatarUrl = isCloudinaryConfigured() && req.file.path?.startsWith("http")
+      ? req.file.path
+      : `/uploads/avatars/${req.file.filename}`;
     user.avatar = avatarUrl;
     user.updatedAt = new Date();
     await user.save();
@@ -930,7 +915,7 @@ router.use((error, req, res, next) => {
       return res.status(400).json({
         success: false,
         message:
-          "File size too large. Maximum size is 100MB for videos and 5MB for images.",
+          "File size too large. Maximum size is 200MB for videos and 5MB for images.",
       });
     }
   }

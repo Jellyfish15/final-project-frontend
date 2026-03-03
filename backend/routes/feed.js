@@ -140,7 +140,9 @@ function normalizeYouTubeVideo(v) {
 router.get("/", optionalAuth, async (req, res) => {
   try {
     const { page = 1, limit = 20, category } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const p = Math.max(1, parseInt(page) || 1);
+    const l = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip = (p - 1) * l;
     const now = Date.now();
 
     // Resolve user preferences (if logged in)
@@ -254,7 +256,7 @@ router.get("/", optionalAuth, async (req, res) => {
     }
 
     // Paginate
-    const paginated = diversified.slice(skip, skip + parseInt(limit));
+    const paginated = diversified.slice(skip, skip + l);
 
     // Remove internal scoring from response
     const responseVideos = paginated.map(({ _score, ...rest }) => rest);
@@ -263,8 +265,8 @@ router.get("/", optionalAuth, async (req, res) => {
       success: true,
       videos: responseVideos,
       pagination: {
-        current: parseInt(page),
-        hasMore: skip + parseInt(limit) < diversified.length,
+        current: p,
+        hasMore: skip + l < diversified.length,
         total: diversified.length,
       },
       meta: {

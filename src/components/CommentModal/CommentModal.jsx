@@ -59,7 +59,8 @@ const CommentModal = ({ isOpen, onClose, video, onOpenLogin }) => {
 
   const handleSubmitComment = async (e) => {
     e.preventDefault();
-    if (!newComment.trim() || !video) return;
+    const trimmed = newComment.trim();
+    if (!trimmed || !video || trimmed.length > MAX_COMMENT_LENGTH) return;
 
     if (!isAuthenticated) {
       onOpenLogin();
@@ -100,15 +101,7 @@ const CommentModal = ({ isOpen, onClose, video, onOpenLogin }) => {
     }
   };
 
-  const formatTimeAgo = (date) => {
-    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-
-    if (seconds < 60) return `${seconds}s ago`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-    return new Date(date).toLocaleDateString();
-  };
+  // formatTimeAgo is defined at module scope above
 
   if (!isOpen) return null;
 
@@ -196,6 +189,7 @@ const CommentModal = ({ isOpen, onClose, video, onOpenLogin }) => {
                 placeholder="Add a comment..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
+                maxLength={MAX_COMMENT_LENGTH}
                 disabled={isSubmitting}
               />
               <button

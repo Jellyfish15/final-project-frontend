@@ -143,7 +143,7 @@ router.post("/batch", auth, async (req, res) => {
     }
 
     const results = await Promise.allSettled(
-      events.map(async (event) => {
+      events.filter((event) => event.videoId).map(async (event) => {
         const filter = {
           userId: req.user.userId,
           videoId: event.videoId,
@@ -156,7 +156,7 @@ router.post("/batch", auth, async (req, res) => {
             $set: {
               userId: req.user.userId,
               ...event,
-              completedAt: event.completionRate >= 90 ? new Date() : undefined,
+              completedAt: event.completionRate >= 90 ? new Date() : null,
             },
           },
           { upsert: true, new: true, setDefaultsOnInsert: true },

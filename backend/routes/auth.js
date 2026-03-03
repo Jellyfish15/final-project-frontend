@@ -110,16 +110,13 @@ router.post(
           displayName && displayName.trim() ? displayName.trim() : username,
         description: description || "",
         interests: interests || [],
+        lastLoginAt: new Date(),
       });
 
       await user.save();
 
       // Generate token
       const token = generateToken(user._id);
-
-      // Update last login
-      user.lastLoginAt = new Date();
-      await user.save();
 
       res.status(201).json({
         success: true,
@@ -155,7 +152,7 @@ router.post(
   ],
   async (req, res) => {
     try {
-      console.log("Login request body:", req.body);
+      console.log("Login request for:", req.body.email || req.body.identifier);
 
       // Check for validation errors
       const errors = validationResult(req);
