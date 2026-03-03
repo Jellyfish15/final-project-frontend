@@ -22,7 +22,7 @@ router.get("/feed", optionalAuth, async (req, res) => {
     const videos = await Video.getAlgorithmFeed(
       currentUser,
       parseInt(page),
-      parseInt(limit)
+      parseInt(limit),
     );
 
     // Format videos for response
@@ -81,7 +81,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
 
     const video = await Video.findById(id).populate(
       "creator",
-      "username displayName avatar isVerified"
+      "username displayName avatar isVerified",
     );
 
     if (!video) {
@@ -93,7 +93,11 @@ router.get("/:id", optionalAuth, async (req, res) => {
 
     // Check if video is accessible
     if (video.isPrivate || video.status !== "approved") {
-      if (!req.user || !video.creator || video.creator._id.toString() !== req.user.userId) {
+      if (
+        !req.user ||
+        !video.creator ||
+        video.creator._id.toString() !== req.user.userId
+      ) {
         return res.status(403).json({
           success: false,
           message: "Video not accessible",
@@ -114,12 +118,19 @@ router.get("/:id", optionalAuth, async (req, res) => {
       duration: video.duration,
       category: video.category,
       tags: video.tags,
-      creator: video.creator ? {
-        username: video.creator.username,
-        displayName: video.creator.displayName,
-        avatar: video.creator.avatar,
-        isVerified: video.creator.isVerified,
-      } : { username: "deleted", displayName: "Deleted User", avatar: null, isVerified: false },
+      creator: video.creator
+        ? {
+            username: video.creator.username,
+            displayName: video.creator.displayName,
+            avatar: video.creator.avatar,
+            isVerified: video.creator.isVerified,
+          }
+        : {
+            username: "deleted",
+            displayName: "Deleted User",
+            avatar: null,
+            isVerified: false,
+          },
       views: video.views,
       likes: video.likes.length,
       comments: video.comments.length,
@@ -160,7 +171,7 @@ router.post("/:id/like", auth, async (req, res) => {
     }
 
     const existingLike = video.likes.find(
-      (like) => like.user.toString() === req.user.userId
+      (like) => like.user.toString() === req.user.userId,
     );
     let isLiked;
 
@@ -226,12 +237,12 @@ router.post(
       const comment = await video.addComment(
         req.user.userId,
         req.user.username,
-        text
+        text,
       );
 
       // Get user info for the response
       const user = await User.findById(req.user.userId).select(
-        "username displayName avatar"
+        "username displayName avatar",
       );
 
       res.json({
@@ -256,7 +267,7 @@ router.post(
         message: "Server error",
       });
     }
-  }
+  },
 );
 
 // @route   GET /api/videos/:id/comments

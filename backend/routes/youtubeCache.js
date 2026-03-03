@@ -13,7 +13,7 @@ router.get("/videos", async (req, res) => {
 
     const videos = await youtubeCacheService.getCachedVideos(
       parseInt(limit),
-      subject
+      subject,
     );
 
     res.json({
@@ -40,7 +40,7 @@ router.get("/random", async (req, res) => {
     const { limit = 50 } = req.query;
 
     const videos = await youtubeCacheService.getRandomCachedVideos(
-      parseInt(limit)
+      parseInt(limit),
     );
 
     res.json({
@@ -67,7 +67,7 @@ router.get("/diverse", async (req, res) => {
     const { count = 1000 } = req.query;
 
     const videos = await youtubeCacheService.getDiverseCachedVideos(
-      parseInt(count)
+      parseInt(count),
     );
 
     res.json({
@@ -94,7 +94,7 @@ router.get("/feed", async (req, res) => {
     const { count = 28 } = req.query;
 
     const result = await youtubeCacheService.getVideosWithOpportunisticCaching(
-      parseInt(count)
+      parseInt(count),
     );
 
     res.json(result);
@@ -165,7 +165,7 @@ router.delete("/old", auth, async (req, res) => {
     const { days = 30 } = req.query;
 
     const removedCount = await youtubeCacheService.removeOldVideos(
-      parseInt(days)
+      parseInt(days),
     );
 
     res.json({

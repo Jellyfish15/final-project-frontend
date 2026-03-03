@@ -746,52 +746,58 @@ router.post(
 // @route   POST /api/upload/avatar
 // @desc    Upload user avatar
 // @access  Private
-router.post("/avatar", auth, uploadAvatar.single("avatar"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
+router.post(
+  "/avatar",
+  auth,
+  uploadAvatar.single("avatar"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No avatar file uploaded",
+        });
+      }
+
+      const User = require("../models/User");
+      const user = await User.findById(req.user.userId);
+
+      if (!user) {
+        fs.unlinkSync(req.file.path);
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      // Update user avatar (use cloud URL if available, else local path)
+      const avatarUrl =
+        isCloudinaryConfigured() && req.file.path?.startsWith("http")
+          ? req.file.path
+          : `/uploads/avatars/${req.file.filename}`;
+      user.avatar = avatarUrl;
+      user.updatedAt = new Date();
+      await user.save();
+
+      res.json({
+        success: true,
+        message: "Avatar uploaded successfully",
+        avatarUrl,
+      });
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      res.status(500).json({
         success: false,
-        message: "No avatar file uploaded",
+        message: "Server error during avatar upload",
       });
     }
-
-    const User = require("../models/User");
-    const user = await User.findById(req.user.userId);
-
-    if (!user) {
-      fs.unlinkSync(req.file.path);
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Update user avatar (use cloud URL if available, else local path)
-    const avatarUrl = isCloudinaryConfigured() && req.file.path?.startsWith("http")
-      ? req.file.path
-      : `/uploads/avatars/${req.file.filename}`;
-    user.avatar = avatarUrl;
-    user.updatedAt = new Date();
-    await user.save();
-
-    res.json({
-      success: true,
-      message: "Avatar uploaded successfully",
-      avatarUrl,
-    });
-  } catch (error) {
-    console.error("Avatar upload error:", error);
-
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Server error during avatar upload",
-    });
-  }
-});
+  },
+);
 
 // @route   GET /api/upload/my-videos
 // @desc    Get current user's uploaded videos

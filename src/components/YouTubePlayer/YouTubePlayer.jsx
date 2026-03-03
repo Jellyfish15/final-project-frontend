@@ -4,6 +4,8 @@ import React, {
   useState,
   useCallback,
   useMemo,
+  forwardRef,
+  useImperativeHandle,
 } from "react";
 import VideoLoader from "../VideoLoader/VideoLoader";
 
@@ -25,7 +27,7 @@ const PLAYER_ERROR_CODES = {
   EMBED_DISABLED_ALT: 150,
 };
 
-const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
+const YouTubePlayer = forwardRef(({ videoId, isMuted, isPlaying, className, onPlayingChange }, ref) => {
   const playerRef = useRef(null);
   const playerInstanceRef = useRef(null);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -35,6 +37,27 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
   const playbackQualityRef = useRef("auto");
   const bufferingStartRef = useRef(null);
   const totalBufferTimeRef = useRef(0);
+
+  // Expose imperative methods so the parent overlay can toggle playback
+  // directly — critical on mobile where playVideo() must be in a user-gesture.
+  useImperativeHandle(ref, () => ({
+    togglePlayback: () => {
+      const player = playerInstanceRef.current;
+      if (!player || !isPlayerReady) return;
+      try {
+        const state = player.getPlayerState();
+        if (state === window.YT.PlayerState.PLAYING) {
+          player.pauseVideo();
+        } else {
+          player.playVideo();
+        }
+      } catch {
+        // Player not ready yet
+      }
+    },
+    play: () => playerInstanceRef.current?.playVideo(),
+    pause: () => playerInstanceRef.current?.pauseVideo(),
+  }), [isPlayerReady]);
 
   // Calculate optimal player dimensions based on container
   const playerDimensions = useMemo(() => {
@@ -98,37 +121,28 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
               }
             },
             onStateChange: (event) => {
-              console.log("[YouTubePlayer] State changed:", {
-                state: event.data,
-                UNSTARTED: window.YT.PlayerState.UNSTARTED,
-                ENDED: window.YT.PlayerState.ENDED,
-                PLAYING: window.YT.PlayerState.PLAYING,
-                PAUSED: window.YT.PlayerState.PAUSED,
-                BUFFERING: window.YT.PlayerState.BUFFERING,
-                CUED: window.YT.PlayerState.CUED,
-              });
-
               // Handle loading states
               if (event.data === window.YT.PlayerState.BUFFERING) {
                 setIsVideoLoading(true);
               } else if (event.data === window.YT.PlayerState.PLAYING) {
                 setIsVideoLoading(false);
+                onPlayingChange?.(true);
                 // Try to auto-unmute after video starts playing
-                // This might work if user has interacted with the page before
-                setTimeout(() => {
-                  try {
-                    if (!isMuted) {
-                      event.target.unMute();
-                      console.log("[YouTubePlayer] Auto-unmuted successfully");
-                    }
-                  } catch (error) {
-                    console.log(
-                      "[YouTubePlayer] Auto-unmute blocked by browser",
-                    );
+                try {
+                  if (!isMuted) {
+                    event.target.unMute();
                   }
-                }, 500);
+                } catch (error) {
+                  // Auto-unmute blocked by browser
+                }
               } else if (event.data === window.YT.PlayerState.PAUSED) {
                 setIsVideoLoading(false);
+                onPlayingChange?.(false);
+              } else if (event.data === window.YT.PlayerState.ENDED) {
+                onPlayingChange?.(false);
+              } else if (event.data === window.YT.PlayerState.UNSTARTED) {
+                // On mobile, YouTube often stays UNSTARTED (no autoplay)
+                onPlayingChange?.(false);
               }
             },
             onError: (event) => {
@@ -205,19 +219,15 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
     }
   }, [isMuted]);
 
-  // Handle play/pause state changes
+  // Handle play/pause state changes — no setTimeout so playVideo()
+  // stays within the user-gesture window on mobile browsers.
   useEffect(() => {
     if (playerInstanceRef.current && isPlayerReady) {
-      // Add small delay to ensure player is fully ready
-      const timer = setTimeout(() => {
-        if (isPlaying) {
-          playerInstanceRef.current.playVideo();
-        } else {
-          playerInstanceRef.current.pauseVideo();
-        }
-      }, 100);
-
-      return () => clearTimeout(timer);
+      if (isPlaying) {
+        playerInstanceRef.current.playVideo();
+      } else {
+        playerInstanceRef.current.pauseVideo();
+      }
     }
   }, [isPlaying, isPlayerReady]);
 
@@ -242,6 +252,7 @@ const YouTubePlayer = ({ videoId, isMuted, isPlaying, className }) => {
       {(isVideoLoading || !isPlayerReady) && <VideoLoader />}
     </div>
   );
-};
+});
 
+YouTubePlayer.displayName = "YouTubePlayer";
 export default YouTubePlayer;

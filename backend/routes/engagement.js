@@ -143,25 +143,27 @@ router.post("/batch", auth, async (req, res) => {
     }
 
     const results = await Promise.allSettled(
-      events.filter((event) => event.videoId).map(async (event) => {
-        const filter = {
-          userId: req.user.userId,
-          videoId: event.videoId,
-          ...(event.sessionId ? { sessionId: event.sessionId } : {}),
-        };
+      events
+        .filter((event) => event.videoId)
+        .map(async (event) => {
+          const filter = {
+            userId: req.user.userId,
+            videoId: event.videoId,
+            ...(event.sessionId ? { sessionId: event.sessionId } : {}),
+          };
 
-        return Engagement.findOneAndUpdate(
-          filter,
-          {
-            $set: {
-              userId: req.user.userId,
-              ...event,
-              completedAt: event.completionRate >= 90 ? new Date() : null,
+          return Engagement.findOneAndUpdate(
+            filter,
+            {
+              $set: {
+                userId: req.user.userId,
+                ...event,
+                completedAt: event.completionRate >= 90 ? new Date() : null,
+              },
             },
-          },
-          { upsert: true, new: true, setDefaultsOnInsert: true },
-        );
-      }),
+            { upsert: true, new: true, setDefaultsOnInsert: true },
+          );
+        }),
     );
 
     const succeeded = results.filter((r) => r.status === "fulfilled").length;

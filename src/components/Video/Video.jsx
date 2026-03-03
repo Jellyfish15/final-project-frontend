@@ -18,6 +18,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   const hasBeenUnmutedRef = useRef(false);
   const isFirstVideoEverRef = useRef(true);
   const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
+  const ytPlayerRef = useRef(null);
   const location = useLocation();
   const {
     currentVideo,
@@ -40,6 +41,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     setCustomFeed,
     isFocusedFeed,
     togglePlay,
+    syncPlayingState,
     toggleMute,
     handleLike,
     handleShare,
@@ -263,6 +265,17 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                   const extractedVideoId =
                     currentVideo.id ||
                     currentVideo.videoUrl?.split("/").pop().split("?")[0];
+
+                  // Toggle via the YT player ref so playVideo() runs inside
+                  // the user-gesture context — required on mobile.
+                  const handleYTTap = () => {
+                    if (ytPlayerRef.current) {
+                      ytPlayerRef.current.togglePlayback();
+                    } else {
+                      togglePlay();
+                    }
+                  };
+
                   return (
                     <div
                       key={extractedVideoId}
@@ -274,14 +287,16 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       }}
                     >
                       <YouTubePlayer
+                        ref={ytPlayerRef}
                         videoId={extractedVideoId}
                         isMuted={isMuted}
                         isPlaying={isPlaying}
                         className="video-page__video"
+                        onPlayingChange={syncPlayingState}
                       />
                       {/* Transparent overlay to capture clicks on YouTube iframe */}
                       <div
-                        onClick={togglePlay}
+                        onClick={handleYTTap}
                         onTouchStart={(e) => {
                           const touch = e.touches[0];
                           touchStartRef.current = {
@@ -304,7 +319,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                           // Only toggle play if it's a tap (not a swipe)
                           if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
                             e.preventDefault();
-                            togglePlay();
+                            handleYTTap();
                           }
                         }}
                         style={{
@@ -425,7 +440,14 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
               {!isPlaying && (
                 <div
                   className="video-page__play-overlay"
-                  onClick={togglePlay}
+                  onClick={() => {
+                    // For YouTube, use the player ref to stay in user-gesture context
+                    if (currentVideo?.videoType === "youtube" && ytPlayerRef.current) {
+                      ytPlayerRef.current.togglePlayback();
+                    } else {
+                      togglePlay();
+                    }
+                  }}
                   style={{ zIndex: 2, position: "absolute" }}
                 />
               )}

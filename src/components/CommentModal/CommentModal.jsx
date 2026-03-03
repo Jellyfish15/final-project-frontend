@@ -7,7 +7,7 @@ import "./CommentModal.css";
 const COMMENTS_PER_PAGE = 20;
 const MAX_COMMENT_DEPTH = 3;
 const MAX_COMMENT_LENGTH = 500;
-const COMMENT_SORT_OPTIONS = ['newest', 'oldest', 'popular'];
+const COMMENT_SORT_OPTIONS = ["newest", "oldest", "popular"];
 
 // Time-ago formatter for comment timestamps
 const formatTimeAgo = (dateString) => {
@@ -21,7 +21,7 @@ const formatTimeAgo = (dateString) => {
   const diffWeek = Math.floor(diffDay / 7);
   const diffMonth = Math.floor(diffDay / 30);
 
-  if (diffSec < 60) return 'just now';
+  if (diffSec < 60) return "just now";
   if (diffMin < 60) return `${diffMin}m ago`;
   if (diffHour < 24) return `${diffHour}h ago`;
   if (diffDay < 7) return `${diffDay}d ago`;
@@ -72,7 +72,7 @@ const CommentModal = ({ isOpen, onClose, video, onOpenLogin }) => {
       console.log("Submitting comment for video:", video._id || video.id);
       const response = await videosAPI.addComment(
         video._id || video.id,
-        newComment.trim()
+        newComment.trim(),
       );
 
       console.log("Comment response:", response);

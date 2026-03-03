@@ -1,34 +1,38 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET =
+  process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('\n⚠️  CRITICAL: JWT_SECRET is not set! Using insecure default. Set JWT_SECRET in environment variables.\n');
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
+  console.error(
+    "\n⚠️  CRITICAL: JWT_SECRET is not set! Using insecure default. Set JWT_SECRET in environment variables.\n",
+  );
 }
 
 const auth = async (req, res, next) => {
   try {
     // Get token from header
-    const token = req.header('Authorization')?.replace('Bearer ', '') || 
-                  req.header('x-auth-token');
+    const token =
+      req.header("Authorization")?.replace("Bearer ", "") ||
+      req.header("x-auth-token");
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'No token provided, access denied'
+        message: "No token provided, access denied",
       });
     }
 
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
-    
+
     // Check if user exists and is active
     const user = await User.findById(decoded.userId);
     if (!user || !user.isActive) {
       return res.status(401).json({
         success: false,
-        message: 'Token is not valid or user is inactive'
+        message: "Token is not valid or user is inactive",
       });
     }
 
@@ -36,15 +40,15 @@ const auth = async (req, res, next) => {
     req.user = {
       userId: decoded.userId,
       username: user.username,
-      email: user.email
+      email: user.email,
     };
 
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error("Auth middleware error:", error);
     res.status(401).json({
       success: false,
-      message: 'Token is not valid'
+      message: "Token is not valid",
     });
   }
 };
@@ -52,18 +56,19 @@ const auth = async (req, res, next) => {
 // Optional auth middleware (for routes that work with or without auth)
 const optionalAuth = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '') || 
-                  req.header('x-auth-token');
+    const token =
+      req.header("Authorization")?.replace("Bearer ", "") ||
+      req.header("x-auth-token");
 
     if (token) {
       const decoded = jwt.verify(token, JWT_SECRET);
       const user = await User.findById(decoded.userId);
-      
+
       if (user && user.isActive) {
         req.user = {
           userId: decoded.userId,
           username: user.username,
-          email: user.email
+          email: user.email,
         };
       }
     }

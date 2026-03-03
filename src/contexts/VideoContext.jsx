@@ -549,6 +549,12 @@ export const VideoProvider = ({
     }
   }, [currentVideo?.videoType]);
 
+  // Allow external components (e.g. YouTubePlayer) to sync actual
+  // playback state back into React.
+  const syncPlayingState = useCallback((playing) => {
+    setIsPlaying(playing);
+  }, []);
+
   const toggleMute = useCallback(() => {
     if (videoRef.current && currentVideo?.videoType !== "youtube") {
       videoRef.current.muted = !videoRef.current.muted;
@@ -827,6 +833,7 @@ export const VideoProvider = ({
       resetToFullFeed,
       isFocusedFeed: focusedVideos !== null,
       togglePlay,
+      syncPlayingState,
       toggleMute,
       handleLike,
       handleShare,
@@ -860,6 +867,7 @@ export const VideoProvider = ({
       resetToFullFeed,
       focusedVideos,
       togglePlay,
+      syncPlayingState,
       toggleMute,
       handleLike,
       handleShare,
