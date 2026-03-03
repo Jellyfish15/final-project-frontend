@@ -42,6 +42,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     isFocusedFeed,
     togglePlay,
     syncPlayingState,
+    justUnmutedRef,
     toggleMute,
     handleLike,
     handleShare,
@@ -269,6 +270,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                   // Toggle via the YT player ref so playVideo() runs inside
                   // the user-gesture context — required on mobile.
                   const handleYTTap = () => {
+                    // Skip if this tap was the first-interaction unmute
+                    if (justUnmutedRef.current) return;
                     if (ytPlayerRef.current) {
                       ytPlayerRef.current.togglePlayback();
                     } else {
@@ -442,7 +445,10 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                   className="video-page__play-overlay"
                   onClick={() => {
                     // For YouTube, use the player ref to stay in user-gesture context
-                    if (currentVideo?.videoType === "youtube" && ytPlayerRef.current) {
+                    if (
+                      currentVideo?.videoType === "youtube" &&
+                      ytPlayerRef.current
+                    ) {
                       ytPlayerRef.current.togglePlayback();
                     } else {
                       togglePlay();
