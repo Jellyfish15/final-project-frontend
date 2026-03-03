@@ -19,18 +19,15 @@
 ## Step 2: Deploy Backend to Render
 
 1. **Go to Render Dashboard**
-
    - Visit https://dashboard.render.com
    - Sign in with GitHub
 
 2. **Create New Web Service**
-
    - Click "New +" → "Web Service"
    - Connect your GitHub repository: `Jellyfish15/final-project-frontend`
    - Click "Connect"
 
 3. **Configure Service**
-
    - **Name**: `nudl-backend` (or any name you prefer)
    - **Region**: Oregon (or closest to you)
    - **Branch**: `stage-1-frontend-and-api`
@@ -54,7 +51,7 @@
 5. **Deploy**
    - Click "Create Web Service"
    - Wait 5-10 minutes for deployment
-   - You'll get a URL like: `https://nudl-backend.onrender.com`
+   - You'll get a URL like: `https://final-project-frontend-1.onrender.com`
 
 ## Step 3: Update Frontend Configuration
 
@@ -79,18 +76,16 @@
 ## Step 4: Verify Deployment
 
 1. **Test Backend Health**
-
    - Visit: `https://your-backend-name.onrender.com/health`
    - Should return: `{"status":"OK","timestamp":"...","environment":"production"}`
 
 2. **Test YouTube Cache API**
-
    - Visit: `https://your-backend-name.onrender.com/api/youtube-cache/stats`
    - Should return cache statistics
 
 3. **Test Frontend**
    - Visit your GitHub Pages site: `https://jellyfish15.
-   +github.io/final-project-frontend/`
++github.io/final-project-frontend/`
    - Videos should now load properly!
 
 ## Important Notes
