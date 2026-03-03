@@ -29,6 +29,7 @@ export const VideoProvider = ({
   const [isMuted, setIsMuted] = useState(true); // Start muted to guarantee autoplay works
   const userWantsMutedRef = useRef(false); // Track user's mute preference across videos
   const hasUserInteractedRef = useRef(false); // Track if user has interacted with the page
+  const justUnmutedRef = useRef(false); // Prevent unmute tap from also toggling play
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
   const [focusedVideos, setFocusedVideos] = useState(null); // New state for focused feed
   const videoRef = useRef(null);
@@ -199,6 +200,11 @@ export const VideoProvider = ({
           videoRef.current.muted = false;
         }
         setIsMuted(false);
+        // Set flag so togglePlay ignores this same tap
+        justUnmutedRef.current = true;
+        setTimeout(() => {
+          justUnmutedRef.current = false;
+        }, 300);
       }
       document.removeEventListener("touchstart", handleFirstInteraction, true);
       document.removeEventListener("click", handleFirstInteraction, true);
@@ -516,6 +522,10 @@ export const VideoProvider = ({
   }, []);
 
   const togglePlay = useCallback(() => {
+    // Skip if this tap was the first-interaction unmute
+    if (justUnmutedRef.current) {
+      return;
+    }
     if (currentVideo?.videoType === "youtube") {
       setIsPlaying((prev) => !prev);
     } else if (videoRef.current) {
