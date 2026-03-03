@@ -281,7 +281,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
                   return (
                     <div
-                      key={extractedVideoId}
                       className="video-page__youtube-wrapper"
                       style={{
                         position: "relative",

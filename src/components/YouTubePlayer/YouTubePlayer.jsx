@@ -2,45 +2,39 @@ import React, {
   useEffect,
   useRef,
   useState,
-  useCallback,
-  useMemo,
   forwardRef,
   useImperativeHandle,
 } from "react";
 import VideoLoader from "../VideoLoader/VideoLoader";
 
-// YT Player state machine constants
-const PLAYER_STATES = {
-  UNSTARTED: -1,
-  ENDED: 0,
-  PLAYING: 1,
-  PAUSED: 2,
-  BUFFERING: 3,
-  CUED: 5,
-};
-
-const PLAYER_ERROR_CODES = {
-  INVALID_PARAM: 2,
-  HTML5_ERROR: 5,
-  NOT_FOUND: 100,
-  EMBED_DISABLED: 101,
-  EMBED_DISABLED_ALT: 150,
-};
-
+/**
+ * Singleton YouTube player.
+ *
+ * Instead of destroying / recreating a YT.Player on every video change,
+ * we keep ONE player alive and swap videos via `loadVideoById()`.
+ * This preserves the user-gesture activation context so subsequent
+ * videos autoplay with sound on mobile.
+ */
 const YouTubePlayer = forwardRef(
   ({ videoId, isMuted, isPlaying, className, onPlayingChange }, ref) => {
-    const playerRef = useRef(null);
+    const containerRef = useRef(null);
     const playerInstanceRef = useRef(null);
     const [isPlayerReady, setIsPlayerReady] = useState(false);
     const [isVideoLoading, setIsVideoLoading] = useState(true);
-    const [playerError, setPlayerError] = useState(null);
-    const retryCountRef = useRef(0);
-    const playbackQualityRef = useRef("auto");
-    const bufferingStartRef = useRef(null);
-    const totalBufferTimeRef = useRef(0);
 
-    // Expose imperative methods so the parent overlay can toggle playback
-    // directly — critical on mobile where playVideo() must be in a user-gesture.
+    // Track what the player is currently showing so we don't double-load.
+    const activeVideoIdRef = useRef(null);
+    // Store the initial videoId so the constructor knows what to load.
+    const initialVideoIdRef = useRef(videoId);
+
+    // Keep latest prop values in refs so event-handler closures always
+    // read the freshest value (they close over the initial render otherwise).
+    const isMutedRef = useRef(isMuted);
+    isMutedRef.current = isMuted;
+    const onPlayingChangeRef = useRef(onPlayingChange);
+    onPlayingChangeRef.current = onPlayingChange;
+
+    // ── Imperative API for parent (Video.jsx overlay) ──────────────
     useImperativeHandle(
       ref,
       () => ({
@@ -64,129 +58,107 @@ const YouTubePlayer = forwardRef(
       [isPlayerReady],
     );
 
-    // Calculate optimal player dimensions based on container
-    const playerDimensions = useMemo(() => {
-      const aspectRatio = 9 / 16; // Vertical video
-      const maxWidth = window.innerWidth;
-      const maxHeight = window.innerHeight;
-      return {
-        width: Math.min(maxWidth, maxHeight / aspectRatio),
-        height: Math.min(maxHeight, maxWidth * aspectRatio),
-      };
-    }, []);
-
+    // ── Create the YT.Player exactly ONCE ──────────────────────────
     useEffect(() => {
-      // Validate videoId before attempting to load
-      if (!videoId || typeof videoId !== "string" || videoId.length < 5) {
-        console.error("[YouTubePlayer] Invalid video ID:", videoId);
+      const startId = initialVideoIdRef.current;
+      if (!startId || typeof startId !== "string" || startId.length < 5) {
         setIsVideoLoading(false);
         return;
       }
+
+      // If the player already exists (React strict-mode double-mount), skip.
+      if (playerInstanceRef.current) return;
 
       setIsVideoLoading(true);
       setIsPlayerReady(false);
 
       const initializePlayer = () => {
-        if (playerRef.current && videoId) {
-          playerInstanceRef.current = new window.YT.Player(playerRef.current, {
-            videoId: videoId,
-            width: "100%",
-            height: "100%",
-            playerVars: {
-              autoplay: 1,
-              controls: 0,
-              disablekb: 1,
-              fs: 0,
-              iv_load_policy: 3,
-              modestbranding: 1,
-              playsinline: 1,
-              rel: 0,
-              showinfo: 0,
-              loop: 1,
-              playlist: videoId,
-              mute: 1, // Start muted to guarantee autoplay on all browsers
-              preload: "auto",
+        if (!containerRef.current) return;
+
+        playerInstanceRef.current = new window.YT.Player(containerRef.current, {
+          videoId: startId,
+          width: "100%",
+          height: "100%",
+          playerVars: {
+            autoplay: 1,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            iv_load_policy: 3,
+            modestbranding: 1,
+            playsinline: 1,
+            rel: 0,
+            showinfo: 0,
+            loop: 0, // We handle looping ourselves via ENDED → loadVideoById
+            mute: 1, // Start muted to guarantee first autoplay
+            preload: "auto",
+          },
+          events: {
+            onReady: (event) => {
+              setIsPlayerReady(true);
+              setIsVideoLoading(false);
+              activeVideoIdRef.current = startId;
+
+              if (!isMutedRef.current) {
+                event.target.unMute();
+              }
+              try {
+                event.target.playVideo();
+              } catch {
+                // Autoplay blocked — user will tap
+              }
             },
-            events: {
-              onReady: (event) => {
-                console.log("[YouTubePlayer] Player ready");
-                setIsPlayerReady(true);
+
+            onStateChange: (event) => {
+              const state = event.data;
+
+              if (state === window.YT.PlayerState.BUFFERING) {
+                setIsVideoLoading(true);
+              } else if (state === window.YT.PlayerState.PLAYING) {
                 setIsVideoLoading(false);
-                // Unmute and play immediately
-                if (!isMuted) {
-                  event.target.unMute();
-                }
-
-                // Try to play immediately
-                try {
-                  event.target.playVideo();
-                  console.log("[YouTubePlayer] Attempted autoplay");
-                } catch (error) {
-                  console.error("[YouTubePlayer] Autoplay failed:", error);
-                }
-              },
-              onStateChange: (event) => {
-                // Handle loading states
-                if (event.data === window.YT.PlayerState.BUFFERING) {
-                  setIsVideoLoading(true);
-                } else if (event.data === window.YT.PlayerState.PLAYING) {
-                  setIsVideoLoading(false);
-                  onPlayingChange?.(true);
-                  // Try to auto-unmute after video starts playing
+                onPlayingChangeRef.current?.(true);
+                // Ensure unmute stays applied after loadVideoById
+                if (!isMutedRef.current) {
                   try {
-                    if (!isMuted) {
-                      event.target.unMute();
-                    }
-                  } catch (error) {
-                    // Auto-unmute blocked by browser
+                    event.target.unMute();
+                  } catch {
+                    /* browser blocked */
                   }
-                } else if (event.data === window.YT.PlayerState.PAUSED) {
-                  setIsVideoLoading(false);
-                  onPlayingChange?.(false);
-                } else if (event.data === window.YT.PlayerState.ENDED) {
-                  onPlayingChange?.(false);
-                } else if (event.data === window.YT.PlayerState.UNSTARTED) {
-                  // On mobile, YouTube often stays UNSTARTED (no autoplay)
-                  onPlayingChange?.(false);
                 }
-              },
-              onError: (event) => {
-                console.error("[YouTubePlayer] Error:", event.data);
-                // Error codes:
-                // 2 - Invalid parameter (bad video ID)
-                // 5 - HTML5 player error
-                // 100 - Video not found or private
-                // 101 - Video owner doesn't allow embedding
-                // 150 - Same as 101
-
-                if (event.data === 101 || event.data === 150) {
-                  console.log(
-                    "[YouTubePlayer] Video playback disabled on other sites, skipping...",
-                  );
-                  // Trigger skip to next video
-                  window.dispatchEvent(
-                    new CustomEvent("skipUnplayableVideo", {
-                      detail: { videoId },
-                    }),
-                  );
-                } else if (event.data === 100) {
-                  console.log(
-                    "[YouTubePlayer] Video not found or private, skipping...",
-                  );
-                  window.dispatchEvent(
-                    new CustomEvent("skipUnplayableVideo", {
-                      detail: { videoId },
-                    }),
-                  );
+              } else if (state === window.YT.PlayerState.PAUSED) {
+                setIsVideoLoading(false);
+                onPlayingChangeRef.current?.(false);
+              } else if (state === window.YT.PlayerState.ENDED) {
+                // Loop: reload the same video
+                const currentId = activeVideoIdRef.current;
+                if (currentId) {
+                  event.target.loadVideoById(currentId);
                 }
-              },
+              } else if (state === window.YT.PlayerState.UNSTARTED) {
+                onPlayingChangeRef.current?.(false);
+              }
             },
-          });
-        }
+
+            onError: (event) => {
+              console.error("[YouTubePlayer] Error:", event.data);
+              if (
+                event.data === 101 ||
+                event.data === 150 ||
+                event.data === 100
+              ) {
+                window.dispatchEvent(
+                  new CustomEvent("skipUnplayableVideo", {
+                    detail: { videoId: activeVideoIdRef.current },
+                  }),
+                );
+              }
+            },
+          },
+        });
       };
 
+      // Ensure YT API is loaded
       if (!window.YT || !window.YT.Player) {
-        // YT API not loaded yet — load script if needed, wait for ready
         if (
           !document.querySelector(
             'script[src="https://www.youtube.com/iframe_api"]',
@@ -197,7 +169,6 @@ const YouTubePlayer = forwardRef(
           const firstScriptTag = document.getElementsByTagName("script")[0];
           firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         }
-        // Always (re)set the callback — previous mounts may have consumed it
         const prevCallback = window.onYouTubeIframeAPIReady;
         window.onYouTubeIframeAPIReady = () => {
           if (prevCallback) prevCallback();
@@ -207,28 +178,58 @@ const YouTubePlayer = forwardRef(
         initializePlayer();
       }
 
+      // Cleanup: destroy only on real unmount
       return () => {
         if (playerInstanceRef.current) {
-          playerInstanceRef.current.destroy();
+          try {
+            playerInstanceRef.current.destroy();
+          } catch {
+            /* already destroyed */
+          }
+          playerInstanceRef.current = null;
+          activeVideoIdRef.current = null;
+          setIsPlayerReady(false);
         }
       };
-    }, [videoId]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // ← empty deps: player lives for the component's entire lifetime
 
+    // ── Swap video when videoId prop changes ───────────────────────
     useEffect(() => {
       if (
-        playerInstanceRef.current?.mute &&
-        playerInstanceRef.current?.unMute
+        !videoId ||
+        typeof videoId !== "string" ||
+        videoId.length < 5 ||
+        !playerInstanceRef.current ||
+        !isPlayerReady
       ) {
+        return;
+      }
+
+      // Don't reload if it's already the active video
+      if (videoId === activeVideoIdRef.current) return;
+
+      activeVideoIdRef.current = videoId;
+      setIsVideoLoading(true);
+
+      // loadVideoById preserves the user-gesture context → autoplay
+      // with sound works on mobile without a fresh tap.
+      playerInstanceRef.current.loadVideoById(videoId);
+    }, [videoId, isPlayerReady]);
+
+    // ── Mute / unmute ──────────────────────────────────────────────
+    useEffect(() => {
+      const p = playerInstanceRef.current;
+      if (p?.mute && p?.unMute) {
         if (isMuted) {
-          playerInstanceRef.current.mute();
+          p.mute();
         } else {
-          playerInstanceRef.current.unMute();
+          p.unMute();
         }
       }
     }, [isMuted]);
 
-    // Handle play/pause state changes — no setTimeout so playVideo()
-    // stays within the user-gesture window on mobile browsers.
+    // ── External play / pause (from React state) ──────────────────
     useEffect(() => {
       if (playerInstanceRef.current && isPlayerReady) {
         if (isPlaying) {
@@ -239,11 +240,10 @@ const YouTubePlayer = forwardRef(
       }
     }, [isPlaying, isPlayerReady]);
 
-    // Handle click to play if video is frozen
+    // Fallback click handler if the overlay doesn't fire
     const handleClick = () => {
       if (playerInstanceRef.current && isPlayerReady) {
         const state = playerInstanceRef.current.getPlayerState();
-        // If video is not playing (paused, unstarted, etc), play it
         if (state !== window.YT.PlayerState.PLAYING) {
           playerInstanceRef.current.playVideo();
         }
@@ -256,7 +256,7 @@ const YouTubePlayer = forwardRef(
         style={{ position: "relative", cursor: "pointer" }}
         onClick={handleClick}
       >
-        <div ref={playerRef} style={{ width: "100%", height: "100%" }} />
+        <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
         {(isVideoLoading || !isPlayerReady) && <VideoLoader />}
       </div>
     );
