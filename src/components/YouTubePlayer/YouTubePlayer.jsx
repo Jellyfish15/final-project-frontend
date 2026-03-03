@@ -132,14 +132,21 @@ const YouTubePlayer = forwardRef(
                 }
               } else if (state === window.YT.PlayerState.PAUSED) {
                 setIsVideoLoading(false);
-                // During a loadVideoById transition the outgoing video
-                // fires PAUSED — ignore it so React doesn't call pauseVideo().
-                if (!isTransitioningRef.current) {
+                if (isTransitioningRef.current) {
+                  // loadVideoById loaded the video but didn't autoplay —
+                  // force play so the user doesn't have to tap.
+                  try {
+                    event.target.playVideo();
+                  } catch {
+                    /* will be retried by user tap */
+                  }
+                } else {
                   onPlayingChangeRef.current?.(false);
                 }
               } else if (state === window.YT.PlayerState.ENDED) {
-                // During transition the old video may fire ENDED — ignore.
-                if (!isTransitioningRef.current) {
+                if (isTransitioningRef.current) {
+                  // Stale ENDED from outgoing video — ignore.
+                } else {
                   // Loop: reload the same video
                   const currentId = activeVideoIdRef.current;
                   if (currentId) {
@@ -148,7 +155,15 @@ const YouTubePlayer = forwardRef(
                   }
                 }
               } else if (state === window.YT.PlayerState.UNSTARTED) {
-                if (!isTransitioningRef.current) {
+                if (isTransitioningRef.current) {
+                  // loadVideoById sometimes leaves the player UNSTARTED —
+                  // nudge it into playing.
+                  try {
+                    event.target.playVideo();
+                  } catch {
+                    /* will be retried by user tap */
+                  }
+                } else {
                   onPlayingChangeRef.current?.(false);
                 }
               }
