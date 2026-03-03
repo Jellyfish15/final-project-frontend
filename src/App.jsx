@@ -66,6 +66,16 @@ function App() {
   const [videosError, setVideosError] = useState(null);
   const [youtubeApiDisabled, setYoutubeApiDisabled] = useState(false);
 
+  // Remove the warm-up splash screen once the app mounts
+  useEffect(() => {
+    const warmup = document.getElementById("warmup-screen");
+    if (warmup) {
+      warmup.style.transition = "opacity 0.3s ease";
+      warmup.style.opacity = "0";
+      setTimeout(() => warmup.remove(), 300);
+    }
+  }, []);
+
   const loadVideos = useCallback(async () => {
     try {
       setIsLoadingVideos(true);

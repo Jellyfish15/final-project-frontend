@@ -211,15 +211,29 @@ export const VideoProvider = ({
 
               // Auto-unmute as soon as the user taps anywhere on the page
               const unmuteOnGesture = () => {
-                if (videoRef.current && videoRef.current.muted && !userWantsMutedRef.current) {
+                if (
+                  videoRef.current &&
+                  videoRef.current.muted &&
+                  !userWantsMutedRef.current
+                ) {
                   videoRef.current.muted = false;
                   setIsMuted(false);
                 }
-                document.removeEventListener("touchstart", unmuteOnGesture, true);
+                document.removeEventListener(
+                  "touchstart",
+                  unmuteOnGesture,
+                  true,
+                );
                 document.removeEventListener("click", unmuteOnGesture, true);
               };
-              document.addEventListener("touchstart", unmuteOnGesture, { once: true, capture: true });
-              document.addEventListener("click", unmuteOnGesture, { once: true, capture: true });
+              document.addEventListener("touchstart", unmuteOnGesture, {
+                once: true,
+                capture: true,
+              });
+              document.addEventListener("click", unmuteOnGesture, {
+                once: true,
+                capture: true,
+              });
             }
           });
         };

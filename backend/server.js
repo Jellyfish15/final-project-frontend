@@ -82,7 +82,9 @@ app.use(
   }),
 );
 
-// Database connection
+// Database connection state
+let dbReady = false;
+
 const connectDB = async () => {
   try {
     const mongoURI =
@@ -90,12 +92,51 @@ const connectDB = async () => {
     await mongoose.connect(mongoURI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
     });
+    dbReady = true;
     console.log("✅ MongoDB connected successfully");
   } catch (error) {
     console.error("❌ MongoDB connection error:", error.message);
-    process.exit(1);
+    // Don't exit — allow health checks to still respond
+    // Retry connection in background
+    setTimeout(connectDB, 5000);
   }
+};
+
+// ─── Keep-Alive Self-Ping (prevents Render free-tier cold starts) ───
+const KEEP_ALIVE_INTERVAL_MS = 14 * 60 * 1000; // 14 minutes
+let keepAliveTimer = null;
+
+const startKeepAlive = () => {
+  if (process.env.NODE_ENV !== "production") return;
+
+  // Node 18+ has global fetch; for older versions, skip gracefully
+  if (typeof globalThis.fetch !== "function") {
+    console.log("[KeepAlive] ⚠️ No global fetch — skipping (use Node 18+)");
+    return;
+  }
+
+  const selfUrl =
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.SELF_URL ||
+    `http://localhost:${PORT}`;
+
+  keepAliveTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`${selfUrl}/health`);
+      console.log(
+        `[KeepAlive] Ping ${selfUrl}/health → ${res.status} at ${new Date().toISOString()}`,
+      );
+    } catch (err) {
+      console.warn(`[KeepAlive] Ping failed: ${err.message}`);
+    }
+  }, KEEP_ALIVE_INTERVAL_MS);
+
+  console.log(
+    `[KeepAlive] ✅ Self-ping every ${KEEP_ALIVE_INTERVAL_MS / 60000} min → ${selfUrl}/health`,
+  );
 };
 
 app.post("/upload", upload.single("video"), (req, res) => {
@@ -173,19 +214,24 @@ app.get("/stream/video/:filename", (req, res) => {
 });
 
 // Health check endpoint (for Render and monitoring)
+// Responds immediately even before DB is ready — critical for fast cold starts
 app.get("/health", (req, res) => {
   res.json({
-    status: "OK",
+    status: dbReady ? "OK" : "WARMING_UP",
+    dbReady,
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
+    uptime: process.uptime(),
   });
 });
 
 app.get("/api/health", (req, res) => {
   res.json({
-    status: "OK",
+    status: dbReady ? "OK" : "WARMING_UP",
+    dbReady,
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
+    uptime: process.uptime(),
   });
 });
 
@@ -240,6 +286,9 @@ app.use("*", (req, res) => {
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received. Shutting down gracefully...");
 
+  // Stop keep-alive
+  if (keepAliveTimer) clearInterval(keepAliveTimer);
+
   // Stop scheduled tasks
   if (scheduledTasks) {
     stopScheduledTasks(scheduledTasks);
@@ -250,19 +299,33 @@ process.on("SIGTERM", async () => {
   process.exit(0);
 });
 
-// Start server
+// ─── Start server (optimized for fast cold starts) ───
+// Strategy: Start HTTP listener FIRST, then connect DB in parallel.
+// This lets health checks and the frontend know we're alive immediately.
 const startServer = async () => {
-  await connectDB();
+  const startTime = Date.now();
 
-  // Initialize scheduled tasks
-  scheduledTasks = initializeScheduledTasks();
-
+  // 1. Start listening IMMEDIATELY (before DB connects)
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(
+      `🚀 Server listening on port ${PORT} in ${Date.now() - startTime}ms`,
+    );
     console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
     console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-    console.log(`🌐 Server bound to 0.0.0.0:${PORT}`);
   });
+
+  // 2. Connect to DB in background (don't block the listener)
+  connectDB().then(() => {
+    console.log(`✅ DB ready in ${Date.now() - startTime}ms`);
+  });
+
+  // 3. Defer scheduled tasks (not needed during first seconds)
+  setTimeout(() => {
+    scheduledTasks = initializeScheduledTasks();
+  }, 5000);
+
+  // 4. Start keep-alive pinger
+  startKeepAlive();
 };
 
 startServer().catch((error) => {

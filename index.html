@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -65,7 +65,7 @@
           window.history.replaceState(
             null,
             null,
-            l.pathname.slice(0, -1) + decoded + l.hash
+            l.pathname.slice(0, -1) + decoded + l.hash,
           );
         }
       })(window.location);
@@ -73,7 +73,106 @@
     <!-- End Single Page Apps for GitHub Pages -->
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Instant loading screen (shows before any JS loads) -->
+      <div
+        id="warmup-screen"
+        style="
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: #121212;
+          color: #fff;
+          font-family:
+            -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto,
+            sans-serif;
+        "
+      >
+        <div style="font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem">
+          Nudl
+        </div>
+        <div
+          id="warmup-spinner"
+          style="
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            border-top-color: #646cff;
+            border-radius: 50%;
+            animation: warmup-spin 0.8s linear infinite;
+          "
+        ></div>
+        <div
+          id="warmup-status"
+          style="
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.6);
+          "
+        >
+          Loading...
+        </div>
+        <style>
+          @keyframes warmup-spin {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+        </style>
+      </div>
+    </div>
+
+    <!-- Pre-warm the backend while JS bundles load -->
+    <script>
+      (function () {
+        // Vite replaces %VITE_API_URL% at build time with the env value
+        var apiUrl = "%VITE_API_URL%";
+        // During dev, the raw placeholder stays — fall back to relative /api
+        if (!apiUrl || apiUrl.indexOf("%") === 0) apiUrl = "";
+        // Strip trailing /api if present so we can add /api/health cleanly
+        var baseUrl = apiUrl.replace(/\/api\/?$/, "");
+        var healthUrl = baseUrl + "/api/health";
+
+        var statusEl = document.getElementById("warmup-status");
+        var attempts = 0;
+        var maxAttempts = 30;
+        var ready = false;
+
+        function ping() {
+          if (ready || attempts >= maxAttempts) return;
+          attempts++;
+          if (statusEl) {
+            if (attempts <= 1) statusEl.textContent = "Connecting to server...";
+            else if (attempts <= 5)
+              statusEl.textContent = "Waking up server...";
+            else statusEl.textContent = "Almost there... (" + attempts + "s)";
+          }
+          fetch(healthUrl, { mode: "cors" })
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (data) {
+              if (data.status === "OK" || data.dbReady) {
+                ready = true;
+                if (statusEl) statusEl.textContent = "Ready!";
+              } else {
+                setTimeout(ping, 2000);
+              }
+            })
+            .catch(function () {
+              setTimeout(ping, 2000);
+            });
+        }
+
+        // Start pinging immediately
+        ping();
+      })();
+    </script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
