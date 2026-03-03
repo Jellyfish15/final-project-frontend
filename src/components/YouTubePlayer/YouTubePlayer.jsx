@@ -26,6 +26,9 @@ const YouTubePlayer = forwardRef(
     const activeVideoIdRef = useRef(null);
     // Store the initial videoId so the constructor knows what to load.
     const initialVideoIdRef = useRef(videoId);
+    // True while loadVideoById is in flight — suppresses spurious
+    // PAUSED / UNSTARTED / ENDED events from the outgoing video.
+    const isTransitioningRef = useRef(false);
 
     // Keep latest prop values in refs so event-handler closures always
     // read the freshest value (they close over the initial render otherwise).
@@ -115,6 +118,8 @@ const YouTubePlayer = forwardRef(
               if (state === window.YT.PlayerState.BUFFERING) {
                 setIsVideoLoading(true);
               } else if (state === window.YT.PlayerState.PLAYING) {
+                // Transition complete — new video is actually playing
+                isTransitioningRef.current = false;
                 setIsVideoLoading(false);
                 onPlayingChangeRef.current?.(true);
                 // Ensure unmute stays applied after loadVideoById
@@ -127,15 +132,25 @@ const YouTubePlayer = forwardRef(
                 }
               } else if (state === window.YT.PlayerState.PAUSED) {
                 setIsVideoLoading(false);
-                onPlayingChangeRef.current?.(false);
+                // During a loadVideoById transition the outgoing video
+                // fires PAUSED — ignore it so React doesn't call pauseVideo().
+                if (!isTransitioningRef.current) {
+                  onPlayingChangeRef.current?.(false);
+                }
               } else if (state === window.YT.PlayerState.ENDED) {
-                // Loop: reload the same video
-                const currentId = activeVideoIdRef.current;
-                if (currentId) {
-                  event.target.loadVideoById(currentId);
+                // During transition the old video may fire ENDED — ignore.
+                if (!isTransitioningRef.current) {
+                  // Loop: reload the same video
+                  const currentId = activeVideoIdRef.current;
+                  if (currentId) {
+                    isTransitioningRef.current = true;
+                    event.target.loadVideoById(currentId);
+                  }
                 }
               } else if (state === window.YT.PlayerState.UNSTARTED) {
-                onPlayingChangeRef.current?.(false);
+                if (!isTransitioningRef.current) {
+                  onPlayingChangeRef.current?.(false);
+                }
               }
             },
 
@@ -211,6 +226,10 @@ const YouTubePlayer = forwardRef(
 
       activeVideoIdRef.current = videoId;
       setIsVideoLoading(true);
+
+      // Mark transition so onStateChange ignores spurious PAUSED/ENDED
+      // events fired by the outgoing video.
+      isTransitioningRef.current = true;
 
       // loadVideoById preserves the user-gesture context → autoplay
       // with sound works on mobile without a fresh tap.

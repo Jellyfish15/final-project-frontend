@@ -68,6 +68,11 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
   // Handle mute button click - unmute and mark as interacted
   const handleMuteClick = () => {
+    // If the first-interaction handler (capture phase) already unmuted
+    // in this same event, skip the toggle — otherwise toggleMute would
+    // flip isMuted right back to true.
+    if (justUnmutedRef.current) return;
+
     hasBeenUnmutedRef.current = true;
     // Mark that we've now shown the unmute overlay and user has interacted with it
     // This signals that subsequent videos should auto-unmute for sound autoplay
