@@ -23,6 +23,10 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
   const [selectedThumbnail, setSelectedThumbnail] = useState(0);
   const [generatingThumbnails, setGeneratingThumbnails] = useState(false);
   const [uploadedVideoData, setUploadedVideoData] = useState(null);
+  const [isClientThumbnails, setIsClientThumbnails] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const isClientThumbnailsRef = useRef(false);
+  const thumbnailOptionsRef = useRef([]);
 
   const categories = [
     { value: "education", label: "Education" },
@@ -49,7 +53,91 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
     }));
   };
 
-  const handleFileSelect = (e) => {
+  // Generate thumbnails client-side using <video> + <canvas> — instant, no server needed
+  const generateClientThumbnails = (file) => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.preload = "auto";
+      video.muted = true;
+      video.playsInline = true;
+
+      const objectUrl = URL.createObjectURL(file);
+      video.src = objectUrl;
+      let settled = false;
+
+      const cleanup = () => URL.revokeObjectURL(objectUrl);
+
+      const done = (result) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(result);
+      };
+
+      const fail = (err) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(err);
+      };
+
+      video.onloadedmetadata = () => {
+        const duration = video.duration;
+        if (!duration || duration <= 0) {
+          fail(new Error("Could not read video duration"));
+          return;
+        }
+
+        const timestamps = [
+          duration * 0.25,
+          duration * 0.5,
+          duration * 0.75,
+        ];
+        const thumbnails = [];
+        let currentIndex = 0;
+
+        const captureFrame = () => {
+          if (currentIndex >= timestamps.length) {
+            done(thumbnails);
+            return;
+          }
+          video.currentTime = timestamps[currentIndex];
+        };
+
+        video.onseeked = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            const maxWidth = 640;
+            const scale = Math.min(1, maxWidth / video.videoWidth);
+            canvas.width = Math.round(video.videoWidth * scale);
+            canvas.height = Math.round(video.videoHeight * scale);
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            thumbnails.push(canvas.toDataURL("image/jpeg", 0.85));
+
+            currentIndex++;
+            captureFrame();
+          } catch (err) {
+            fail(err);
+          }
+        };
+
+        captureFrame();
+      };
+
+      video.onerror = () => {
+        fail(new Error("Failed to load video for thumbnail generation"));
+      };
+
+      // Timeout fallback — some mobile browsers are slow to seek
+      setTimeout(() => {
+        fail(new Error("Thumbnail generation timed out"));
+      }, 15000);
+    });
+  };
+
+  const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -89,15 +177,36 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
     // For now, we'll rely on backend validation
 
     setSelectedFile(file);
-    // Auto-upload video in background for thumbnail generation
+
+    // Step 1: Generate thumbnails client-side (instant — no upload needed)
+    setGeneratingThumbnails(true);
+    setThumbnailOptions([]);
+    setSelectedThumbnail(0);
+    setIsClientThumbnails(false);
+
+    try {
+      const clientThumbs = await generateClientThumbnails(file);
+      console.log(
+        `Generated ${clientThumbs.length} client-side thumbnails instantly`,
+      );
+      setThumbnailOptions(clientThumbs);
+      thumbnailOptionsRef.current = clientThumbs;
+      setIsClientThumbnails(true);
+      isClientThumbnailsRef.current = true;
+    } catch (err) {
+      console.warn("Client-side thumbnail generation failed:", err.message);
+      // Will fall back to server-side thumbnails during upload
+    } finally {
+      setGeneratingThumbnails(false);
+    }
+
+    // Step 2: Upload video in background (for server storage)
     autoUploadVideo(file);
   };
 
   const autoUploadVideo = async (file) => {
-    console.log("Auto-uploading video for thumbnail generation...");
-    setGeneratingThumbnails(true);
-    setThumbnailOptions([]);
-    setSelectedThumbnail(0);
+    console.log("Uploading video to server in background...");
+    setVideoUploading(true);
 
     try {
       const formData = new FormData();
@@ -108,46 +217,38 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
 
       if (response.success && response.videoData) {
         setUploadedVideoData(response.videoData);
-        // Thumbnail options URLs need to be resolved to full paths
-        const resolvedThumbnails = response.videoData.thumbnailUrls.map(
-          (url) => {
-            if (url && !url.startsWith("http")) {
-              return `${API_BASE_URL.replace(/\/api\/?$/, "")}${url}`;
-            }
-            return url;
-          },
-        );
-        setThumbnailOptions(resolvedThumbnails);
-        console.log(
-          "Thumbnails generated successfully. Options:",
-          resolvedThumbnails,
-        );
-        // Log each URL for debugging
-        resolvedThumbnails.forEach((url, index) => {
-          console.log(`Thumbnail ${index + 1}: ${url}`);
-        });
+
+        // If client-side thumbnails failed, use server-generated ones
+        if (!isClientThumbnailsRef.current || thumbnailOptionsRef.current.length === 0) {
+          const resolvedThumbnails = response.videoData.thumbnailUrls.map(
+            (url) => {
+              if (url && !url.startsWith("http")) {
+                return `${API_BASE_URL.replace(/\/api\/?$/, "")}${url}`;
+              }
+              return url;
+            },
+          );
+          setThumbnailOptions(resolvedThumbnails);
+          setIsClientThumbnails(false);
+          console.log(
+            "Using server-generated thumbnails:",
+            resolvedThumbnails,
+          );
+        }
       } else {
         console.error("Response was not successful:", response);
         alert(
-          "Failed to generate thumbnails: " +
+          "Failed to upload video: " +
             (response.message || "Unknown error"),
         );
       }
     } catch (error) {
       console.error("Auto-upload error:", error);
       console.error("Error details:", error.message);
-      alert("Error uploading video for thumbnail generation: " + error.message);
-      // Don't block the form if auto-upload fails
+      alert("Error uploading video: " + error.message);
     } finally {
-      setGeneratingThumbnails(false);
+      setVideoUploading(false);
     }
-  };
-
-  const generateThumbnails = async (videoFile) => {
-    // This function is kept for backward compatibility but is now replaced by autoUploadVideo
-    // The new approach generates thumbnails server-side during auto-upload
-    // This is a fallback in case auto-upload fails
-    return;
   };
 
   const handleThumbnailSelect = (index) => {
@@ -168,7 +269,13 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
       }
     }
   };
-  // Removed misplaced closing tags and stray JSX. Only one export default at the end.
+
+  const handleTagRemove = (tagToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((tag) => tag !== tagToRemove),
+    }));
+  };
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
@@ -194,11 +301,42 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
     try {
       setUploading(true);
 
-      // Get selected thumbnail URL
-      const selectedThumbnailUrl =
-        thumbnailOptions.length > 0
-          ? thumbnailOptions[selectedThumbnail]
-          : uploadedVideoData.thumbnailUrls[0];
+      let selectedThumbnailUrl = "";
+
+      // If using client-side thumbnails, upload the selected one to the server first
+      if (isClientThumbnails && thumbnailOptions.length > 0) {
+        const dataUrl = thumbnailOptions[selectedThumbnail];
+        try {
+          console.log("Uploading client-generated thumbnail to server...");
+          const thumbnailBlob = await fetch(dataUrl).then((r) => r.blob());
+          const thumbFormData = new FormData();
+          thumbFormData.append(
+            "thumbnail",
+            thumbnailBlob,
+            `thumb-${Date.now()}.jpg`,
+          );
+
+          const thumbResponse =
+            await uploadAPI.uploadTempThumbnail(thumbFormData);
+          if (thumbResponse.success && thumbResponse.thumbnailUrl) {
+            selectedThumbnailUrl = thumbResponse.thumbnailUrl;
+            console.log("Thumbnail uploaded:", selectedThumbnailUrl);
+          }
+        } catch (thumbErr) {
+          console.warn(
+            "Failed to upload client thumbnail, falling back:",
+            thumbErr,
+          );
+        }
+      }
+
+      // Fall back to server-generated or raw thumbnailUrls
+      if (!selectedThumbnailUrl) {
+        selectedThumbnailUrl =
+          thumbnailOptions.length > 0
+            ? thumbnailOptions[selectedThumbnail]
+            : uploadedVideoData.thumbnailUrls?.[0] || "";
+      }
 
       console.log("Finalizing video with data:", {
         videoFilename: uploadedVideoData.filename,
@@ -273,6 +411,10 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
     setThumbnailOptions([]);
     setSelectedThumbnail(0);
     setUploadedVideoData(null);
+    setIsClientThumbnails(false);
+    isClientThumbnailsRef.current = false;
+    thumbnailOptionsRef.current = [];
+    setVideoUploading(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -376,7 +518,14 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
         {generatingThumbnails && (
           <div className="video-upload__section">
             <div className="video-upload__generating">
-              Generating thumbnail options...
+              Generating thumbnail previews...
+            </div>
+          </div>
+        )}
+        {videoUploading && !generatingThumbnails && (
+          <div className="video-upload__section">
+            <div className="video-upload__generating">
+              📤 Uploading video to server... You can fill in details while waiting.
             </div>
           </div>
         )}
@@ -517,8 +666,13 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
                 <LoadingSpinner size="small" />
                 Finalizing...
               </>
+            ) : videoUploading ? (
+              <>
+                <LoadingSpinner size="small" />
+                Uploading Video...
+              </>
             ) : !uploadedVideoData ? (
-              "Select Video & Wait for Upload"
+              "Select Video First"
             ) : (
               "Upload Video"
             )}

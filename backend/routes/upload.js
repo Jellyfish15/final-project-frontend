@@ -351,6 +351,56 @@ router.post(
   },
 );
 
+// @route   POST /api/upload/temp-thumbnail
+// @desc    Upload a standalone thumbnail image (for client-generated thumbnails)
+// @access  Private
+router.post(
+  "/temp-thumbnail",
+  auth,
+  uploadImage.single("thumbnail"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No thumbnail file uploaded",
+        });
+      }
+
+      // Handle Cloudinary or local path
+      let thumbnailUrl;
+      if (
+        isCloudinaryConfigured() &&
+        req.file.path &&
+        req.file.path.startsWith("http")
+      ) {
+        thumbnailUrl = req.file.path;
+      } else {
+        thumbnailUrl = `/uploads/thumbnails/${req.file.filename}`;
+      }
+
+      console.log("Temp thumbnail uploaded:", thumbnailUrl);
+
+      res.status(200).json({
+        success: true,
+        message: "Thumbnail uploaded successfully",
+        thumbnailUrl,
+      });
+    } catch (error) {
+      console.error("Temp thumbnail upload error:", error);
+
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      res.status(500).json({
+        success: false,
+        message: "Server error during thumbnail upload",
+      });
+    }
+  },
+);
+
 // @route   POST /api/upload/finalize-video
 // @desc    Finalize pre-uploaded video with metadata
 // @access  Private

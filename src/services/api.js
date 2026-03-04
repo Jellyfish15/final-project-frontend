@@ -337,6 +337,10 @@ export const uploadAPI = {
   tempVideoUpload: (formData) =>
     apiService.upload("/upload/temp-video", formData),
 
+  // Upload a standalone thumbnail (for client-generated thumbnails)
+  uploadTempThumbnail: (formData) =>
+    apiService.upload("/upload/temp-thumbnail", formData),
+
   // Finalize uploaded video with metadata
   finalizeVideo: (data) => apiService.post("/upload/finalize-video", data),
 
