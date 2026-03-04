@@ -43,6 +43,14 @@ function scoreUploadedVideo(video, userPrefs, now) {
   // 6. Small random jitter for diversity (0-5 pts)
   score += Math.random() * 5;
 
+  // 7. NEW UPLOAD BOOST: Videos uploaded in the last 48 hours get a huge boost
+  //    so they actually appear in the feed and aren't buried by YouTube content.
+  //    This decays linearly: +50 pts at 0 hours → 0 pts at 48 hours.
+  if (ageDays < 2) {
+    const newUploadBoost = 50 * (1 - ageDays / 2);
+    score += newUploadBoost;
+  }
+
   return score;
 }
 

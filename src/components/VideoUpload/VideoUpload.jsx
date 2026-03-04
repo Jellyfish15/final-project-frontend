@@ -56,7 +56,12 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
   // Generate thumbnails client-side using <video> + <canvas> — instant, no server needed
   const generateClientThumbnails = (file) => {
     return new Promise((resolve, reject) => {
-      console.log("[Thumbnails] Starting client-side generation for:", file.name, file.type, file.size);
+      console.log(
+        "[Thumbnails] Starting client-side generation for:",
+        file.name,
+        file.type,
+        file.size,
+      );
       const video = document.createElement("video");
       video.preload = "metadata";
       video.muted = true;
@@ -69,14 +74,22 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
       let settled = false;
 
       const cleanup = () => {
-        try { URL.revokeObjectURL(objectUrl); } catch (e) { /* ignore */ }
+        try {
+          URL.revokeObjectURL(objectUrl);
+        } catch (e) {
+          /* ignore */
+        }
       };
 
       const done = (result) => {
         if (settled) return;
         settled = true;
         cleanup();
-        console.log("[Thumbnails] Successfully generated", result.length, "thumbnails");
+        console.log(
+          "[Thumbnails] Successfully generated",
+          result.length,
+          "thumbnails",
+        );
         resolve(result);
       };
 
@@ -90,7 +103,14 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
 
       video.onloadedmetadata = () => {
         const duration = video.duration;
-        console.log("[Thumbnails] Video metadata loaded. Duration:", duration, "Resolution:", video.videoWidth, "x", video.videoHeight);
+        console.log(
+          "[Thumbnails] Video metadata loaded. Duration:",
+          duration,
+          "Resolution:",
+          video.videoWidth,
+          "x",
+          video.videoHeight,
+        );
 
         if (!duration || !isFinite(duration) || duration <= 0) {
           fail(new Error("Could not read video duration: " + duration));
@@ -111,7 +131,11 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
             done(thumbnails);
             return;
           }
-          console.log("[Thumbnails] Seeking to", timestamps[currentIndex].toFixed(2), "s");
+          console.log(
+            "[Thumbnails] Seeking to",
+            timestamps[currentIndex].toFixed(2),
+            "s",
+          );
           video.currentTime = timestamps[currentIndex];
         };
 
@@ -135,9 +159,19 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
                 // Verify we got actual image data (not a blank canvas)
                 if (dataUrl && dataUrl.length > 100) {
                   thumbnails.push(dataUrl);
-                  console.log("[Thumbnails] Captured frame", currentIndex + 1, "(", dataUrl.length, "bytes)");
+                  console.log(
+                    "[Thumbnails] Captured frame",
+                    currentIndex + 1,
+                    "(",
+                    dataUrl.length,
+                    "bytes)",
+                  );
                 } else {
-                  console.warn("[Thumbnails] Frame", currentIndex + 1, "produced empty/small data, skipping");
+                  console.warn(
+                    "[Thumbnails] Frame",
+                    currentIndex + 1,
+                    "produced empty/small data, skipping",
+                  );
                 }
 
                 currentIndex++;
@@ -156,7 +190,12 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
 
       video.onerror = (e) => {
         console.error("[Thumbnails] Video element error:", e, video.error);
-        fail(new Error("Failed to load video: " + (video.error?.message || "unknown error")));
+        fail(
+          new Error(
+            "Failed to load video: " +
+              (video.error?.message || "unknown error"),
+          ),
+        );
       };
 
       // CRITICAL: Explicitly trigger loading — many mobile browsers won't start without this

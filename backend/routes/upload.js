@@ -237,6 +237,24 @@ router.post(
         console.log(
           "Skipping video conversion (free tier or local development)",
         );
+
+        // Rename .mov (and other non-mp4) files to .mp4 so browsers can play them.
+        // MOV and MP4 share the same ISO BMFF container format, so H.264-encoded
+        // .mov files (the default on iPhones/iPads) play perfectly as .mp4.
+        const ext = path.extname(finalFilename).toLowerCase();
+        if (ext === ".mov" || ext === ".m4v" || ext === ".3gp") {
+          const mp4Filename = finalFilename.replace(/\.[^.]+$/, ".mp4");
+          const mp4Path = path.join(videosDir, mp4Filename);
+          try {
+            fs.renameSync(finalVideoPath, mp4Path);
+            console.log(`Renamed ${finalFilename} → ${mp4Filename} for browser compatibility`);
+            finalFilename = mp4Filename;
+            finalVideoPath = mp4Path;
+          } catch (renameErr) {
+            console.warn("Failed to rename video file:", renameErr.message);
+            // Continue with original filename — will still work if codec is compatible
+          }
+        }
       }
 
       const videoUrl = `/uploads/videos/${finalFilename}`;
@@ -260,7 +278,9 @@ router.post(
         });
 
         if (!ffmpegAvailable) {
-          console.warn("FFmpeg not available on this server — skipping server-side thumbnail generation");
+          console.warn(
+            "FFmpeg not available on this server — skipping server-side thumbnail generation",
+          );
           console.log("Client-side thumbnails should be used instead.");
         } else {
           // Promise to wait for thumbnail generation
@@ -293,7 +313,10 @@ router.post(
                     `/uploads/thumbnails/${thumbnailPrefix}_2.png`,
                     `/uploads/thumbnails/${thumbnailPrefix}_3.png`,
                   ];
-                  console.log("All thumbnails generated successfully:", thumbUrls);
+                  console.log(
+                    "All thumbnails generated successfully:",
+                    thumbUrls,
+                  );
                   resolve(thumbUrls);
                 } else {
                   reject(new Error("Generated thumbnail files not found"));
@@ -315,14 +338,20 @@ router.post(
             thumbnailPromise,
             new Promise((_, reject) =>
               setTimeout(
-                () => reject(new Error("Thumbnail generation timeout after 60 seconds")),
+                () =>
+                  reject(
+                    new Error("Thumbnail generation timeout after 60 seconds"),
+                  ),
                 60000,
               ),
             ),
           ]);
         }
       } catch (err) {
-        console.warn("Server-side thumbnail generation failed (non-fatal):", err.message);
+        console.warn(
+          "Server-side thumbnail generation failed (non-fatal):",
+          err.message,
+        );
         // Continue without server thumbnails — client-side thumbnails will be used
         thumbnailUrls = [];
       }
@@ -498,9 +527,10 @@ router.post(
         ? req.body.videoUrl || videoFilename
         : videoUrl;
       // For Cloudinary thumbnails keep full URL, otherwise use the relative path
-      const finalThumbnailUrl = (selectedThumbnailUrl || "").startsWith("http") && isCloudVideo
-        ? selectedThumbnailUrl
-        : thumbnailUrl;
+      const finalThumbnailUrl =
+        (selectedThumbnailUrl || "").startsWith("http") && isCloudVideo
+          ? selectedThumbnailUrl
+          : thumbnailUrl;
 
       console.log("Finalizing video:", {
         title,

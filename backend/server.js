@@ -70,7 +70,10 @@ app.use(
       } else if (filePath.endsWith(".webm")) {
         res.setHeader("Content-Type", "video/webm");
       } else if (filePath.endsWith(".mov")) {
-        res.setHeader("Content-Type", "video/quicktime");
+        // Serve .mov as video/mp4 — most phone-recorded .mov files use H.264
+        // which is the same codec used in .mp4, so browsers can play them fine
+        // with this MIME type. video/quicktime is poorly supported in Chrome.
+        res.setHeader("Content-Type", "video/mp4");
       } else if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) {
         res.setHeader("Content-Type", "image/jpeg");
       } else if (filePath.endsWith(".png")) {
@@ -97,6 +100,32 @@ const connectDB = async () => {
     });
     dbReady = true;
     console.log("✅ MongoDB connected successfully");
+
+    // ── Auto-migrate: fix any .mov video URLs → .mp4 ──
+    // MOV and MP4 share the same container format; renaming lets browsers play them.
+    try {
+      const Video = require("./models/Video");
+      const movVideos = await Video.find({ videoUrl: { $regex: /\.mov$/i } });
+      if (movVideos.length > 0) {
+        console.log(`[Migration] Found ${movVideos.length} video(s) with .mov URLs — renaming to .mp4`);
+        for (const v of movVideos) {
+          const oldUrl = v.videoUrl;
+          v.videoUrl = oldUrl.replace(/\.mov$/i, ".mp4");
+
+          // Also rename the physical file if it exists
+          const oldFile = path.join(__dirname, "uploads", "videos", path.basename(oldUrl));
+          const newFile = path.join(__dirname, "uploads", "videos", path.basename(v.videoUrl));
+          if (fs.existsSync(oldFile)) {
+            try { fs.renameSync(oldFile, newFile); } catch (_) { /* best effort */ }
+          }
+
+          await v.save();
+          console.log(`[Migration]   ${oldUrl} → ${v.videoUrl}`);
+        }
+      }
+    } catch (migErr) {
+      console.warn("[Migration] .mov fix skipped:", migErr.message);
+    }
   } catch (error) {
     console.error("❌ MongoDB connection error:", error.message);
     // Don't exit — allow health checks to still respond
