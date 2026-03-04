@@ -56,21 +56,27 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
   // Generate thumbnails client-side using <video> + <canvas> — instant, no server needed
   const generateClientThumbnails = (file) => {
     return new Promise((resolve, reject) => {
+      console.log("[Thumbnails] Starting client-side generation for:", file.name, file.type, file.size);
       const video = document.createElement("video");
-      video.preload = "auto";
+      video.preload = "metadata";
       video.muted = true;
       video.playsInline = true;
+      // Some mobile browsers need these attributes
+      video.setAttribute("webkit-playsinline", "true");
 
       const objectUrl = URL.createObjectURL(file);
       video.src = objectUrl;
       let settled = false;
 
-      const cleanup = () => URL.revokeObjectURL(objectUrl);
+      const cleanup = () => {
+        try { URL.revokeObjectURL(objectUrl); } catch (e) { /* ignore */ }
+      };
 
       const done = (result) => {
         if (settled) return;
         settled = true;
         cleanup();
+        console.log("[Thumbnails] Successfully generated", result.length, "thumbnails");
         resolve(result);
       };
 
@@ -78,20 +84,24 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
         if (settled) return;
         settled = true;
         cleanup();
+        console.warn("[Thumbnails] Generation failed:", err.message);
         reject(err);
       };
 
       video.onloadedmetadata = () => {
         const duration = video.duration;
-        if (!duration || duration <= 0) {
-          fail(new Error("Could not read video duration"));
+        console.log("[Thumbnails] Video metadata loaded. Duration:", duration, "Resolution:", video.videoWidth, "x", video.videoHeight);
+
+        if (!duration || !isFinite(duration) || duration <= 0) {
+          fail(new Error("Could not read video duration: " + duration));
           return;
         }
 
+        // Use safe timestamps, avoiding the very start/end
         const timestamps = [
-          duration * 0.25,
-          duration * 0.5,
-          duration * 0.75,
+          Math.max(0.1, duration * 0.25),
+          Math.max(0.2, duration * 0.5),
+          Math.max(0.3, duration * 0.75),
         ];
         const thumbnails = [];
         let currentIndex = 0;
@@ -101,23 +111,41 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
             done(thumbnails);
             return;
           }
+          console.log("[Thumbnails] Seeking to", timestamps[currentIndex].toFixed(2), "s");
           video.currentTime = timestamps[currentIndex];
         };
 
         video.onseeked = () => {
           try {
-            const canvas = document.createElement("canvas");
-            const maxWidth = 640;
-            const scale = Math.min(1, maxWidth / video.videoWidth);
-            canvas.width = Math.round(video.videoWidth * scale);
-            canvas.height = Math.round(video.videoHeight * scale);
+            // Wait a small delay for the frame to actually render
+            setTimeout(() => {
+              try {
+                const canvas = document.createElement("canvas");
+                const maxWidth = 640;
+                const vw = video.videoWidth || 640;
+                const vh = video.videoHeight || 360;
+                const scale = Math.min(1, maxWidth / vw);
+                canvas.width = Math.round(vw * scale);
+                canvas.height = Math.round(vh * scale);
 
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            thumbnails.push(canvas.toDataURL("image/jpeg", 0.85));
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            currentIndex++;
-            captureFrame();
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+                // Verify we got actual image data (not a blank canvas)
+                if (dataUrl && dataUrl.length > 100) {
+                  thumbnails.push(dataUrl);
+                  console.log("[Thumbnails] Captured frame", currentIndex + 1, "(", dataUrl.length, "bytes)");
+                } else {
+                  console.warn("[Thumbnails] Frame", currentIndex + 1, "produced empty/small data, skipping");
+                }
+
+                currentIndex++;
+                captureFrame();
+              } catch (err) {
+                fail(err);
+              }
+            }, 100); // small delay for frame decode
           } catch (err) {
             fail(err);
           }
@@ -126,14 +154,18 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
         captureFrame();
       };
 
-      video.onerror = () => {
-        fail(new Error("Failed to load video for thumbnail generation"));
+      video.onerror = (e) => {
+        console.error("[Thumbnails] Video element error:", e, video.error);
+        fail(new Error("Failed to load video: " + (video.error?.message || "unknown error")));
       };
 
-      // Timeout fallback — some mobile browsers are slow to seek
+      // CRITICAL: Explicitly trigger loading — many mobile browsers won't start without this
+      video.load();
+
+      // Timeout fallback — generous for slow mobile devices
       setTimeout(() => {
-        fail(new Error("Thumbnail generation timed out"));
-      }, 15000);
+        fail(new Error("Thumbnail generation timed out after 30s"));
+      }, 30000);
     });
   };
 
@@ -219,7 +251,10 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
         setUploadedVideoData(response.videoData);
 
         // If client-side thumbnails failed, use server-generated ones
-        if (!isClientThumbnailsRef.current || thumbnailOptionsRef.current.length === 0) {
+        if (
+          !isClientThumbnailsRef.current ||
+          thumbnailOptionsRef.current.length === 0
+        ) {
           const resolvedThumbnails = response.videoData.thumbnailUrls.map(
             (url) => {
               if (url && !url.startsWith("http")) {
@@ -230,16 +265,12 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
           );
           setThumbnailOptions(resolvedThumbnails);
           setIsClientThumbnails(false);
-          console.log(
-            "Using server-generated thumbnails:",
-            resolvedThumbnails,
-          );
+          console.log("Using server-generated thumbnails:", resolvedThumbnails);
         }
       } else {
         console.error("Response was not successful:", response);
         alert(
-          "Failed to upload video: " +
-            (response.message || "Unknown error"),
+          "Failed to upload video: " + (response.message || "Unknown error"),
         );
       }
     } catch (error) {
@@ -458,7 +489,16 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
                 <button
                   type="button"
                   className="video-upload__file-remove"
-                  onClick={() => setSelectedFile(null)}
+                  onClick={() => {
+                    setSelectedFile(null);
+                    setThumbnailOptions([]);
+                    thumbnailOptionsRef.current = [];
+                    setSelectedThumbnail(0);
+                    setUploadedVideoData(null);
+                    setIsClientThumbnails(false);
+                    isClientThumbnailsRef.current = false;
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
                   disabled={uploading}
                 >
                   Remove
@@ -525,7 +565,8 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
         {videoUploading && !generatingThumbnails && (
           <div className="video-upload__section">
             <div className="video-upload__generating">
-              📤 Uploading video to server... You can fill in details while waiting.
+              📤 Uploading video to server... You can fill in details while
+              waiting.
             </div>
           </div>
         )}

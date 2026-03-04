@@ -241,88 +241,90 @@ router.post(
 
       const videoUrl = `/uploads/videos/${finalFilename}`;
 
-      // Generate thumbnails immediately
+      // Generate thumbnails (best-effort — FFmpeg may not be available)
       const thumbnailPrefix = `thumb-${Date.now()}-${Math.random()
         .toString(36)
         .substr(2, 9)}`;
 
-      console.log("Starting generation of 3 thumbnails...");
-      console.log("Video path:", finalVideoPath);
-      console.log("Thumbnail prefix:", thumbnailPrefix);
+      let thumbnailUrls = [];
 
-      // Promise to wait for thumbnail generation
-      const thumbnailPromise = new Promise((resolve, reject) => {
-        ffmpeg(finalVideoPath)
-          .on("start", (commandLine) => {
-            console.log("FFmpeg started - generating 3 thumbnails");
-            console.log("FFmpeg command:", commandLine);
-          })
-          .on("end", () => {
-            console.log("Thumbnail generation completed");
-            // Verify files exist before resolving
-            const thumbFiles = [
-              `${thumbnailPrefix}_1.png`,
-              `${thumbnailPrefix}_2.png`,
-              `${thumbnailPrefix}_3.png`,
-            ];
-
-            const allFilesExist = thumbFiles.every((file) => {
-              const filePath = path.join(thumbnailsDir, file);
-              const exists = fs.existsSync(filePath);
-              console.log(
-                `Thumbnail file ${file}: ${exists ? "EXISTS" : "MISSING"} at ${filePath}`,
-              );
-              return exists;
-            });
-
-            if (allFilesExist) {
-              const thumbUrls = [
-                `/uploads/thumbnails/${thumbnailPrefix}_1.png`,
-                `/uploads/thumbnails/${thumbnailPrefix}_2.png`,
-                `/uploads/thumbnails/${thumbnailPrefix}_3.png`,
-              ];
-              console.log("All thumbnails generated successfully:", thumbUrls);
-              resolve(thumbUrls);
-            } else {
-              reject(new Error("Generated thumbnail files not found"));
-            }
-          })
-          .on("error", (err, stdout, stderr) => {
-            console.error("FFmpeg error:", err.message);
-            console.error("FFmpeg stdout:", stdout);
-            console.error("FFmpeg stderr:", stderr);
-            reject(err);
-          })
-          .screenshots({
-            timestamps: ["25%", "50%", "75%"],
-            filename: `${thumbnailPrefix}_%i.png`,
-            folder: thumbnailsDir,
-            size: "640x?",
-          });
-      });
-
-      // Wait for thumbnails to generate (with timeout)
-      let thumbnailUrls;
       try {
-        thumbnailUrls = await Promise.race([
-          thumbnailPromise,
-          new Promise((_, reject) =>
-            setTimeout(
-              () =>
-                reject(
-                  new Error("Thumbnail generation timeout after 60 seconds"),
-                ),
-              60000,
-            ),
-          ),
-        ]);
-      } catch (err) {
-        console.error("Thumbnail generation failed:", err.message);
-        // If generation fails, return error instead of placeholder URLs
-        return res.status(500).json({
-          success: false,
-          message: "Failed to generate thumbnail previews: " + err.message,
+        console.log("Attempting FFmpeg thumbnail generation...");
+        console.log("Video path:", finalVideoPath);
+        console.log("Thumbnail prefix:", thumbnailPrefix);
+
+        // Check if FFmpeg is available before trying
+        const ffmpegAvailable = await new Promise((resolve) => {
+          const { exec } = require("child_process");
+          exec("ffmpeg -version", (err) => resolve(!err));
         });
+
+        if (!ffmpegAvailable) {
+          console.warn("FFmpeg not available on this server — skipping server-side thumbnail generation");
+          console.log("Client-side thumbnails should be used instead.");
+        } else {
+          // Promise to wait for thumbnail generation
+          const thumbnailPromise = new Promise((resolve, reject) => {
+            ffmpeg(finalVideoPath)
+              .on("start", (commandLine) => {
+                console.log("FFmpeg started - generating 3 thumbnails");
+                console.log("FFmpeg command:", commandLine);
+              })
+              .on("end", () => {
+                console.log("Thumbnail generation completed");
+                const thumbFiles = [
+                  `${thumbnailPrefix}_1.png`,
+                  `${thumbnailPrefix}_2.png`,
+                  `${thumbnailPrefix}_3.png`,
+                ];
+
+                const allFilesExist = thumbFiles.every((file) => {
+                  const filePath = path.join(thumbnailsDir, file);
+                  const exists = fs.existsSync(filePath);
+                  console.log(
+                    `Thumbnail file ${file}: ${exists ? "EXISTS" : "MISSING"} at ${filePath}`,
+                  );
+                  return exists;
+                });
+
+                if (allFilesExist) {
+                  const thumbUrls = [
+                    `/uploads/thumbnails/${thumbnailPrefix}_1.png`,
+                    `/uploads/thumbnails/${thumbnailPrefix}_2.png`,
+                    `/uploads/thumbnails/${thumbnailPrefix}_3.png`,
+                  ];
+                  console.log("All thumbnails generated successfully:", thumbUrls);
+                  resolve(thumbUrls);
+                } else {
+                  reject(new Error("Generated thumbnail files not found"));
+                }
+              })
+              .on("error", (err, stdout, stderr) => {
+                console.error("FFmpeg error:", err.message);
+                reject(err);
+              })
+              .screenshots({
+                timestamps: ["25%", "50%", "75%"],
+                filename: `${thumbnailPrefix}_%i.png`,
+                folder: thumbnailsDir,
+                size: "640x?",
+              });
+          });
+
+          thumbnailUrls = await Promise.race([
+            thumbnailPromise,
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error("Thumbnail generation timeout after 60 seconds")),
+                60000,
+              ),
+            ),
+          ]);
+        }
+      } catch (err) {
+        console.warn("Server-side thumbnail generation failed (non-fatal):", err.message);
+        // Continue without server thumbnails — client-side thumbnails will be used
+        thumbnailUrls = [];
       }
 
       res.status(200).json({
@@ -482,9 +484,10 @@ router.post(
 
       const videoUrl = `/uploads/videos/${videoFilename}`;
 
-      // Extract just the path from selectedThumbnailUrl (remove http://localhost:5000 if present)
+      // Extract just the path from selectedThumbnailUrl (remove any backend URL prefix)
       let thumbnailUrl = selectedThumbnailUrl || "";
-      if (thumbnailUrl && thumbnailUrl.includes("localhost:5000")) {
+      if (thumbnailUrl && !thumbnailUrl.startsWith("data:")) {
+        // Strip any http(s)://host prefix to get just the path
         thumbnailUrl = thumbnailUrl.replace(/^https?:\/\/[^\/]+/, "");
       }
 
@@ -494,8 +497,9 @@ router.post(
       const finalVideoUrl = isCloudVideo
         ? req.body.videoUrl || videoFilename
         : videoUrl;
-      const finalThumbnailUrl = thumbnailUrl.startsWith("http")
-        ? thumbnailUrl
+      // For Cloudinary thumbnails keep full URL, otherwise use the relative path
+      const finalThumbnailUrl = (selectedThumbnailUrl || "").startsWith("http") && isCloudVideo
+        ? selectedThumbnailUrl
         : thumbnailUrl;
 
       console.log("Finalizing video:", {
