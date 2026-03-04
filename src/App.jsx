@@ -3,7 +3,6 @@ import {
   HashRouter as Router,
   Routes,
   Route,
-  Navigate,
   useLocation,
 } from "react-router-dom";
 
@@ -15,6 +14,7 @@ import BottomNavigation from "./components/BottomNavigation/BottomNavigation";
 import LoginModal from "./components/LoginModal/LoginModal";
 import RegisterModal from "./components/RegisterModal/RegisterModal";
 import VideoUploadModal from "./components/VideoUploadModal/VideoUploadModal";
+import LandingPage from "./components/LandingPage/LandingPage";
 import { AuthProvider } from "./components/AuthContext/AuthContext";
 import { VideoProvider } from "./contexts/VideoContext";
 import { videosAPI, feedAPI } from "./services/api.js";
@@ -365,6 +365,7 @@ function App() {
   const AppContent = () => {
     const location = useLocation();
     const isVideosPage = location.pathname === "/videos";
+    const isLandingPage = location.pathname === "/";
 
     // Update body class based on current page
     useEffect(() => {
@@ -380,6 +381,29 @@ function App() {
       };
     }, [isVideosPage]);
 
+    // Landing page gets its own full-screen layout — no app shell
+    if (isLandingPage) {
+      return (
+        <>
+          <LandingPage
+            onOpenRegister={() => openModal("register")}
+            onOpenLogin={() => openModal("login")}
+          />
+
+          <LoginModal
+            isOpen={modals.login}
+            onClose={() => closeModal("login")}
+            onSwitchToRegister={switchToRegister}
+          />
+          <RegisterModal
+            isOpen={modals.register}
+            onClose={() => closeModal("register")}
+            onSwitchToLogin={switchToLogin}
+          />
+        </>
+      );
+    }
+
     return (
       <div className={`app ${isVideosPage ? "app--videos" : ""}`}>
         {/* Hide sidebar on videos page */}
@@ -394,7 +418,15 @@ function App() {
           className={`app__main ${isVideosPage ? "app__main--videos" : ""}`}
         >
           <Routes>
-            <Route path="/" element={<Navigate to="/videos" replace />} />
+            <Route
+              path="/"
+              element={
+                <LandingPage
+                  onOpenRegister={() => openModal("register")}
+                  onOpenLogin={() => openModal("login")}
+                />
+              }
+            />
             <Route
               path="/search"
               element={
