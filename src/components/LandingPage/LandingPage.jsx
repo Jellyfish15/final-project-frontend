@@ -36,21 +36,25 @@ const LandingPage = ({ onOpenRegister, onOpenLogin }) => {
 
   return (
     <div className="landing">
-      {/* ── Hero ─────────────────────────────────────────────── */}
+      {/* ── Hero (full viewport) ────────────────────────────── */}
       <section className="landing__hero">
         <div className="landing__hero-bg" />
-        <div className="landing__hero-content">
-          <div className="landing__logo">
-            <img
-              src={noodleLogo}
-              alt="Nudl logo"
-              className="landing__logo-icon"
-            />
-            <span className="landing__logo-text">Nudl</span>
-          </div>
 
+        {/* Logo — top-left corner */}
+        <div className="landing__logo">
+          <img
+            src={noodleLogo}
+            alt="Nudl logo"
+            className="landing__logo-icon"
+          />
+          <span className="landing__logo-text">Nudl</span>
+        </div>
+
+        {/* Centered CTA block */}
+        <div className="landing__hero-center">
           <h1 className="landing__headline">
-            Learn anything in <span className="landing__accent">60 seconds</span>
+            Learn anything in{" "}
+            <span className="landing__accent">60 seconds</span>
           </h1>
           <p className="landing__subheadline">
             Short educational videos on every subject — swipe, learn, repeat.
@@ -79,7 +83,7 @@ const LandingPage = ({ onOpenRegister, onOpenLogin }) => {
           </p>
         </div>
 
-        {/* Phone mockup with animated preview */}
+        {/* Phone mockup — decorative, bottom-right */}
         <div className="landing__phone-mockup">
           <div className="landing__phone-frame">
             <div className="landing__phone-screen">
@@ -142,9 +146,7 @@ const LandingPage = ({ onOpenRegister, onOpenLogin }) => {
 
       {/* ── Final CTA ───────────────────────────────────────── */}
       <section className="landing__bottom-cta">
-        <h2 className="landing__bottom-headline">
-          Ready to start learning?
-        </h2>
+        <h2 className="landing__bottom-headline">Ready to start learning?</h2>
         <p className="landing__bottom-sub">
           Join Nudl today — it's completely free.
         </p>
