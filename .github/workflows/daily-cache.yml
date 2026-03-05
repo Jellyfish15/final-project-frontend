@@ -19,8 +19,15 @@ jobs:
             echo "❌ CACHE_REFRESH_SECRET is missing"
             exit 1
           fi
-          echo "Using API URL: ${{ secrets.VITE_API_URL }}/api/youtube-cache/refresh"
-          response=$(curl -X POST "${{ secrets.VITE_API_URL }}/api/youtube-cache/refresh" \
+
+          API_BASE="${{ secrets.VITE_API_URL }}"
+          API_BASE="${API_BASE%/}"
+          API_BASE="${API_BASE%/api}"
+          REFRESH_URL="$API_BASE/api/youtube-cache/refresh"
+          STATS_URL="$API_BASE/api/youtube-cache/stats"
+
+          echo "Using refresh URL: $REFRESH_URL"
+          response=$(curl -sS -X POST "$REFRESH_URL" \
             -H "Content-Type: application/json" \
             -H "x-service-token: $CACHE_REFRESH_SECRET" \
             -d '{"count": 28}' \
@@ -34,10 +41,16 @@ jobs:
             echo "✅ Cache refresh successful"
           else
             echo "❌ Cache refresh failed with HTTP $http_code"
+            if [ "$http_code" = "401" ]; then
+              echo "Hint: Verify CACHE_REFRESH_SECRET matches backend env CACHE_REFRESH_SECRET exactly."
+            fi
             exit 1
           fi
 
       - name: Check cache stats
         run: |
           echo "Checking cache statistics..."
-          curl -s "${{ secrets.VITE_API_URL }}/api/youtube-cache/stats" | jq '.'
+          API_BASE="${{ secrets.VITE_API_URL }}"
+          API_BASE="${API_BASE%/}"
+          API_BASE="${API_BASE%/api}"
+          curl -sS "$API_BASE/api/youtube-cache/stats" | jq '.'
