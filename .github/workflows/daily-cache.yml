@@ -9,13 +9,20 @@ on:
 jobs:
   refresh-cache:
     runs-on: ubuntu-latest
+    env:
+      CACHE_REFRESH_SECRET: ${{ secrets.CACHE_REFRESH_SECRET }}
     steps:
       - name: Trigger cache refresh
         run: |
           echo "Refreshing video cache..."
+          if [ -z "$CACHE_REFRESH_SECRET" ]; then
+            echo "❌ CACHE_REFRESH_SECRET is missing"
+            exit 1
+          fi
           echo "Using API URL: ${{ secrets.VITE_API_URL }}/api/youtube-cache/refresh"
           response=$(curl -X POST "${{ secrets.VITE_API_URL }}/api/youtube-cache/refresh" \
             -H "Content-Type: application/json" \
+            -H "x-service-token: $CACHE_REFRESH_SECRET" \
             -d '{"count": 28}' \
             -w "\nHTTP Status: %{http_code}")
 
@@ -33,4 +40,4 @@ jobs:
       - name: Check cache stats
         run: |
           echo "Checking cache statistics..."
-          curl -s "${{ secrets.VITE_API_URL }}/youtube-cache/stats" | jq '.'
+          curl -s "${{ secrets.VITE_API_URL }}/api/youtube-cache/stats" | jq '.'

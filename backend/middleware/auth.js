@@ -53,6 +53,27 @@ const auth = async (req, res, next) => {
   }
 };
 
+// Allows either normal JWT auth or a trusted service token for automation.
+const authOrServiceToken = async (req, res, next) => {
+  const serviceToken = req.header("x-service-token");
+  const expectedServiceToken = process.env.CACHE_REFRESH_SECRET;
+
+  if (
+    expectedServiceToken &&
+    serviceToken &&
+    serviceToken === expectedServiceToken
+  ) {
+    req.user = {
+      userId: "service",
+      username: "service",
+      email: "service@local",
+    };
+    return next();
+  }
+
+  return auth(req, res, next);
+};
+
 // Optional auth middleware (for routes that work with or without auth)
 const optionalAuth = async (req, res, next) => {
   try {
@@ -80,4 +101,4 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
-module.exports = { auth, optionalAuth };
+module.exports = { auth, optionalAuth, authOrServiceToken };

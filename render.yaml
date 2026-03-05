@@ -16,6 +16,8 @@ services:
         generateValue: true
       - key: VITE_YOUTUBE_API_KEY
         sync: false # Set this in Render dashboard
+      - key: CACHE_REFRESH_SECRET
+        sync: false # Must match GitHub Actions secret for daily-cache workflow
       # RENDER_EXTERNAL_URL is auto-provided by Render — used for keep-alive self-ping
     healthCheckPath: /health
     autoDeploy: true

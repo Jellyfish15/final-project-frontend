@@ -1,6 +1,6 @@
 const express = require("express");
 const youtubeCacheService = require("../services/youtubeCacheService");
-const { auth } = require("../middleware/auth");
+const { auth, authOrServiceToken } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -111,7 +111,7 @@ router.get("/feed", async (req, res) => {
 // @route   POST /api/youtube-cache/refresh
 // @desc    Manually trigger caching of new YouTube videos
 // @access  Private (admin only)
-router.post("/refresh", auth, async (req, res) => {
+router.post("/refresh", authOrServiceToken, async (req, res) => {
   try {
     const { count = 28 } = req.body;
 
@@ -160,7 +160,7 @@ router.get("/stats", async (req, res) => {
 // @route   DELETE /api/youtube-cache/old
 // @desc    Remove old cached videos
 // @access  Private (admin only)
-router.delete("/old", auth, async (req, res) => {
+router.delete("/old", authOrServiceToken, async (req, res) => {
   try {
     const { days = 30 } = req.query;
 
