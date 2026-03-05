@@ -26,6 +26,7 @@
   height: 100vh;
   height: 100dvh; /* Dynamic viewport height for mobile */
   overflow: hidden;
+  /* Scrolling is handled by .app__main for non-video pages */
 }
 
 .app {
@@ -51,7 +52,9 @@
   flex: 1;
   background-color: white; /* Default white background */
   width: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 0;
 }
 
@@ -62,6 +65,7 @@
 
 .app__main--videos {
   background-color: black;
+  overflow: hidden; /* Lock scrolling on video swipe page */
 }
 
 /* Mobile app-like styling */
@@ -81,12 +85,16 @@
   .app__main {
     padding-bottom: 70px; /* Space for bottom navigation */
     padding-top: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Videos page same padding */
   .app__main--videos {
     padding-top: 0;
     padding-bottom: 70px; /* Same padding for bottom navigation */
+    overflow: hidden; /* Lock scrolling on video swipe page */
   }
 
   /* Improve touch targets */
