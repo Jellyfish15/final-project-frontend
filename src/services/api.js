@@ -148,7 +148,9 @@ class ApiService {
             if (xhr.status >= 200 && xhr.status < 300) {
               resolve(data);
             } else {
-              reject(new Error(data.message || `HTTP error! status: ${xhr.status}`));
+              reject(
+                new Error(data.message || `HTTP error! status: ${xhr.status}`),
+              );
             }
           } catch (e) {
             reject(new Error(`Failed to parse response: ${xhr.status}`));

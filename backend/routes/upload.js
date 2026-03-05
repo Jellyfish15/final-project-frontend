@@ -272,7 +272,9 @@ router.post(
           const convertedPath = path.join(videosDir, convertedFilename);
 
           try {
-            console.log("Attempting lightweight H.264 transcode for browser compatibility...");
+            console.log(
+              "Attempting lightweight H.264 transcode for browser compatibility...",
+            );
             await Promise.race([
               new Promise((resolve, reject) => {
                 ffmpeg(videoPath)
@@ -285,7 +287,9 @@ router.post(
                     "-pix_fmt yuv420p",
                     "-max_muxing_queue_size 1024",
                   ])
-                  .on("start", (cmd) => console.log("FFmpeg quick transcode:", cmd))
+                  .on("start", (cmd) =>
+                    console.log("FFmpeg quick transcode:", cmd),
+                  )
                   .on("end", () => {
                     console.log("Quick transcode completed");
                     resolve();
@@ -297,7 +301,10 @@ router.post(
                   .save(convertedPath);
               }),
               new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Transcode timeout (90s)")), 90000),
+                setTimeout(
+                  () => reject(new Error("Transcode timeout (90s)")),
+                  90000,
+                ),
               ),
             ]);
 
@@ -310,10 +317,15 @@ router.post(
               console.log("Using H.264 transcoded file:", convertedFilename);
             }
           } catch (err) {
-            console.warn("Lightweight transcode failed, falling back to rename:", err.message);
+            console.warn(
+              "Lightweight transcode failed, falling back to rename:",
+              err.message,
+            );
             // Clean up partial output
             if (fs.existsSync(convertedPath)) {
-              try { fs.unlinkSync(convertedPath); } catch (_) {}
+              try {
+                fs.unlinkSync(convertedPath);
+              } catch (_) {}
             }
           }
         }

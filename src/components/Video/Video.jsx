@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./Video.css";
 import { useVideo } from "../../contexts/useVideo";
 import { useLocation } from "react-router-dom";
@@ -19,6 +19,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   const isFirstVideoEverRef = useRef(true);
   const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
   const ytPlayerRef = useRef(null);
+  const [videoError, setVideoError] = useState(false);
   const location = useLocation();
   const {
     currentVideo,
@@ -104,6 +105,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
   // Reset interaction tracker when video changes
   useEffect(() => {
     hasBeenUnmutedRef.current = false;
+    setVideoError(false);
   }, [currentVideo]);
 
   // Handle custom feed types (profile or similar)
@@ -387,18 +389,37 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                         togglePlay();
                       }
                     }}
-                    onError={() => {}}
-                  >
-                    <div className="video-page__video-placeholder">
-                      <div className="video-page__placeholder-content">
-                        <div className="video-page__placeholder-icon">🎥</div>
-                        <p>Educational Video</p>
-                        <p className="video-page__placeholder-title">
-                          {currentVideo.title}
+                    onError={(e) => {
+                      console.error("[Video] Failed to load:", currentVideo.videoUrl, e.target.error);
+                      setVideoError(true);
+                    }}
+                  />
+
+                  {/* Fallback when video file fails to load (e.g. server restart wiped files) */}
+                  {videoError && (
+                    <div className="video-page__error" style={{
+                      position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: "black", zIndex: 3,
+                    }}>
+                      <div className="video-page__error-content" style={{ textAlign: "center", color: "white", padding: "20px" }}>
+                        <h3 style={{ fontSize: "1.2rem", marginBottom: "8px" }}>Video Unavailable</h3>
+                        <p style={{ fontSize: "0.9rem", opacity: 0.7, marginBottom: "16px" }}>
+                          This video file is no longer available on the server.
                         </p>
+                        <button
+                          onClick={() => scrollToVideo("next")}
+                          style={{
+                            background: "#fe2c55", color: "white", border: "none",
+                            borderRadius: "4px", padding: "10px 24px", fontSize: "1rem",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Next Video →
+                        </button>
                       </div>
                     </div>
-                  </video>
+                  )}
 
                   {/* Touch overlay temporarily disabled for debugging */}
                   {/*

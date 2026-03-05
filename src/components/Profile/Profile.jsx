@@ -638,6 +638,10 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
                               "https://via.placeholder.com/200x300?text=Video"
                             }
                             alt={video.title}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = "https://via.placeholder.com/200x300?text=Video";
+                            }}
                           />
                           <div className="profile__video-overlay">
                             <div className="profile__video-stats">
