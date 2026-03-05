@@ -20,6 +20,12 @@ jobs:
             exit 1
           fi
 
+          SERVICE_TOKEN=$(echo "$CACHE_REFRESH_SECRET" | tr -d '\r\n' | xargs)
+          if [ -z "$SERVICE_TOKEN" ]; then
+            echo "❌ CACHE_REFRESH_SECRET resolved to empty token"
+            exit 1
+          fi
+
           API_BASE="${{ secrets.VITE_API_URL }}"
           API_BASE="${API_BASE%/}"
           API_BASE="${API_BASE%/api}"
@@ -27,9 +33,10 @@ jobs:
           STATS_URL="$API_BASE/api/youtube-cache/stats"
 
           echo "Using refresh URL: $REFRESH_URL"
+          echo "Service token length: ${#SERVICE_TOKEN}"
           response=$(curl -sS -X POST "$REFRESH_URL" \
             -H "Content-Type: application/json" \
-            -H "x-service-token: $CACHE_REFRESH_SECRET" \
+            -H "x-service-token: $SERVICE_TOKEN" \
             -d '{"count": 28}' \
             -w "\nHTTP Status: %{http_code}")
 
