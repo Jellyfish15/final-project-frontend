@@ -107,16 +107,32 @@ const connectDB = async () => {
       const Video = require("./models/Video");
       const movVideos = await Video.find({ videoUrl: { $regex: /\.mov$/i } });
       if (movVideos.length > 0) {
-        console.log(`[Migration] Found ${movVideos.length} video(s) with .mov URLs — renaming to .mp4`);
+        console.log(
+          `[Migration] Found ${movVideos.length} video(s) with .mov URLs — renaming to .mp4`,
+        );
         for (const v of movVideos) {
           const oldUrl = v.videoUrl;
           v.videoUrl = oldUrl.replace(/\.mov$/i, ".mp4");
 
           // Also rename the physical file if it exists
-          const oldFile = path.join(__dirname, "uploads", "videos", path.basename(oldUrl));
-          const newFile = path.join(__dirname, "uploads", "videos", path.basename(v.videoUrl));
+          const oldFile = path.join(
+            __dirname,
+            "uploads",
+            "videos",
+            path.basename(oldUrl),
+          );
+          const newFile = path.join(
+            __dirname,
+            "uploads",
+            "videos",
+            path.basename(v.videoUrl),
+          );
           if (fs.existsSync(oldFile)) {
-            try { fs.renameSync(oldFile, newFile); } catch (_) { /* best effort */ }
+            try {
+              fs.renameSync(oldFile, newFile);
+            } catch (_) {
+              /* best effort */
+            }
           }
 
           await v.save();

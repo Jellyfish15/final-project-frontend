@@ -35,14 +35,33 @@ const videoFilter = (req, file, cb) => {
     "video/quicktime",
     "video/webm",
     "video/x-m4v",
+    "video/x-msvideo",
+    "video/x-matroska",
+    "video/ogg",
+    "video/3gpp",
   ];
 
-  if (allowedTypes.includes(file.mimetype)) {
+  // Also accept by file extension for mobile browsers that misreport MIME types
+  const ext = path.extname(file.originalname).toLowerCase();
+  const allowedExts = [
+    ".mp4",
+    ".mov",
+    ".mpeg",
+    ".mpg",
+    ".webm",
+    ".avi",
+    ".mkv",
+    ".ogg",
+    ".3gp",
+    ".m4v",
+  ];
+
+  if (allowedTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
     cb(null, true);
   } else {
     cb(
       new Error(
-        "Invalid file type. Only MP4, MPEG, MOV, and WebM videos are allowed.",
+        "Invalid file type. Only MP4, MPEG, MOV, WebM, AVI, MKV, OGG, and 3GP videos are allowed.",
       ),
       false,
     );
@@ -247,7 +266,9 @@ router.post(
           const mp4Path = path.join(videosDir, mp4Filename);
           try {
             fs.renameSync(finalVideoPath, mp4Path);
-            console.log(`Renamed ${finalFilename} → ${mp4Filename} for browser compatibility`);
+            console.log(
+              `Renamed ${finalFilename} → ${mp4Filename} for browser compatibility`,
+            );
             finalFilename = mp4Filename;
             finalVideoPath = mp4Path;
           } catch (renameErr) {
@@ -568,11 +589,15 @@ router.post(
           id: video._id,
           title: video.title,
           description: video.description,
+          videoUrl: video.videoUrl,
           thumbnailUrl: video.thumbnailUrl,
           category: video.category,
           tags: video.tags,
           status: video.status,
+          creator: video.creator,
+          creatorInfo: video.creatorInfo,
           uploadedAt: video.uploadedAt,
+          publishedAt: video.publishedAt,
         },
       });
     } catch (error) {
@@ -901,7 +926,7 @@ router.get("/my-videos", auth, async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit))
       .select(
-        "title description thumbnailUrl duration category status views uploadedAt publishedAt likes comments",
+        "title description videoUrl thumbnailUrl duration category status views uploadedAt publishedAt likes comments",
       );
 
     // Format videos to include counts
@@ -909,6 +934,7 @@ router.get("/my-videos", auth, async (req, res) => {
       _id: video._id,
       title: video.title,
       description: video.description,
+      videoUrl: video.videoUrl,
       thumbnailUrl: video.thumbnailUrl,
       duration: video.duration,
       category: video.category,

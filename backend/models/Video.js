@@ -23,16 +23,16 @@ const videoSchema = new mongoose.Schema(
     },
     thumbnailUrl: {
       type: String,
-      required: true,
+      default: "",
     },
     duration: {
       type: Number, // in seconds
-      required: true,
+      default: 0,
       max: 300, // 5 minutes max
     },
     fileSize: {
       type: Number, // in bytes
-      required: true,
+      default: 0,
     },
     resolution: {
       width: Number,
@@ -176,7 +176,7 @@ const videoSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Indexes for better performance
@@ -228,7 +228,7 @@ videoSchema.methods.calculateEngagementRate = function () {
 // Method to add like
 videoSchema.methods.addLike = async function (userId) {
   const existingLike = this.likes.find(
-    (like) => like.user.toString() === userId.toString()
+    (like) => like.user.toString() === userId.toString(),
   );
   if (!existingLike) {
     this.likes.push({ user: userId });
@@ -242,7 +242,7 @@ videoSchema.methods.addLike = async function (userId) {
 // Method to remove like
 videoSchema.methods.removeLike = async function (userId) {
   const likeIndex = this.likes.findIndex(
-    (like) => like.user.toString() === userId.toString()
+    (like) => like.user.toString() === userId.toString(),
   );
   if (likeIndex !== -1) {
     this.likes.splice(likeIndex, 1);
@@ -269,7 +269,7 @@ videoSchema.methods.addComment = async function (userId, username, text) {
 videoSchema.statics.getAlgorithmFeed = async function (
   user,
   page = 1,
-  limit = 10
+  limit = 10,
 ) {
   const skip = (page - 1) * limit;
 
@@ -298,7 +298,7 @@ videoSchema.statics.getAlgorithmFeed = async function (
             count: limit * 3, // Get more than needed for better selection
             excludeWatched: true,
             diversityFactor: 0.3,
-          }
+          },
         );
 
       // Apply pagination
@@ -307,7 +307,7 @@ videoSchema.statics.getAlgorithmFeed = async function (
   } catch (error) {
     console.error(
       "AI recommendation failed, falling back to legacy algorithm:",
-      error
+      error,
     );
   }
 

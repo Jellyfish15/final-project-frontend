@@ -63,18 +63,29 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
         file.size,
       );
       const video = document.createElement("video");
-      video.preload = "metadata";
+      // "auto" is critical on mobile — "metadata" doesn't load frame data,
+      // which means seeking produces blank canvases on iOS Safari / Android Chrome.
+      video.preload = "auto";
       video.muted = true;
       video.playsInline = true;
+      video.crossOrigin = "anonymous";
       // Some mobile browsers need these attributes
       video.setAttribute("webkit-playsinline", "true");
+      video.setAttribute("playsinline", "true");
 
       const objectUrl = URL.createObjectURL(file);
       video.src = objectUrl;
       let settled = false;
 
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      // Mobile browsers need more time for frame decode after seeking
+      const FRAME_CAPTURE_DELAY = isMobile ? 400 : 150;
+
       const cleanup = () => {
         try {
+          video.pause();
+          video.removeAttribute("src");
+          video.load(); // release resources
           URL.revokeObjectURL(objectUrl);
         } catch (e) {
           /* ignore */
@@ -101,15 +112,16 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
         reject(err);
       };
 
-      video.onloadedmetadata = () => {
-        const duration = video.duration;
+      const startCapture = (duration) => {
         console.log(
-          "[Thumbnails] Video metadata loaded. Duration:",
+          "[Thumbnails] Starting capture. Duration:",
           duration,
           "Resolution:",
           video.videoWidth,
           "x",
           video.videoHeight,
+          "Mobile:",
+          isMobile,
         );
 
         if (!duration || !isFinite(duration) || duration <= 0) {
@@ -128,7 +140,12 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
 
         const captureFrame = () => {
           if (currentIndex >= timestamps.length) {
-            done(thumbnails);
+            // If we got at least one thumbnail, succeed
+            if (thumbnails.length > 0) {
+              done(thumbnails);
+            } else {
+              fail(new Error("All frame captures produced blank data"));
+            }
             return;
           }
           console.log(
@@ -141,7 +158,7 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
 
         video.onseeked = () => {
           try {
-            // Wait a small delay for the frame to actually render
+            // Wait for the frame to actually render — mobile needs longer
             setTimeout(() => {
               try {
                 const canvas = document.createElement("canvas");
@@ -157,7 +174,7 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
 
                 const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
                 // Verify we got actual image data (not a blank canvas)
-                if (dataUrl && dataUrl.length > 100) {
+                if (dataUrl && dataUrl.length > 500) {
                   thumbnails.push(dataUrl);
                   console.log(
                     "[Thumbnails] Captured frame",
@@ -177,9 +194,15 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
                 currentIndex++;
                 captureFrame();
               } catch (err) {
-                fail(err);
+                // Don't fail entirely — skip this frame and try the next
+                console.warn(
+                  "[Thumbnails] Frame capture error, skipping:",
+                  err.message,
+                );
+                currentIndex++;
+                captureFrame();
               }
-            }, 100); // small delay for frame decode
+            }, FRAME_CAPTURE_DELAY);
           } catch (err) {
             fail(err);
           }
@@ -187,6 +210,64 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
 
         captureFrame();
       };
+
+      // On mobile, we need enough data loaded to seek. Use canplaythrough
+      // which fires when the browser estimates it can play without buffering.
+      // Also listen to loadeddata as a fallback (fires when first frame is ready).
+      let captureStarted = false;
+      const tryStartCapture = () => {
+        if (captureStarted || settled) return;
+        const duration = video.duration;
+        if (!duration || !isFinite(duration) || duration <= 0) return;
+        captureStarted = true;
+        startCapture(duration);
+      };
+
+      video.addEventListener("canplaythrough", () => {
+        console.log("[Thumbnails] canplaythrough fired");
+        tryStartCapture();
+      });
+
+      video.addEventListener("loadeddata", () => {
+        console.log("[Thumbnails] loadeddata fired");
+        // On mobile, try play+pause to "unlock" the decoder, then capture
+        if (isMobile && !captureStarted) {
+          const playPromise = video.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                video.pause();
+                console.log("[Thumbnails] Mobile play/pause unlock succeeded");
+                tryStartCapture();
+              })
+              .catch(() => {
+                console.log(
+                  "[Thumbnails] Mobile play/pause failed, trying capture anyway",
+                );
+                tryStartCapture();
+              });
+          } else {
+            video.pause();
+            tryStartCapture();
+          }
+        }
+      });
+
+      // Desktop fallback — loadedmetadata is usually enough on desktop
+      video.addEventListener("loadedmetadata", () => {
+        console.log(
+          "[Thumbnails] Video metadata loaded. Duration:",
+          video.duration,
+          "Resolution:",
+          video.videoWidth,
+          "x",
+          video.videoHeight,
+        );
+        if (!isMobile) {
+          // On desktop, give a short delay for data to buffer then start
+          setTimeout(tryStartCapture, 200);
+        }
+      });
 
       video.onerror = (e) => {
         console.error("[Thumbnails] Video element error:", e, video.error);
