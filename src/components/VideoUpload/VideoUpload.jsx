@@ -359,12 +359,15 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
   const autoUploadVideo = async (file) => {
     console.log("Uploading video to server in background...");
     setVideoUploading(true);
+    setUploadProgress(0);
 
     try {
       const formData = new FormData();
       formData.append("video", file);
 
-      const response = await uploadAPI.tempVideoUpload(formData);
+      const response = await uploadAPI.tempVideoUpload(formData, (progress) => {
+        setUploadProgress(progress);
+      });
       console.log("Temp upload response:", response);
 
       if (response.success && response.videoData) {
@@ -685,9 +688,17 @@ const VideoUpload = ({ onUploadSuccess, onCancel }) => {
         {videoUploading && !generatingThumbnails && (
           <div className="video-upload__section">
             <div className="video-upload__generating">
-              📤 Uploading video to server... You can fill in details while
-              waiting.
+              📤 Uploading video to server{uploadProgress > 0 ? ` (${uploadProgress}%)` : "..."}
+              {uploadProgress >= 100 ? " — Processing video..." : " You can fill in details while waiting."}
             </div>
+            {uploadProgress > 0 && (
+              <div className="video-upload__progress-bar" style={{ marginTop: "8px" }}>
+                <div
+                  className="video-upload__progress-fill"
+                  style={{ width: `${Math.min(uploadProgress, 100)}%` }}
+                />
+              </div>
+            )}
           </div>
         )}
         <div className="video-upload__section">

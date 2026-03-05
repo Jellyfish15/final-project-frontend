@@ -174,7 +174,13 @@ router.post(
       const videoPath = path.join(videosDir, req.file.filename);
       const originalFilename = req.file.filename;
 
-      // Check if we're on a free tier (Render free tier has limited memory)
+      // Check if FFmpeg is available for transcoding
+      const ffmpegAvailable = await new Promise((resolve) => {
+        const { exec } = require("child_process");
+        exec("ffmpeg -version", (err) => resolve(!err));
+      });
+
+      // Check if we should skip heavy conversion (Render free tier / explicit flag)
       const isFreeTier =
         process.env.RENDER_INSTANCE_TYPE === "free" ||
         process.env.SKIP_VIDEO_CONVERSION === "true" ||
@@ -254,26 +260,80 @@ router.post(
         }
       } else {
         console.log(
-          "Skipping video conversion (free tier or local development)",
+          "Skipping heavy video conversion (free tier or local development)",
         );
 
-        // Rename .mov (and other non-mp4) files to .mp4 so browsers can play them.
-        // MOV and MP4 share the same ISO BMFF container format, so H.264-encoded
-        // .mov files (the default on iPhones/iPads) play perfectly as .mp4.
-        const ext = path.extname(finalFilename).toLowerCase();
-        if (ext === ".mov" || ext === ".m4v" || ext === ".3gp") {
-          const mp4Filename = finalFilename.replace(/\.[^.]+$/, ".mp4");
-          const mp4Path = path.join(videosDir, mp4Filename);
+        // Even on free tier, attempt a fast H.264 transcode if FFmpeg is available.
+        // iPhone videos are often HEVC (H.265) which desktop Chrome cannot play.
+        // Use ultrafast preset + CRF 28 to minimise CPU/memory usage.
+        let transcoded = false;
+        if (ffmpegAvailable) {
+          const convertedFilename = `converted-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.mp4`;
+          const convertedPath = path.join(videosDir, convertedFilename);
+
           try {
-            fs.renameSync(finalVideoPath, mp4Path);
-            console.log(
-              `Renamed ${finalFilename} → ${mp4Filename} for browser compatibility`,
-            );
-            finalFilename = mp4Filename;
-            finalVideoPath = mp4Path;
-          } catch (renameErr) {
-            console.warn("Failed to rename video file:", renameErr.message);
-            // Continue with original filename — will still work if codec is compatible
+            console.log("Attempting lightweight H.264 transcode for browser compatibility...");
+            await Promise.race([
+              new Promise((resolve, reject) => {
+                ffmpeg(videoPath)
+                  .videoCodec("libx264")
+                  .audioCodec("aac")
+                  .outputOptions([
+                    "-preset ultrafast",
+                    "-crf 28",
+                    "-movflags +faststart",
+                    "-pix_fmt yuv420p",
+                    "-max_muxing_queue_size 1024",
+                  ])
+                  .on("start", (cmd) => console.log("FFmpeg quick transcode:", cmd))
+                  .on("end", () => {
+                    console.log("Quick transcode completed");
+                    resolve();
+                  })
+                  .on("error", (err) => {
+                    console.warn("Quick transcode failed:", err.message);
+                    reject(err);
+                  })
+                  .save(convertedPath);
+              }),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Transcode timeout (90s)")), 90000),
+              ),
+            ]);
+
+            // Success — use converted file
+            if (fs.existsSync(convertedPath)) {
+              if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
+              finalFilename = convertedFilename;
+              finalVideoPath = convertedPath;
+              transcoded = true;
+              console.log("Using H.264 transcoded file:", convertedFilename);
+            }
+          } catch (err) {
+            console.warn("Lightweight transcode failed, falling back to rename:", err.message);
+            // Clean up partial output
+            if (fs.existsSync(convertedPath)) {
+              try { fs.unlinkSync(convertedPath); } catch (_) {}
+            }
+          }
+        }
+
+        // Fallback: rename .mov/.m4v/.3gp → .mp4 (works if codec is already H.264)
+        if (!transcoded) {
+          const ext = path.extname(finalFilename).toLowerCase();
+          if (ext === ".mov" || ext === ".m4v" || ext === ".3gp") {
+            const mp4Filename = finalFilename.replace(/\.[^.]+$/, ".mp4");
+            const mp4Path = path.join(videosDir, mp4Filename);
+            try {
+              fs.renameSync(finalVideoPath, mp4Path);
+              console.log(
+                `Renamed ${finalFilename} → ${mp4Filename} for browser compatibility`,
+              );
+              finalFilename = mp4Filename;
+              finalVideoPath = mp4Path;
+            } catch (renameErr) {
+              console.warn("Failed to rename video file:", renameErr.message);
+            }
           }
         }
       }

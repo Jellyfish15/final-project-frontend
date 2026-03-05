@@ -120,7 +120,7 @@ class ApiService {
   }
 
   // File upload request
-  async upload(endpoint, formData) {
+  async upload(endpoint, formData, onProgress) {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getAuthToken();
     console.log(`[API Upload] Uploading to ${endpoint}`);
@@ -128,6 +128,39 @@ class ApiService {
     console.log(
       `[API Upload] Token: ${token ? token.substring(0, 20) + "..." : "NO TOKEN"}`,
     );
+
+    // Use XMLHttpRequest when progress tracking is needed (video uploads)
+    if (onProgress) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            onProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        };
+
+        xhr.onload = () => {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(data);
+            } else {
+              reject(new Error(data.message || `HTTP error! status: ${xhr.status}`));
+            }
+          } catch (e) {
+            reject(new Error(`Failed to parse response: ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        xhr.ontimeout = () => reject(new Error("Upload timed out"));
+        xhr.timeout = 300000; // 5 minute timeout for large videos
+        xhr.send(formData);
+      });
+    }
 
     try {
       const response = await fetch(url, {
@@ -334,8 +367,8 @@ export const uploadAPI = {
   uploadVideo: (formData) => apiService.upload("/upload/video", formData),
 
   // Auto-upload video and generate thumbnails
-  tempVideoUpload: (formData) =>
-    apiService.upload("/upload/temp-video", formData),
+  tempVideoUpload: (formData, onProgress) =>
+    apiService.upload("/upload/temp-video", formData, onProgress),
 
   // Upload a standalone thumbnail (for client-generated thumbnails)
   uploadTempThumbnail: (formData) =>
