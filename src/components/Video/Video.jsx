@@ -390,28 +390,61 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       }
                     }}
                     onError={(e) => {
-                      console.error("[Video] Failed to load:", currentVideo.videoUrl, e.target.error);
+                      console.error(
+                        "[Video] Failed to load:",
+                        currentVideo.videoUrl,
+                        e.target.error,
+                      );
                       setVideoError(true);
                     }}
                   />
 
                   {/* Fallback when video file fails to load (e.g. server restart wiped files) */}
                   {videoError && (
-                    <div className="video-page__error" style={{
-                      position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      background: "black", zIndex: 3,
-                    }}>
-                      <div className="video-page__error-content" style={{ textAlign: "center", color: "white", padding: "20px" }}>
-                        <h3 style={{ fontSize: "1.2rem", marginBottom: "8px" }}>Video Unavailable</h3>
-                        <p style={{ fontSize: "0.9rem", opacity: 0.7, marginBottom: "16px" }}>
+                    <div
+                      className="video-page__error"
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "black",
+                        zIndex: 3,
+                      }}
+                    >
+                      <div
+                        className="video-page__error-content"
+                        style={{
+                          textAlign: "center",
+                          color: "white",
+                          padding: "20px",
+                        }}
+                      >
+                        <h3 style={{ fontSize: "1.2rem", marginBottom: "8px" }}>
+                          Video Unavailable
+                        </h3>
+                        <p
+                          style={{
+                            fontSize: "0.9rem",
+                            opacity: 0.7,
+                            marginBottom: "16px",
+                          }}
+                        >
                           This video file is no longer available on the server.
                         </p>
                         <button
                           onClick={() => scrollToVideo("next")}
                           style={{
-                            background: "#fe2c55", color: "white", border: "none",
-                            borderRadius: "4px", padding: "10px 24px", fontSize: "1rem",
+                            background: "#fe2c55",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "4px",
+                            padding: "10px 24px",
+                            fontSize: "1rem",
                             cursor: "pointer",
                           }}
                         >

@@ -640,7 +640,8 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
                             alt={video.title}
                             onError={(e) => {
                               e.target.onerror = null;
-                              e.target.src = "https://via.placeholder.com/200x300?text=Video";
+                              e.target.src =
+                                "https://via.placeholder.com/200x300?text=Video";
                             }}
                           />
                           <div className="profile__video-overlay">

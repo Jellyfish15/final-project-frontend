@@ -133,6 +133,15 @@ router.post(
         });
       }
 
+      // Log file info for debugging upload issues
+      console.log("[Upload] req.file:", {
+        filename: req.file.filename,
+        path: req.file.path,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        originalname: req.file.originalname,
+      });
+
       // ── Cloudinary path: video already uploaded, generate thumbnails via URL transforms ──
       if (
         isCloudinaryConfigured() &&
@@ -170,9 +179,38 @@ router.post(
         });
       }
 
+      // Guard: if multer didn't set filename/path (e.g. Cloudinary misconfigured),
+      // fall back to req.file.path (diskStorage) or reject gracefully.
+      if (!req.file.filename && !req.file.path) {
+        return res.status(500).json({
+          success: false,
+          message:
+            "Upload failed: file metadata missing. Check storage configuration.",
+        });
+      }
+
+      // If filename is missing but path exists (Cloudinary misconfigured), derive filename
+      const resolvedFilename =
+        req.file.filename || path.basename(req.file.path);
+
       // ── Local storage path: original FFmpeg-based flow ──
-      const videoPath = path.join(videosDir, req.file.filename);
-      const originalFilename = req.file.filename;
+      const videoPath = path.join(videosDir, resolvedFilename);
+      const originalFilename = resolvedFilename;
+
+      // If multer saved the file outside videosDir (e.g. Cloudinary partial failure),
+      // move it into videosDir so the rest of the pipeline can find it.
+      if (
+        req.file.path &&
+        !req.file.path.startsWith("http") &&
+        req.file.path !== videoPath &&
+        fs.existsSync(req.file.path)
+      ) {
+        try {
+          fs.renameSync(req.file.path, videoPath);
+        } catch (_) {
+          // best effort — file may already be in the right place
+        }
+      }
 
       // Check if FFmpeg is available for transcoding
       const ffmpegAvailable = await new Promise((resolve) => {
@@ -463,8 +501,15 @@ router.post(
     } catch (error) {
       console.error("Temp video upload error:", error);
 
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+      // Safe cleanup — guard against undefined path
+      try {
+        if (req.file && req.file.path && typeof req.file.path === "string") {
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+        }
+      } catch (cleanupErr) {
+        console.warn("Cleanup failed:", cleanupErr.message);
       }
 
       res.status(500).json({
@@ -513,8 +558,14 @@ router.post(
     } catch (error) {
       console.error("Temp thumbnail upload error:", error);
 
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+      try {
+        if (req.file && req.file.path && typeof req.file.path === "string") {
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+        }
+      } catch (cleanupErr) {
+        console.warn("Thumbnail cleanup failed:", cleanupErr.message);
       }
 
       res.status(500).json({
@@ -851,9 +902,13 @@ router.post(
     } catch (error) {
       console.error("Video upload error:", error);
 
-      // Delete uploaded file on error
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+      // Safe cleanup - guard against undefined path
+      try {
+        if (req.file && typeof req.file.path === "string" && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (cleanupErr) {
+        console.error("Cleanup error:", cleanupErr.message);
       }
 
       res.status(500).json({
@@ -912,8 +967,13 @@ router.post(
     } catch (error) {
       console.error("Thumbnail upload error:", error);
 
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+      // Safe cleanup - guard against undefined path
+      try {
+        if (req.file && typeof req.file.path === "string" && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (cleanupErr) {
+        console.error("Cleanup error:", cleanupErr.message);
       }
 
       res.status(500).json({
@@ -968,8 +1028,13 @@ router.post(
     } catch (error) {
       console.error("Avatar upload error:", error);
 
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+      // Safe cleanup - guard against undefined path
+      try {
+        if (req.file && typeof req.file.path === "string" && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (cleanupErr) {
+        console.error("Cleanup error:", cleanupErr.message);
       }
 
       res.status(500).json({
