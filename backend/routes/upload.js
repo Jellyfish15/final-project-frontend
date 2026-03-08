@@ -212,11 +212,19 @@ router.post(
         }
       }
 
-      // Check if FFmpeg is available for transcoding
-      const ffmpegAvailable = await new Promise((resolve) => {
-        const { exec } = require("child_process");
-        exec("ffmpeg -version", (err) => resolve(!err));
-      });
+      // On Render (any tier), skip FFmpeg entirely — it causes OOM/timeout on free tier
+      // and client-side thumbnails are used anyway.
+      const isRender = !!process.env.RENDER;
+      const skipAllFFmpeg =
+        isRender || process.env.SKIP_VIDEO_CONVERSION === "true";
+
+      // Check if FFmpeg is available for transcoding (skip the check on Render)
+      const ffmpegAvailable = skipAllFFmpeg
+        ? false
+        : await new Promise((resolve) => {
+            const { exec } = require("child_process");
+            exec("ffmpeg -version", (err) => resolve(!err));
+          });
 
       // Check if we should skip heavy conversion (Render free tier / explicit flag)
       const isFreeTier =
@@ -402,13 +410,7 @@ router.post(
         console.log("Video path:", finalVideoPath);
         console.log("Thumbnail prefix:", thumbnailPrefix);
 
-        // Check if FFmpeg is available before trying
-        const ffmpegAvailable = await new Promise((resolve) => {
-          const { exec } = require("child_process");
-          exec("ffmpeg -version", (err) => resolve(!err));
-        });
-
-        if (!ffmpegAvailable) {
+        if (skipAllFFmpeg || !ffmpegAvailable) {
           console.warn(
             "FFmpeg not available on this server — skipping server-side thumbnail generation",
           );
@@ -904,7 +906,11 @@ router.post(
 
       // Safe cleanup - guard against undefined path
       try {
-        if (req.file && typeof req.file.path === "string" && fs.existsSync(req.file.path)) {
+        if (
+          req.file &&
+          typeof req.file.path === "string" &&
+          fs.existsSync(req.file.path)
+        ) {
           fs.unlinkSync(req.file.path);
         }
       } catch (cleanupErr) {
@@ -969,7 +975,11 @@ router.post(
 
       // Safe cleanup - guard against undefined path
       try {
-        if (req.file && typeof req.file.path === "string" && fs.existsSync(req.file.path)) {
+        if (
+          req.file &&
+          typeof req.file.path === "string" &&
+          fs.existsSync(req.file.path)
+        ) {
           fs.unlinkSync(req.file.path);
         }
       } catch (cleanupErr) {
@@ -1030,7 +1040,11 @@ router.post(
 
       // Safe cleanup - guard against undefined path
       try {
-        if (req.file && typeof req.file.path === "string" && fs.existsSync(req.file.path)) {
+        if (
+          req.file &&
+          typeof req.file.path === "string" &&
+          fs.existsSync(req.file.path)
+        ) {
           fs.unlinkSync(req.file.path);
         }
       } catch (cleanupErr) {
