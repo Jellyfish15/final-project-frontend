@@ -15,6 +15,12 @@ const fs = require("fs");
 // ── Configuration ──────────────────────────────
 
 const isCloudinaryConfigured = () => {
+  // On Render, skip Cloudinary unless explicitly opted in.
+  // Prevents broken uploads when stale/invalid Cloudinary env vars are set.
+  if (process.env.RENDER && process.env.USE_CLOUDINARY !== "true") {
+    return false;
+  }
+
   return !!(
     process.env.CLOUDINARY_URL ||
     (process.env.CLOUDINARY_CLOUD_NAME &&
