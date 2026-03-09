@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext/AuthContext";
+import { useVideo } from "../../contexts/useVideo";
 import noodleLogo from "../../images/noodle-logo.png";
 import "./LandingPage.css";
 
@@ -18,7 +19,25 @@ const SUBJECTS = [
 const LandingPage = ({ onOpenRegister, onOpenLogin }) => {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useAuth();
+  const { videos, setVideoById } = useVideo();
   const heroVideoRef = useRef(null);
+
+  // Pick a random video from the feed to feature in the phone mockup
+  const previewVideo = useMemo(() => {
+    if (!videos || videos.length === 0) return null;
+    return videos[Math.floor(Math.random() * videos.length)];
+  }, [videos]);
+
+  // Build a YouTube thumbnail URL for the preview
+  const previewThumbnail = useMemo(() => {
+    if (!previewVideo) return null;
+    if (previewVideo.videoType === "youtube") {
+      const ytId = previewVideo.id || previewVideo._id?.replace("fallback-", "");
+      return `https://img.youtube.com/vi/${ytId}/0.jpg`;
+    }
+    if (previewVideo.thumbnailUrl) return previewVideo.thumbnailUrl;
+    return null;
+  }, [previewVideo]);
 
   // Redirect authenticated users straight to /videos
   useEffect(() => {
@@ -83,19 +102,42 @@ const LandingPage = ({ onOpenRegister, onOpenLogin }) => {
           </p>
         </div>
 
-        {/* Phone mockup — decorative, bottom-right */}
-        <div className="landing__phone-mockup">
+        {/* Phone mockup — shows a real video from the feed */}
+        <div
+          className="landing__phone-mockup landing__phone-mockup--interactive"
+          onClick={() => {
+            if (previewVideo) {
+              const videoId = previewVideo._id || previewVideo.id;
+              setVideoById(videoId);
+            }
+            navigate("/videos");
+          }}
+        >
           <div className="landing__phone-frame">
             <div className="landing__phone-screen">
               <div className="landing__phone-content">
-                <div className="landing__phone-video-placeholder">
-                  <span className="landing__phone-play">▶</span>
-                </div>
+                {previewThumbnail ? (
+                  <img
+                    className="landing__phone-thumbnail"
+                    src={previewThumbnail}
+                    alt={previewVideo?.title || "Video preview"}
+                  />
+                ) : (
+                  <div className="landing__phone-video-placeholder">
+                    <span className="landing__phone-play">▶</span>
+                  </div>
+                )}
+                <div className="landing__phone-play-badge">▶</div>
                 <div className="landing__phone-overlay">
                   <span className="landing__phone-title">
-                    How Black Holes Form ⭐
+                    {previewVideo?.title || "Educational Videos"}
                   </span>
-                  <span className="landing__phone-subject">Science</span>
+                  <span className="landing__phone-subject">
+                    {previewVideo?.category
+                      ? previewVideo.category.charAt(0).toUpperCase() +
+                        previewVideo.category.slice(1)
+                      : "Explore"}
+                  </span>
                 </div>
               </div>
             </div>
