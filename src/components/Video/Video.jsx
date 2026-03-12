@@ -248,7 +248,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchCancel}
         >
-          {(isLoading || isVideoSwitching) && (
+          {(isVideoSwitching || (isLoading && videos.length === 0)) && (
             <VideoLoader
               message={
                 isVideoSwitching
