@@ -668,18 +668,18 @@ export const VideoProvider = ({
   const handleWheel = useCallback(
     (e) => {
       e.preventDefault();
-      if (wheelCooldownRef.current) return;
+      if (wheelCooldownRef.current || isVideoSwitching) return;
       wheelCooldownRef.current = true;
       setTimeout(() => {
         wheelCooldownRef.current = false;
-      }, 500);
+      }, 800);
       if (e.deltaY > 0) {
         scrollToVideo("next");
       } else {
         scrollToVideo("previous");
       }
     },
-    [scrollToVideo],
+    [scrollToVideo, isVideoSwitching],
   );
 
   // Show swipe feedback indicator
@@ -741,7 +741,7 @@ export const VideoProvider = ({
 
   const handleTouchEnd = useCallback(
     (event) => {
-      if (!touchStateRef.current.isDragging) return;
+      if (!touchStateRef.current.isDragging || isVideoSwitching) return;
 
       if (touchMoveAnimationFrameRef.current !== null) {
         cancelAnimationFrame(touchMoveAnimationFrameRef.current);
@@ -790,7 +790,7 @@ export const VideoProvider = ({
         currentY: 0,
       };
     },
-    [scrollToVideo],
+    [scrollToVideo, isVideoSwitching],
   );
 
   const handleTouchCancel = useCallback(() => {
