@@ -188,11 +188,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       return;
     }
 
-    // Skip if video is currently switching
-    if (isVideoSwitching) {
-      return;
-    }
-
     // Reset loaded feed ref when switching to non-custom feed
     if (loadedFeedRef.current) {
       loadedFeedRef.current = null;
@@ -216,11 +211,11 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
         processingVideoChange.current = false;
       }, 1000);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     location.search,
     videos.length,
     isFocusedFeed,
-    isVideoSwitching,
     setVideoById,
   ]);
 

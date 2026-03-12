@@ -663,9 +663,16 @@ export const VideoProvider = ({
     );
   }, [currentVideo]);
 
+  const wheelCooldownRef = useRef(false);
+
   const handleWheel = useCallback(
     (e) => {
       e.preventDefault();
+      if (wheelCooldownRef.current) return;
+      wheelCooldownRef.current = true;
+      setTimeout(() => {
+        wheelCooldownRef.current = false;
+      }, 500);
       if (e.deltaY > 0) {
         scrollToVideo("next");
       } else {
@@ -766,19 +773,11 @@ export const VideoProvider = ({
 
       if (isValidSwipe || isBasicSwipe) {
         if (deltaY > 0) {
-          if (currentIndex > 0) {
-            triggerSwipeHaptic("previous", true);
-            scrollToVideo("previous");
-          } else {
-            triggerSwipeHaptic("previous", false);
-          }
+          triggerSwipeHaptic("previous", currentIndex > 0);
+          scrollToVideo("previous");
         } else {
-          if (currentIndex < videos.length - 1) {
-            triggerSwipeHaptic("next", true);
-            scrollToVideo("next");
-          } else {
-            triggerSwipeHaptic("next", false);
-          }
+          triggerSwipeHaptic("next", true);
+          scrollToVideo("next");
         }
       }
 
@@ -791,7 +790,7 @@ export const VideoProvider = ({
         currentY: 0,
       };
     },
-    [currentIndex, videos.length, scrollToVideo],
+    [scrollToVideo],
   );
 
   const handleTouchCancel = useCallback(() => {
