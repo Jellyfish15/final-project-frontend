@@ -27,7 +27,8 @@ export const VideoProvider = ({
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Start muted to guarantee autoplay works
-  const userWantsMutedRef = useRef(false); // Track user's mute preference across videos
+  // Track if user has ever unmuted a video in this session
+  const hasUserUnmutedAnyVideoRef = useRef(false);
   const hasUserInteractedRef = useRef(false); // Track if user has interacted with the page
   const justUnmutedRef = useRef(false); // Prevent unmute tap from also toggling play
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
@@ -359,8 +360,8 @@ export const VideoProvider = ({
         // Ensure isPlaying is true so the sync effect will call play()
         setIsPlaying(true);
 
-        // Restore user's mute preference for the new video
-        setIsMuted(userWantsMutedRef.current);
+        // If user has ever unmuted, unmute all subsequent videos; otherwise, keep muted
+        setIsMuted(!hasUserUnmutedAnyVideoRef.current);
 
         // Switch video immediately — no artificial delay
         setIsVideoSwitching(true);
@@ -557,13 +558,19 @@ export const VideoProvider = ({
 
   const toggleMute = useCallback(() => {
     if (videoRef.current && currentVideo?.videoType !== "youtube") {
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsMuted(videoRef.current.muted);
-      userWantsMutedRef.current = videoRef.current.muted;
+      const newMuted = !videoRef.current.muted;
+      videoRef.current.muted = newMuted;
+      setIsMuted(newMuted);
+      if (!newMuted) {
+        hasUserUnmutedAnyVideoRef.current = true;
+      }
     } else {
       setIsMuted((prev) => {
-        userWantsMutedRef.current = !prev;
-        return !prev;
+        const newMuted = !prev;
+        if (!newMuted) {
+          hasUserUnmutedAnyVideoRef.current = true;
+        }
+        return newMuted;
       });
     }
   }, [currentVideo?.videoType]);
