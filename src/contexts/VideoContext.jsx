@@ -203,6 +203,8 @@ export const VideoProvider = ({
         setIsMuted(false);
         // Set flag so togglePlay ignores this same tap
         justUnmutedRef.current = true;
+        // Set global unmuted so all future videos are unmuted
+        hasUserUnmutedAnyVideoRef.current = true;
         setTimeout(() => {
           justUnmutedRef.current = false;
         }, 300);
