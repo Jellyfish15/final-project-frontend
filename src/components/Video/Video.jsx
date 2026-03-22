@@ -347,7 +347,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     src={currentVideo.videoUrl}
                     autoPlay
                     loop
-                    muted
+                    // muted attribute removed; controlled via isMuted and useEffect
                     playsInline
                     preload="auto"
                     controls={false}
@@ -391,6 +391,15 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       setVideoError(true);
                     }}
                   />
+                  {/* Sync video element's muted property with isMuted prop */}
+                  {/** This effect ensures the video element always matches the context mute state */}
+                  <React.Fragment>
+                    {useEffect(() => {
+                      if (videoRef.current) {
+                        videoRef.current.muted = isMuted;
+                      }
+                    }, [isMuted, videoRef, currentVideo?._id])}
+                  </React.Fragment>
 
                   {/* Fallback when video file fails to load (e.g. server restart wiped files) */}
                   {videoError && (
