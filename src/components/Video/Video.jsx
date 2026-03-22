@@ -211,13 +211,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
         processingVideoChange.current = false;
       }, 1000);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    location.search,
-    videos.length,
-    isFocusedFeed,
-    setVideoById,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, videos.length, isFocusedFeed, setVideoById]);
 
   // Reset processed video ID when component unmounts or URL changes to a non-video page
   useEffect(() => {
@@ -381,7 +376,10 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       // Only toggle play if it's a tap (not a swipe)
                       if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
                         e.preventDefault();
-                        togglePlay();
+                        // Prevent play toggle if this tap was the first-interaction unmute
+                        if (!justUnmutedRef.current) {
+                          togglePlay();
+                        }
                       }
                     }}
                     onError={(e) => {
