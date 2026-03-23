@@ -193,7 +193,7 @@ export const VideoProvider = ({
 
   // Auto-unmute on first user interaction (tap/click anywhere on page)
   useEffect(() => {
-    const handleFirstInteraction = () => {
+    const handleFirstInteraction = (event) => {
       hasUserInteractedRef.current = true;
       // Unmute if user hasn't explicitly chosen mute
       if (!userWantsMutedRef.current) {
@@ -205,22 +205,30 @@ export const VideoProvider = ({
         justUnmutedRef.current = true;
         // Set global unmuted so all future videos are unmuted
         hasUserUnmutedAnyVideoRef.current = true;
+        // Prevent this event from bubbling to video element
+        if (event && typeof event.stopImmediatePropagation === "function") {
+          event.stopImmediatePropagation();
+        } else if (event && typeof event.stopPropagation === "function") {
+          event.stopPropagation();
+        }
         setTimeout(() => {
           justUnmutedRef.current = false;
-        }, 300);
+        }, 500); // Slightly longer to ensure coverage
       }
       document.removeEventListener("touchstart", handleFirstInteraction, true);
       document.removeEventListener("click", handleFirstInteraction, true);
     };
 
-    document.addEventListener("touchstart", handleFirstInteraction, {
-      once: true,
-      capture: true,
-    });
-    document.addEventListener("click", handleFirstInteraction, {
-      once: true,
-      capture: true,
-    });
+    document.addEventListener(
+      "touchstart",
+      handleFirstInteraction,
+      { once: true, capture: true }
+    );
+    document.addEventListener(
+      "click",
+      handleFirstInteraction,
+      { once: true, capture: true }
+    );
 
     return () => {
       document.removeEventListener("touchstart", handleFirstInteraction, true);
