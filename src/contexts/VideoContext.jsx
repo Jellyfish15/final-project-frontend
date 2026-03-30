@@ -440,21 +440,7 @@ export const VideoProvider = ({
     },
     [initialVideos, fetchSingleVideo],
   );
-            setFocusedVideos(updatedVideos);
-            setCurrentIndex(0);
-          }
-
-          setIsVideoSwitching(true);
-          setTimeout(() => {
-            setIsVideoSwitching(false);
-          }, 300);
-        }
-      } catch (error) {
-        // Keep current feed if the fetch fails.
-      }
-    },
-    [initialVideos],
-  );
+// Removed stray/duplicate lines that caused build error.
 
   // Duplicate setVideoById removed. Only the correct, debug-logged version remains above.
 

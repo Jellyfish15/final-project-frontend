@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { authAPI, usersAPI } from "../../services/api";
 
 // Session management constants
@@ -10,7 +17,7 @@ const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 const isTokenExpired = (token) => {
   if (!token) return true;
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    const payload = JSON.parse(atob(token.split(".")[1]));
     return payload.exp * 1000 < Date.now();
   } catch {
     return true;
@@ -24,7 +31,7 @@ const secureStorage = {
       const serialized = JSON.stringify(value);
       localStorage.setItem(key, serialized);
     } catch (e) {
-      console.warn('Storage write failed:', e);
+      console.warn("Storage write failed:", e);
     }
   },
   get: (key) => {
