@@ -188,25 +188,17 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       return;
     }
 
-    // Reset loaded feed ref when switching to non-custom feed
-    if (loadedFeedRef.current) {
-      loadedFeedRef.current = null;
-    }
+    // Always reset processedVideoIdRef so effect runs on every navigation
+    processedVideoIdRef.current = null;
 
-    // Only process if this is a NEW videoId that we haven't processed before
     if (
       videoId &&
       videos.length > 0 &&
-      !processingVideoChange.current &&
-      videoId !== processedVideoIdRef.current
+      !processingVideoChange.current
     ) {
       processingVideoChange.current = true;
       processedVideoIdRef.current = videoId;
-
-      // Create focused feed when navigating from thumbnail click
       setVideoById(videoId, true);
-
-      // Reset the flag after a short delay
       setTimeout(() => {
         processingVideoChange.current = false;
       }, 1000);

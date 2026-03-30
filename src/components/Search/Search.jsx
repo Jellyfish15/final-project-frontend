@@ -231,12 +231,11 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
   };
 
   const handleVideoClick = async (video) => {
-    // Navigate with similar videos feed for uploaded videos
+    // Always set the video by ID and create a focused feed before navigating
+    setVideoById(video.id, true);
     if (video.videoType === "uploaded") {
       navigate(`/videos?videoId=${video.id}&feedType=similar`);
     } else {
-      // For YouTube videos, use regular navigation
-      setVideoById(video.id, true);
       navigate(`/videos?videoId=${video.id}`);
     }
   };
