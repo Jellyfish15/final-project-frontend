@@ -456,57 +456,7 @@ export const VideoProvider = ({
     [initialVideos],
   );
 
-  const setVideoById = useCallback(
-    async (videoId, createFocusedFeed = false) => {
-      const videoIndex = initialVideos.findIndex(
-        (video) => video._id === videoId || video.id === videoId,
-      );
-
-      if (videoIndex !== -1) {
-        if (createFocusedFeed) {
-          // Create a focused feed starting with the clicked video, then add random cached videos
-          const clickedVideo = initialVideos[videoIndex];
-
-          // Start with just the clicked video
-          let focusedVideosFeed = [clickedVideo];
-
-          // Fetch random videos from cache to fill the feed
-          try {
-            const response = await videosAPI.getRandomCachedVideos(50);
-
-            if (response?.videos && response.videos.length > 0) {
-              // Filter out the clicked video
-              const additionalVideos = response.videos.filter(
-                (v) => (v._id || v.id) !== videoId,
-              );
-
-              // Add the random videos after the clicked video
-              focusedVideosFeed = [clickedVideo, ...additionalVideos];
-            }
-          } catch (error) {
-            // Continue with just the clicked video if fetch fails
-          }
-
-          // Set the focused feed with clicked video at index 0
-          setFocusedVideos(focusedVideosFeed);
-          setCurrentIndex(0);
-        } else {
-          // Clear focused feed and use full list
-          setFocusedVideos(null);
-          setCurrentIndex(videoIndex);
-        }
-
-        setIsVideoSwitching(true);
-        setTimeout(() => {
-          setIsVideoSwitching(false);
-        }, 300);
-      } else {
-        // Try to fetch the specific video from the API
-        fetchSingleVideo(videoId, createFocusedFeed);
-      }
-    },
-    [initialVideos, fetchSingleVideo],
-  );
+  // Duplicate setVideoById removed. Only the correct, debug-logged version remains above.
 
   const resetToFullFeed = useCallback(() => {
     setFocusedVideos(null);

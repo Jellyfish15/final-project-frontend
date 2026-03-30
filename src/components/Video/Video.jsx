@@ -191,15 +191,22 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     // Always reset processedVideoIdRef so effect runs on every navigation
     processedVideoIdRef.current = null;
 
-    console.log('[Video.jsx effect] videoId:', videoId, 'videos.length:', videos.length, 'isFocusedFeed:', isFocusedFeed, 'currentIndex:', currentIndex, 'focusedVideos:', focusedVideos ? focusedVideos.map(v => v._id || v.id) : null);
-    if (
-      videoId &&
-      videos.length > 0 &&
-      !processingVideoChange.current
-    ) {
+    console.log(
+      "[Video.jsx effect] videoId:",
+      videoId,
+      "videos.length:",
+      videos.length,
+      "isFocusedFeed:",
+      isFocusedFeed,
+      "currentIndex:",
+      currentIndex,
+      "focusedVideos:",
+      focusedVideos ? focusedVideos.map((v) => v._id || v.id) : null,
+    );
+    if (videoId && videos.length > 0 && !processingVideoChange.current) {
       processingVideoChange.current = true;
       processedVideoIdRef.current = videoId;
-      console.log('[Video.jsx effect] Calling setVideoById with', videoId);
+      console.log("[Video.jsx effect] Calling setVideoById with", videoId);
       setVideoById(videoId, true);
       setTimeout(() => {
         processingVideoChange.current = false;
