@@ -400,43 +400,46 @@ export const VideoProvider = ({
   );
 
   // Function to fetch a single video by ID and add it to the context
-  const fetchSingleVideo = useCallback(
+  const setVideoById = useCallback(
     async (videoId, createFocusedFeed = false) => {
-      try {
-        const response = await videosAPI.getVideo(videoId);
-
-        if (response.success && response.video) {
-          const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
-          let video = response.video;
-
-          if (video.id && !video._id) {
-            video._id = video.id;
+      console.log('[setVideoById] Called with videoId:', videoId, 'createFocusedFeed:', createFocusedFeed);
+      const videoIndex = initialVideos.findIndex(
+        (video) => video._id === videoId || video.id === videoId,
+      );
+      console.log('[setVideoById] videoIndex in initialVideos:', videoIndex);
+      if (videoIndex !== -1) {
+        if (createFocusedFeed) {
+          const clickedVideo = initialVideos[videoIndex];
+          let focusedVideosFeed = [clickedVideo];
+          try {
+            const response = await videosAPI.getRandomCachedVideos(50);
+            if (response?.videos && response.videos.length > 0) {
+              const additionalVideos = response.videos.filter(
+                (v) => (v._id || v.id) !== videoId,
+              );
+              focusedVideosFeed = [clickedVideo, ...additionalVideos];
+            }
+          } catch (error) {
+            // Continue with just the clicked video if fetch fails
           }
-
-          if (video.videoUrl && !video.videoUrl.startsWith("http")) {
-            const videoUrl = video.videoUrl.startsWith("/api/")
-              ? video.videoUrl.replace("/api/", "/")
-              : video.videoUrl;
-            video.videoUrl = `${backendURL}${videoUrl}`;
-          }
-
-          if (video.thumbnailUrl && !video.thumbnailUrl.startsWith("http")) {
-            const thumbnailUrl = video.thumbnailUrl.startsWith("/api/")
-              ? video.thumbnailUrl.replace("/api/", "/")
-              : video.thumbnailUrl;
-            video.thumbnailUrl = `${backendURL}${thumbnailUrl}`;
-          }
-
-          video.videoType = "uploaded";
-
-          if (createFocusedFeed) {
-            const contextVideos = initialVideos.slice(0, 9);
-            const focusedVideosFeed = [video, ...contextVideos];
-
-            setFocusedVideos(focusedVideosFeed);
-            setCurrentIndex(0);
-          } else {
-            const updatedVideos = [video, ...initialVideos];
+          console.log('[setVideoById] Setting focusedVideosFeed (length):', focusedVideosFeed.length, 'First video:', focusedVideosFeed[0]);
+          setFocusedVideos(focusedVideosFeed);
+          setCurrentIndex(0);
+        } else {
+          setFocusedVideos(null);
+          setCurrentIndex(videoIndex);
+        }
+        setIsVideoSwitching(true);
+        setTimeout(() => {
+          setIsVideoSwitching(false);
+        }, 300);
+      } else {
+        console.log('[setVideoById] videoId not found in initialVideos, calling fetchSingleVideo');
+        fetchSingleVideo(videoId, createFocusedFeed);
+      }
+    },
+    [initialVideos, fetchSingleVideo],
+  );
             setFocusedVideos(updatedVideos);
             setCurrentIndex(0);
           }
@@ -524,6 +527,7 @@ export const VideoProvider = ({
       }
     }
 
+    console.log('[setCustomFeed] Setting custom feed. uniqueVideos.length:', uniqueVideos.length, 'startIndex:', startIndex, 'First video:', uniqueVideos[0]);
     setFocusedVideos(uniqueVideos);
     setCurrentIndex(startIndex);
     setIsVideoSwitching(true);
