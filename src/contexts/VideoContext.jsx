@@ -1,4 +1,82 @@
-  // Restore fetchSingleVideo so setVideoById can call it
+// Restore fetchSingleVideo so setVideoById can call it
+const fetchSingleVideo = useCallback(
+  async (videoId, createFocusedFeed = false) => {
+    try {
+      const response = await videosAPI.getVideo(videoId);
+
+      if (response.success && response.video) {
+        const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
+        let video = response.video;
+
+        if (video.id && !video._id) {
+          video._id = video.id;
+        }
+
+        if (video.videoUrl && !video.videoUrl.startsWith("http")) {
+          const videoUrl = video.videoUrl.startsWith("/api/")
+            ? video.videoUrl.replace("/api/", "/")
+            : video.videoUrl;
+          video.videoUrl = `${backendURL}${videoUrl}`;
+        }
+
+        if (video.thumbnailUrl && !video.thumbnailUrl.startsWith("http")) {
+          const thumbnailUrl = video.thumbnailUrl.startsWith("/api/")
+            ? video.thumbnailUrl.replace("/api/", "/")
+            : video.thumbnailUrl;
+          video.thumbnailUrl = `${backendURL}${thumbnailUrl}`;
+        }
+
+        video.videoType = "uploaded";
+
+        if (createFocusedFeed) {
+          const contextVideos = initialVideos.slice(0, 9);
+          const focusedVideosFeed = [video, ...contextVideos];
+
+          setFocusedVideos(focusedVideosFeed);
+          setCurrentIndex(0);
+        } else {
+          const updatedVideos = [video, ...initialVideos];
+          setFocusedVideos(updatedVideos);
+          setCurrentIndex(0);
+        }
+
+        setIsVideoSwitching(true);
+        setTimeout(() => {
+          setIsVideoSwitching(false);
+        }, 300);
+      }
+    } catch (error) {
+      // Keep current feed if the fetch fails.
+    }
+  },
+  [initialVideos],
+);
+import React, {
+  createContext,
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
+
+import { triggerSwipeHaptic } from "../utils/hapticFeedback";
+// touchDebug import removed — debug logging disabled for performance
+import userInteractionService from "../services/userInteractionService";
+import performanceOptimizationService from "../services/performanceOptimizationService";
+import { videosAPI, engagementAPI, feedAPI } from "../services/api";
+import { API_BASE_URL } from "../services/config";
+
+const VideoContext = createContext();
+
+export const VideoProvider = ({
+  children,
+  videos: initialVideos = [],
+  isLoadingVideos = false,
+  videosError = null,
+  refreshVideos,
+}) => {
+  // Restore fetchSingleVideo so setVideoById can call it, now in correct scope
   const fetchSingleVideo = useCallback(
     async (videoId, createFocusedFeed = false) => {
       try {
@@ -51,31 +129,6 @@
     },
     [initialVideos],
   );
-import React, {
-  createContext,
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
-  useMemo,
-} from "react";
-
-import { triggerSwipeHaptic } from "../utils/hapticFeedback";
-// touchDebug import removed — debug logging disabled for performance
-import userInteractionService from "../services/userInteractionService";
-import performanceOptimizationService from "../services/performanceOptimizationService";
-import { videosAPI, engagementAPI, feedAPI } from "../services/api";
-import { API_BASE_URL } from "../services/config";
-
-const VideoContext = createContext();
-
-export const VideoProvider = ({
-  children,
-  videos: initialVideos = [],
-  isLoadingVideos = false,
-  videosError = null,
-  refreshVideos,
-}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
@@ -272,16 +325,14 @@ export const VideoProvider = ({
       document.removeEventListener("click", handleFirstInteraction, true);
     };
 
-    document.addEventListener(
-      "touchstart",
-      handleFirstInteraction,
-      { once: true, capture: true }
-    );
-    document.addEventListener(
-      "click",
-      handleFirstInteraction,
-      { once: true, capture: true }
-    );
+    document.addEventListener("touchstart", handleFirstInteraction, {
+      once: true,
+      capture: true,
+    });
+    document.addEventListener("click", handleFirstInteraction, {
+      once: true,
+      capture: true,
+    });
 
     return () => {
       document.removeEventListener("touchstart", handleFirstInteraction, true);
@@ -455,11 +506,16 @@ export const VideoProvider = ({
   // Function to fetch a single video by ID and add it to the context
   const setVideoById = useCallback(
     async (videoId, createFocusedFeed = false) => {
-      console.log('[setVideoById] Called with videoId:', videoId, 'createFocusedFeed:', createFocusedFeed);
+      console.log(
+        "[setVideoById] Called with videoId:",
+        videoId,
+        "createFocusedFeed:",
+        createFocusedFeed,
+      );
       const videoIndex = initialVideos.findIndex(
         (video) => video._id === videoId || video.id === videoId,
       );
-      console.log('[setVideoById] videoIndex in initialVideos:', videoIndex);
+      console.log("[setVideoById] videoIndex in initialVideos:", videoIndex);
       if (videoIndex !== -1) {
         if (createFocusedFeed) {
           const clickedVideo = initialVideos[videoIndex];
@@ -475,7 +531,12 @@ export const VideoProvider = ({
           } catch (error) {
             // Continue with just the clicked video if fetch fails
           }
-          console.log('[setVideoById] Setting focusedVideosFeed (length):', focusedVideosFeed.length, 'First video:', focusedVideosFeed[0]);
+          console.log(
+            "[setVideoById] Setting focusedVideosFeed (length):",
+            focusedVideosFeed.length,
+            "First video:",
+            focusedVideosFeed[0],
+          );
           setFocusedVideos(focusedVideosFeed);
           setCurrentIndex(0);
         } else {
@@ -487,13 +548,15 @@ export const VideoProvider = ({
           setIsVideoSwitching(false);
         }, 300);
       } else {
-        console.log('[setVideoById] videoId not found in initialVideos, calling fetchSingleVideo');
+        console.log(
+          "[setVideoById] videoId not found in initialVideos, calling fetchSingleVideo",
+        );
         fetchSingleVideo(videoId, createFocusedFeed);
       }
     },
     [initialVideos, fetchSingleVideo],
   );
-// Removed stray/duplicate lines that caused build error.
+  // Removed stray/duplicate lines that caused build error.
 
   // Duplicate setVideoById removed. Only the correct, debug-logged version remains above.
 
@@ -516,7 +579,14 @@ export const VideoProvider = ({
       }
     }
 
-    console.log('[setCustomFeed] Setting custom feed. uniqueVideos.length:', uniqueVideos.length, 'startIndex:', startIndex, 'First video:', uniqueVideos[0]);
+    console.log(
+      "[setCustomFeed] Setting custom feed. uniqueVideos.length:",
+      uniqueVideos.length,
+      "startIndex:",
+      startIndex,
+      "First video:",
+      uniqueVideos[0],
+    );
     setFocusedVideos(uniqueVideos);
     setCurrentIndex(startIndex);
     setIsVideoSwitching(true);
