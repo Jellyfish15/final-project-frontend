@@ -20,6 +20,8 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
 
   const loadMoreSentinelRef = useRef(null);
   const featuredVideoIdsRef = useRef(new Set());
+  const loadMoreFailCountRef = useRef(0);
+  const loadMoreCooldownRef = useRef(false);
 
   const navigate = useNavigate();
   const { videos } = useVideo();
@@ -98,8 +100,9 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
 
   // Load more featured videos for infinite scroll
   const loadMoreFeaturedVideos = useCallback(async () => {
-    if (isLoadingMore) return;
+    if (isLoadingMore || loadMoreCooldownRef.current || loadMoreFailCountRef.current >= 3) return;
     setIsLoadingMore(true);
+    loadMoreCooldownRef.current = true;
     try {
       const response = await videosAPI.getRandomCachedVideos(30);
       if (response?.videos && response.videos.length > 0) {
@@ -112,12 +115,17 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
             featuredVideoIdsRef.current.add(v._id || v.id),
           );
           setFeaturedVideos((prev) => [...prev, ...newVideos]);
+          loadMoreFailCountRef.current = 0;
         }
       }
     } catch (error) {
-      // Silently fail - user can keep scrolling
+      loadMoreFailCountRef.current += 1;
     } finally {
       setIsLoadingMore(false);
+      // Cooldown: wait 2s before allowing another load
+      setTimeout(() => {
+        loadMoreCooldownRef.current = false;
+      }, 2000);
     }
   }, [isLoadingMore, processThumbnail]);
 
@@ -128,7 +136,13 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && featuredVideos.length > 0 && !searchTerm.trim()) {
+        if (
+          entries[0].isIntersecting &&
+          featuredVideos.length > 0 &&
+          !searchTerm.trim() &&
+          !loadMoreCooldownRef.current &&
+          loadMoreFailCountRef.current < 3
+        ) {
           loadMoreFeaturedVideos();
         }
       },
