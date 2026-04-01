@@ -183,35 +183,21 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     // Skip if it's a custom feed (handled by previous useEffect)
     if (feedType) return;
 
-    // Skip if we're already in a focused feed
-    if (isFocusedFeed) {
-      return;
-    }
+    // Nothing to do without a videoId
+    if (!videoId) return;
 
-    // Always reset processedVideoIdRef so effect runs on every navigation
-    processedVideoIdRef.current = null;
+    // Skip if already processing or already processed this exact videoId
+    if (processingVideoChange.current) return;
+    if (processedVideoIdRef.current === videoId) return;
 
-    console.log(
-      "[Video.jsx effect] videoId:",
-      videoId,
-      "videos.length:",
-      videos.length,
-      "isFocusedFeed:",
-      isFocusedFeed,
-      "currentIndex:",
-      currentIndex,
-    );
-    if (videoId && videos.length > 0 && !processingVideoChange.current) {
-      processingVideoChange.current = true;
-      processedVideoIdRef.current = videoId;
-      console.log("[Video.jsx effect] Calling setVideoById with", videoId);
-      setVideoById(videoId, true);
-      setTimeout(() => {
-        processingVideoChange.current = false;
-      }, 1000);
-    }
+    processingVideoChange.current = true;
+    processedVideoIdRef.current = videoId;
+    setVideoById(videoId, true);
+    setTimeout(() => {
+      processingVideoChange.current = false;
+    }, 1000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, videos.length, isFocusedFeed, setVideoById]);
+  }, [location.search, setVideoById]);
 
   // Reset processed video ID when component unmounts or URL changes to a non-video page
   useEffect(() => {

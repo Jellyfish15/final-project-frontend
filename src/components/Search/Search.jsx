@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVideo } from "../../contexts/useVideo";
 import { searchYouTubeVideos } from "../../../services/youtubeService";
+import { videosAPI } from "../../services/api";
 import { API_BASE_URL } from "../../services/config";
 import SearchIcon from "../../images/search.svg";
 import VideoSidebar from "../VideoSidebar/VideoSidebar";
@@ -14,112 +15,129 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [featuredVideos, setFeaturedVideos] = useState([]);
   const [isLoadingFeatured, setIsLoadingFeatured] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
+  const loadMoreSentinelRef = useRef(null);
+  const featuredVideoIdsRef = useRef(new Set());
+
   const navigate = useNavigate();
-  const { videos, setVideoById } = useVideo();
+  const { videos } = useVideo();
 
   const searchInputRef = useRef(null);
+
+  // Helper: process thumbnail URL for a video
+  const processThumbnail = useCallback((video) => {
+    const processedVideo = { ...video };
+    let thumbnailUrl = video.thumbnailUrl;
+
+    if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
+      const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
+      thumbnailUrl = thumbnailUrl.startsWith("/api/")
+        ? thumbnailUrl.replace("/api/", "/")
+        : thumbnailUrl;
+      thumbnailUrl = `${backendURL}${thumbnailUrl}`;
+    }
+
+    if (!thumbnailUrl) {
+      thumbnailUrl =
+        video.thumbnail ||
+        video.thumbnails?.medium?.url ||
+        video.thumbnails?.default?.url ||
+        video.snippet?.thumbnails?.medium?.url ||
+        video.snippet?.thumbnails?.default?.url;
+    }
+
+    processedVideo.thumbnailUrl = thumbnailUrl;
+    return processedVideo;
+  }, []);
 
   // Load featured videos for the empty state
   const loadFeaturedVideos = useCallback(async () => {
     setIsLoadingFeatured(true);
     try {
-      console.log("Total videos available in context:", videos?.length || 0);
-
       let selectedVideos = [];
-
-      // Start with uploaded videos from context
       const uploadedVideos = videos || [];
       const uploadedCount = uploadedVideos.length;
-
-      // Calculate how many YouTube videos we need
       const youtubeNeeded = Math.max(0, 20 - uploadedCount);
 
-      console.log(
-        `Using ${uploadedCount} uploaded videos, loading ${youtubeNeeded} from YouTube...`,
-      );
-
-      // Load additional videos from YouTube Shorts if needed
       if (youtubeNeeded > 0) {
         try {
-          console.log(`Loading ${youtubeNeeded} educational YouTube Shorts...`);
           const youtubeResults = await searchYouTubeVideos(
             "educational quick lesson",
             youtubeNeeded,
           );
-
           if (youtubeResults && youtubeResults.length > 0) {
-            console.log("Loaded YouTube Shorts:", youtubeResults.length);
-            // Combine uploaded videos first, then YouTube Shorts
             selectedVideos = [...uploadedVideos, ...youtubeResults];
           } else {
-            // If YouTube fails, just use uploaded videos
-            console.log(
-              "YouTube Shorts load failed, using only uploaded videos",
-            );
             selectedVideos = uploadedVideos;
           }
         } catch (youtubeError) {
-          console.error("Failed to load YouTube Shorts:", youtubeError);
-          // Fallback to uploaded videos only
           selectedVideos = uploadedVideos;
         }
       } else {
-        // We have 20 or more uploaded videos, just use those
         selectedVideos = uploadedVideos.slice(0, 20);
       }
 
-      // Process thumbnail URLs for each video
-      const processedVideos = selectedVideos.map((video) => {
-        const processedVideo = { ...video };
+      const processedVideos = selectedVideos.map(processThumbnail);
 
-        // Process thumbnail URL similar to App.jsx logic
-        let thumbnailUrl = video.thumbnailUrl;
-
-        if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
-          const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
-          thumbnailUrl = thumbnailUrl.startsWith("/api/")
-            ? thumbnailUrl.replace("/api/", "/")
-            : thumbnailUrl;
-          thumbnailUrl = `${backendURL}${thumbnailUrl}`;
-        }
-
-        // Also try other possible thumbnail properties
-        if (!thumbnailUrl) {
-          thumbnailUrl =
-            video.thumbnail ||
-            video.thumbnails?.medium?.url ||
-            video.thumbnails?.default?.url ||
-            video.snippet?.thumbnails?.medium?.url ||
-            video.snippet?.thumbnails?.default?.url;
-        }
-
-        processedVideo.thumbnailUrl = thumbnailUrl;
-
-        return processedVideo;
-      });
-
-      // Debug: Log the video structure to see available thumbnail properties
-      console.log("Featured videos data structure:", processedVideos[0]);
-      console.log(
-        "Available properties:",
-        Object.keys(processedVideos[0] || {}),
-      );
-      console.log("Final thumbnail URL:", processedVideos[0]?.thumbnailUrl);
-      console.log("Total featured videos loaded:", processedVideos.length);
+      // Track IDs for deduplication when loading more
+      const idSet = new Set();
+      processedVideos.forEach((v) => idSet.add(v._id || v.id));
+      featuredVideoIdsRef.current = idSet;
 
       setFeaturedVideos(processedVideos);
     } catch (error) {
-      console.error("Failed to load featured videos:", error);
-      // If all else fails, use some sample videos from context
       if (videos && videos.length > 0) {
         setFeaturedVideos(videos.slice(0, 6));
       }
     } finally {
       setIsLoadingFeatured(false);
     }
-  }, [videos]);
+  }, [videos, processThumbnail]);
+
+  // Load more featured videos for infinite scroll
+  const loadMoreFeaturedVideos = useCallback(async () => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const response = await videosAPI.getRandomCachedVideos(30);
+      if (response?.videos && response.videos.length > 0) {
+        const newVideos = response.videos
+          .filter((v) => !featuredVideoIdsRef.current.has(v._id || v.id))
+          .map(processThumbnail);
+
+        if (newVideos.length > 0) {
+          newVideos.forEach((v) =>
+            featuredVideoIdsRef.current.add(v._id || v.id),
+          );
+          setFeaturedVideos((prev) => [...prev, ...newVideos]);
+        }
+      }
+    } catch (error) {
+      // Silently fail - user can keep scrolling
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, processThumbnail]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && featuredVideos.length > 0 && !searchTerm.trim()) {
+          loadMoreFeaturedVideos();
+        }
+      },
+      { rootMargin: "400px" },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [featuredVideos.length, loadMoreFeaturedVideos, searchTerm]);
 
   // Load recent searches and featured videos on component mount
   useEffect(() => {
@@ -230,13 +248,12 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     performSearch(suggestion);
   };
 
-  const handleVideoClick = async (video) => {
-    // Always set the video by ID and create a focused feed before navigating
-    setVideoById(video.id, true);
+  const handleVideoClick = (video) => {
+    const videoId = video._id || video.id;
     if (video.videoType === "uploaded") {
-      navigate(`/videos?videoId=${video.id}&feedType=similar`);
+      navigate(`/videos?videoId=${videoId}&feedType=similar`);
     } else {
-      navigate(`/videos?videoId=${video.id}`);
+      navigate(`/videos?videoId=${videoId}`);
     }
   };
 
@@ -300,7 +317,6 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
       ) : featuredVideos.length > 0 ? (
         <div className="search__featured-section">
           <h2 className="search__explore-title">Discover & Learn</h2>
-          {console.log("Rendering grid with videos:", featuredVideos.length)}
           <div className="search__featured-instagram-grid">
             {featuredVideos.map((video, index) => {
               // Pattern: 5 videos per logical row (4 squares + 1 vertical)
@@ -350,6 +366,14 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
                 </div>
               );
             })}
+          </div>
+          {/* Infinite scroll sentinel */}
+          <div ref={loadMoreSentinelRef} className="search__load-more-sentinel">
+            {isLoadingMore && (
+              <div className="search__loading-more">
+                <div className="search__loading-spinner">⏳</div>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

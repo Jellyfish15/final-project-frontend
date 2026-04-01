@@ -697,6 +697,19 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
+/* Infinite scroll sentinel */
+.search__load-more-sentinel {
+  width: 100%;
+  min-height: 1px;
+}
+
+.search__loading-more {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 0;
+}
+
 .search__featured-duration {
   position: absolute;
   bottom: 8px;

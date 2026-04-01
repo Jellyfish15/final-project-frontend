@@ -450,16 +450,9 @@ export const VideoProvider = ({
 
   const setVideoById = useCallback(
     async (videoId, createFocusedFeed = false) => {
-      console.log(
-        "[setVideoById] Called with videoId:",
-        videoId,
-        "createFocusedFeed:",
-        createFocusedFeed,
-      );
       const videoIndex = initialVideos.findIndex(
         (video) => video._id === videoId || video.id === videoId,
       );
-      console.log("[setVideoById] videoIndex in initialVideos:", videoIndex);
       if (videoIndex !== -1) {
         if (createFocusedFeed) {
           const clickedVideo = initialVideos[videoIndex];
@@ -475,12 +468,6 @@ export const VideoProvider = ({
           } catch (error) {
             // Continue with just the clicked video if fetch fails
           }
-          console.log(
-            "[setVideoById] Setting focusedVideosFeed (length):",
-            focusedVideosFeed.length,
-            "First video:",
-            focusedVideosFeed[0],
-          );
           setFocusedVideos(focusedVideosFeed);
           setCurrentIndex(0);
         } else {
@@ -492,18 +479,11 @@ export const VideoProvider = ({
           setIsVideoSwitching(false);
         }, 300);
       } else {
-        console.log(
-          "[setVideoById] videoId not found in initialVideos, calling fetchSingleVideo",
-        );
         fetchSingleVideo(videoId, createFocusedFeed);
       }
     },
     [initialVideos, fetchSingleVideo],
   );
-  // Removed stray/duplicate lines that caused build error.
-
-  // Duplicate setVideoById removed. Only the correct, debug-logged version remains above.
-
   const resetToFullFeed = useCallback(() => {
     setFocusedVideos(null);
     setCurrentIndex(0);
@@ -523,14 +503,6 @@ export const VideoProvider = ({
       }
     }
 
-    console.log(
-      "[setCustomFeed] Setting custom feed. uniqueVideos.length:",
-      uniqueVideos.length,
-      "startIndex:",
-      startIndex,
-      "First video:",
-      uniqueVideos[0],
-    );
     setFocusedVideos(uniqueVideos);
     setCurrentIndex(startIndex);
     setIsVideoSwitching(true);
