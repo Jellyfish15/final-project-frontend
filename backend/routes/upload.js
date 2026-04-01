@@ -123,7 +123,18 @@ const uploadAvatar = multer({
 router.post(
   "/temp-video",
   auth,
-  uploadVideo.single("video"),
+  (req, res, next) => {
+    uploadVideo.single("video")(req, res, (err) => {
+      if (err) {
+        console.error("[Upload] Multer/Cloudinary upload error:", err);
+        return res.status(500).json({
+          success: false,
+          message: `Upload failed: ${err.message}`,
+        });
+      }
+      next();
+    });
+  },
   async (req, res) => {
     try {
       if (!req.file) {
@@ -141,6 +152,7 @@ router.post(
         size: req.file.size,
         originalname: req.file.originalname,
       });
+      console.log("[Upload] Cloudinary configured:", isCloudinaryConfigured());
 
       // ── Cloudinary path: video already uploaded, generate thumbnails via URL transforms ──
       if (

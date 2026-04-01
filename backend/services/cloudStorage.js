@@ -38,11 +38,29 @@ if (isCloudinaryConfigured()) {
       api_secret: process.env.CLOUDINARY_API_SECRET,
     });
   }
-  console.log("☁️  Cloudinary configured — uploads will go to the cloud");
+  // Verify the configuration is actually valid
+  const cfg = cloudinary.config();
+  if (!cfg.cloud_name || !cfg.api_key || !cfg.api_secret) {
+    console.error(
+      "⚠️  Cloudinary env vars present but config incomplete — cloud_name:",
+      !!cfg.cloud_name,
+      "api_key:",
+      !!cfg.api_key,
+      "api_secret:",
+      !!cfg.api_secret,
+    );
+  } else {
+    console.log("☁️  Cloudinary configured — uploads will go to the cloud");
+  }
 } else {
   console.log(
     "📁 Cloudinary not configured — uploads will use local disk storage",
   );
+  if (process.env.RENDER) {
+    console.log(
+      "   To enable Cloudinary on Render, set USE_CLOUDINARY=true and CLOUDINARY_URL (or CLOUDINARY_CLOUD_NAME + CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET) in the Render dashboard",
+    );
+  }
 }
 
 // ── Local storage paths (fallback) ─────────────

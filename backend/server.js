@@ -274,12 +274,14 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
+  const { isCloudinaryConfigured } = require("./services/cloudStorage");
   res.json({
     status: dbReady ? "OK" : "WARMING_UP",
     dbReady,
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
     uptime: process.uptime(),
+    cloudinary: isCloudinaryConfigured(),
   });
 });
 
