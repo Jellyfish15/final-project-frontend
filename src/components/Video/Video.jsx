@@ -200,8 +200,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
       isFocusedFeed,
       "currentIndex:",
       currentIndex,
-      "focusedVideos:",
-      focusedVideos ? focusedVideos.map((v) => v._id || v.id) : null,
     );
     if (videoId && videos.length > 0 && !processingVideoChange.current) {
       processingVideoChange.current = true;
