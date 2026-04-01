@@ -100,7 +100,12 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
 
   // Load more featured videos for infinite scroll
   const loadMoreFeaturedVideos = useCallback(async () => {
-    if (isLoadingMore || loadMoreCooldownRef.current || loadMoreFailCountRef.current >= 3) return;
+    if (
+      isLoadingMore ||
+      loadMoreCooldownRef.current ||
+      loadMoreFailCountRef.current >= 3
+    )
+      return;
     setIsLoadingMore(true);
     loadMoreCooldownRef.current = true;
     try {

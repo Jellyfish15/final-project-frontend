@@ -66,6 +66,9 @@ export const VideoProvider = ({
     const e = engagementRef.current;
     if (!e.videoId || !e.startTime) return;
 
+    // Skip engagement tracking for fallback/non-DB videos
+    if (typeof e.videoId === "string" && e.videoId.startsWith("fallback-")) return;
+
     const vid = currentVideoRef.current;
     const watchTime = (Date.now() - e.startTime) / 1000; // seconds
     const totalDuration = vid?.duration || 0;
