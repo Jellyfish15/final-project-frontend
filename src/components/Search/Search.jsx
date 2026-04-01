@@ -270,9 +270,9 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
   const handleVideoClick = (video) => {
     const videoId = video._id || video.id;
     if (video.videoType === "uploaded") {
-      navigate(`/videos?videoId=${videoId}&feedType=similar`);
+      navigate(`/videos?videoId=${videoId}&feedType=similar`, { state: { video } });
     } else {
-      navigate(`/videos?videoId=${videoId}`);
+      navigate(`/videos?videoId=${videoId}`, { state: { video } });
     }
   };
 

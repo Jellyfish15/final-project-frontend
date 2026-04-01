@@ -67,7 +67,8 @@ export const VideoProvider = ({
     if (!e.videoId || !e.startTime) return;
 
     // Skip engagement tracking for fallback/non-DB videos
-    if (typeof e.videoId === "string" && e.videoId.startsWith("fallback-")) return;
+    if (typeof e.videoId === "string" && e.videoId.startsWith("fallback-"))
+      return;
 
     const vid = currentVideoRef.current;
     const watchTime = (Date.now() - e.startTime) / 1000; // seconds
@@ -452,9 +453,12 @@ export const VideoProvider = ({
   );
 
   const setVideoById = useCallback(
-    async (videoId, createFocusedFeed = false) => {
+    async (videoId, createFocusedFeed = false, fallbackVideo = null) => {
       const videoIndex = initialVideos.findIndex(
-        (video) => video._id === videoId || video.id === videoId,
+        (video) =>
+          video._id === videoId ||
+          video.id === videoId ||
+          video.videoId === videoId,
       );
       if (videoIndex !== -1) {
         if (createFocusedFeed) {
@@ -477,6 +481,32 @@ export const VideoProvider = ({
           setFocusedVideos(null);
           setCurrentIndex(videoIndex);
         }
+        setIsVideoSwitching(true);
+        setTimeout(() => {
+          setIsVideoSwitching(false);
+        }, 300);
+      } else if (fallbackVideo && createFocusedFeed) {
+        // Video not in initialVideos — use the passed video object directly
+        const video = {
+          ...fallbackVideo,
+          _id: fallbackVideo._id || fallbackVideo.id || videoId,
+          videoUrl: fallbackVideo.videoUrl || `https://www.youtube.com/embed/${videoId}`,
+          videoType: fallbackVideo.videoType || 'youtube',
+        };
+        let focusedVideosFeed = [video];
+        try {
+          const response = await videosAPI.getRandomCachedVideos(50);
+          if (response?.videos && response.videos.length > 0) {
+            const additionalVideos = response.videos.filter(
+              (v) => (v._id || v.id) !== videoId && (v._id || v.id) !== video._id,
+            );
+            focusedVideosFeed = [video, ...additionalVideos];
+          }
+        } catch (error) {
+          // Continue with just the clicked video if fetch fails
+        }
+        setFocusedVideos(focusedVideosFeed);
+        setCurrentIndex(0);
         setIsVideoSwitching(true);
         setTimeout(() => {
           setIsVideoSwitching(false);

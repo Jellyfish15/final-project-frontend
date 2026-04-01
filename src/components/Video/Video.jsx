@@ -192,7 +192,8 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
 
     processingVideoChange.current = true;
     processedVideoIdRef.current = videoId;
-    setVideoById(videoId, true);
+    const clickedVideo = location.state?.video || null;
+    setVideoById(videoId, true, clickedVideo);
     setTimeout(() => {
       processingVideoChange.current = false;
     }, 1000);
