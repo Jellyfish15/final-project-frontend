@@ -369,8 +369,8 @@ export const VideoProvider = ({
         // Ensure isPlaying is true so the sync effect will call play()
         setIsPlaying(true);
 
-        // If user has ever unmuted, unmute all subsequent videos; otherwise, keep muted
-        setIsMuted(!hasUserUnmutedAnyVideoRef.current);
+        // Persist the user's mute preference across videos (TikTok behavior)
+        setIsMuted(userWantsMutedRef.current || !hasUserUnmutedAnyVideoRef.current);
 
         // Switch video immediately — no artificial delay
         setIsVideoSwitching(true);
@@ -490,15 +490,18 @@ export const VideoProvider = ({
         const video = {
           ...fallbackVideo,
           _id: fallbackVideo._id || fallbackVideo.id || videoId,
-          videoUrl: fallbackVideo.videoUrl || `https://www.youtube.com/embed/${videoId}`,
-          videoType: fallbackVideo.videoType || 'youtube',
+          videoUrl:
+            fallbackVideo.videoUrl ||
+            `https://www.youtube.com/embed/${videoId}`,
+          videoType: fallbackVideo.videoType || "youtube",
         };
         let focusedVideosFeed = [video];
         try {
           const response = await videosAPI.getRandomCachedVideos(50);
           if (response?.videos && response.videos.length > 0) {
             const additionalVideos = response.videos.filter(
-              (v) => (v._id || v.id) !== videoId && (v._id || v.id) !== video._id,
+              (v) =>
+                (v._id || v.id) !== videoId && (v._id || v.id) !== video._id,
             );
             focusedVideosFeed = [video, ...additionalVideos];
           }
@@ -583,12 +586,14 @@ export const VideoProvider = ({
       const newMuted = !videoRef.current.muted;
       videoRef.current.muted = newMuted;
       setIsMuted(newMuted);
+      userWantsMutedRef.current = newMuted;
       if (!newMuted) {
         hasUserUnmutedAnyVideoRef.current = true;
       }
     } else {
       setIsMuted((prev) => {
         const newMuted = !prev;
+        userWantsMutedRef.current = newMuted;
         if (!newMuted) {
           hasUserUnmutedAnyVideoRef.current = true;
         }
