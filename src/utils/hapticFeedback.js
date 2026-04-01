@@ -8,19 +8,20 @@
 let _hapticSupported = null;
 const isHapticSupported = () => {
   if (_hapticSupported !== null) return _hapticSupported;
-  _hapticSupported = typeof navigator !== 'undefined' && 
+  _hapticSupported =
+    typeof navigator !== "undefined" &&
     (!!navigator.vibrate || !!window.DeviceMotionEvent);
   return _hapticSupported;
 };
 
 // Haptic pattern library for different interaction types
 const HAPTIC_PATTERNS = {
-  videoSwipe: [15, 50, 10],    // Short-gap-short for swipe confirmation
+  videoSwipe: [15, 50, 10], // Short-gap-short for swipe confirmation
   doubleTap: [10, 30, 10, 30, 10], // Triple pulse for double-tap like
-  longPress: [50],              // Sustained for context menu
-  error: [100, 50, 100],       // Strong-gap-strong for error feedback
-  success: [10, 20, 30],       // Crescendo for successful action
-  navigation: [8],              // Minimal for tab switches
+  longPress: [50], // Sustained for context menu
+  error: [100, 50, 100], // Strong-gap-strong for error feedback
+  success: [10, 20, 30], // Crescendo for successful action
+  navigation: [8], // Minimal for tab switches
   pullRefresh: [5, 10, 5, 10, 5, 10, 20], // Building tension for pull-to-refresh
 };
 

@@ -23,59 +23,6 @@ export const VideoProvider = ({
   videosError = null,
   refreshVideos,
 }) => {
-  // Restore fetchSingleVideo so setVideoById can call it, now in correct scope
-  const fetchSingleVideo = useCallback(
-    async (videoId, createFocusedFeed = false) => {
-      try {
-        const response = await videosAPI.getVideo(videoId);
-
-        if (response.success && response.video) {
-          const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
-          let video = response.video;
-
-          if (video.id && !video._id) {
-            video._id = video.id;
-          }
-
-          if (video.videoUrl && !video.videoUrl.startsWith("http")) {
-            const videoUrl = video.videoUrl.startsWith("/api/")
-              ? video.videoUrl.replace("/api/", "/")
-              : video.videoUrl;
-            video.videoUrl = `${backendURL}${videoUrl}`;
-          }
-
-          if (video.thumbnailUrl && !video.thumbnailUrl.startsWith("http")) {
-            const thumbnailUrl = video.thumbnailUrl.startsWith("/api/")
-              ? video.thumbnailUrl.replace("/api/", "/")
-              : video.thumbnailUrl;
-            video.thumbnailUrl = `${backendURL}${thumbnailUrl}`;
-          }
-
-          video.videoType = "uploaded";
-
-          if (createFocusedFeed) {
-            const contextVideos = initialVideos.slice(0, 9);
-            const focusedVideosFeed = [video, ...contextVideos];
-
-            setFocusedVideos(focusedVideosFeed);
-            setCurrentIndex(0);
-          } else {
-            const updatedVideos = [video, ...initialVideos];
-            setFocusedVideos(updatedVideos);
-            setCurrentIndex(0);
-          }
-
-          setIsVideoSwitching(true);
-          setTimeout(() => {
-            setIsVideoSwitching(false);
-          }, 300);
-        }
-      } catch (error) {
-        // Keep current feed if the fetch fails.
-      }
-    },
-    [initialVideos],
-  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
@@ -451,6 +398,59 @@ export const VideoProvider = ({
   );
 
   // Function to fetch a single video by ID and add it to the context
+  const fetchSingleVideo = useCallback(
+    async (videoId, createFocusedFeed = false) => {
+      try {
+        const response = await videosAPI.getVideo(videoId);
+
+        if (response.success && response.video) {
+          const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
+          let video = response.video;
+
+          if (video.id && !video._id) {
+            video._id = video.id;
+          }
+
+          if (video.videoUrl && !video.videoUrl.startsWith("http")) {
+            const videoUrl = video.videoUrl.startsWith("/api/")
+              ? video.videoUrl.replace("/api/", "/")
+              : video.videoUrl;
+            video.videoUrl = `${backendURL}${videoUrl}`;
+          }
+
+          if (video.thumbnailUrl && !video.thumbnailUrl.startsWith("http")) {
+            const thumbnailUrl = video.thumbnailUrl.startsWith("/api/")
+              ? video.thumbnailUrl.replace("/api/", "/")
+              : video.thumbnailUrl;
+            video.thumbnailUrl = `${backendURL}${thumbnailUrl}`;
+          }
+
+          video.videoType = "uploaded";
+
+          if (createFocusedFeed) {
+            const contextVideos = initialVideos.slice(0, 9);
+            const focusedVideosFeed = [video, ...contextVideos];
+
+            setFocusedVideos(focusedVideosFeed);
+            setCurrentIndex(0);
+          } else {
+            const updatedVideos = [video, ...initialVideos];
+            setFocusedVideos(updatedVideos);
+            setCurrentIndex(0);
+          }
+
+          setIsVideoSwitching(true);
+          setTimeout(() => {
+            setIsVideoSwitching(false);
+          }, 300);
+        }
+      } catch (error) {
+        // Keep current feed if the fetch fails.
+      }
+    },
+    [initialVideos],
+  );
+
   const setVideoById = useCallback(
     async (videoId, createFocusedFeed = false) => {
       console.log(

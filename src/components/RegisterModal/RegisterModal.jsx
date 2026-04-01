@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useAuth } from "../AuthContext/AuthContext";
 import ModalWithForm from "../ModalWithForm/ModalWithForm";
 import { authAPI } from "../../services/api";
@@ -22,7 +28,7 @@ const VALIDATION_RULES = {
     minLength: 3,
     maxLength: 20,
     pattern: /^[a-zA-Z0-9_]+$/,
-    message: 'Username must be 3-20 chars, alphanumeric and underscores only',
+    message: "Username must be 3-20 chars, alphanumeric and underscores only",
   },
   password: {
     minLength: 8,

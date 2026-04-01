@@ -3,28 +3,28 @@ import "./ShareModal.css";
 
 // Share platform configurations
 const SHARE_PLATFORMS = {
-  twitter: { name: 'Twitter/X', icon: '🐦', color: '#1DA1F2' },
-  facebook: { name: 'Facebook', icon: '📱', color: '#4267B2' },
-  whatsapp: { name: 'WhatsApp', icon: '💬', color: '#25D366' },
-  telegram: { name: 'Telegram', icon: '✈️', color: '#0088CC' },
-  email: { name: 'Email', icon: '📧', color: '#EA4335' },
-  copy: { name: 'Copy Link', icon: '📋', color: '#666' },
+  twitter: { name: "Twitter/X", icon: "🐦", color: "#1DA1F2" },
+  facebook: { name: "Facebook", icon: "📱", color: "#4267B2" },
+  whatsapp: { name: "WhatsApp", icon: "💬", color: "#25D366" },
+  telegram: { name: "Telegram", icon: "✈️", color: "#0088CC" },
+  email: { name: "Email", icon: "📧", color: "#EA4335" },
+  copy: { name: "Copy Link", icon: "📋", color: "#666" },
 };
 
 // Share tracking for analytics
 const trackShare = (platform, videoId) => {
   try {
     const shareEvent = {
-      type: 'share',
+      type: "share",
       platform,
       videoId,
       timestamp: Date.now(),
       userAgent: navigator.userAgent,
     };
-    const shares = JSON.parse(localStorage.getItem('shareHistory') || '[]');
+    const shares = JSON.parse(localStorage.getItem("shareHistory") || "[]");
     shares.push(shareEvent);
     if (shares.length > 100) shares.shift();
-    localStorage.setItem('shareHistory', JSON.stringify(shares));
+    localStorage.setItem("shareHistory", JSON.stringify(shares));
   } catch (e) {
     // Silently fail if storage is full
   }
@@ -70,7 +70,7 @@ const ShareModal = ({ isOpen, onClose, video }) => {
       icon: "💬",
       color: "#25D366",
       url: `https://wa.me/?text=${encodeURIComponent(
-        `Check out this video: ${video.title}\n${videoUrl}`
+        `Check out this video: ${video.title}\n${videoUrl}`,
       )}`,
     },
     {
@@ -78,7 +78,7 @@ const ShareModal = ({ isOpen, onClose, video }) => {
       icon: "🐦",
       color: "#1DA1F2",
       url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-        video.title
+        video.title,
       )}&url=${encodeURIComponent(videoUrl)}`,
     },
     {
@@ -86,7 +86,7 @@ const ShareModal = ({ isOpen, onClose, video }) => {
       icon: "📘",
       color: "#1877F2",
       url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-        videoUrl
+        videoUrl,
       )}`,
     },
     {
@@ -94,7 +94,7 @@ const ShareModal = ({ isOpen, onClose, video }) => {
       icon: "💼",
       color: "#0A66C2",
       url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
-        videoUrl
+        videoUrl,
       )}`,
     },
     {
@@ -102,7 +102,7 @@ const ShareModal = ({ isOpen, onClose, video }) => {
       icon: "🔴",
       color: "#FF4500",
       url: `https://reddit.com/submit?url=${encodeURIComponent(
-        videoUrl
+        videoUrl,
       )}&title=${encodeURIComponent(video.title)}`,
     },
     {
@@ -110,9 +110,9 @@ const ShareModal = ({ isOpen, onClose, video }) => {
       icon: "✉️",
       color: "#EA4335",
       url: `mailto:?subject=${encodeURIComponent(
-        video.title
+        video.title,
       )}&body=${encodeURIComponent(
-        `Check out this video:\n${video.title}\n\n${videoUrl}`
+        `Check out this video:\n${video.title}\n\n${videoUrl}`,
       )}`,
     },
   ];

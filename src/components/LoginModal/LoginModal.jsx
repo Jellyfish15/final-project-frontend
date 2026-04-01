@@ -9,14 +9,15 @@ const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 // Input sanitization for security
 const sanitizeInput = (input) => {
   return input
-    .replace(/[<>]/g, '') // Strip HTML tags
-    .replace(/javascript:/gi, '') // Strip JS URIs
+    .replace(/[<>]/g, "") // Strip HTML tags
+    .replace(/javascript:/gi, "") // Strip JS URIs
     .trim();
 };
 
 // Email validation with RFC 5322 compliance
 const isValidEmail = (email) => {
-  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  const emailRegex =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
   return emailRegex.test(email);
 };
 

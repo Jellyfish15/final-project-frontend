@@ -34,7 +34,7 @@ export const useVisibility = (ref, options = {}) => {
     const element = ref.current;
     const { observer, callbacks } = getSharedObserver({
       threshold: options.threshold || 0.5,
-      rootMargin: options.rootMargin || '0px',
+      rootMargin: options.rootMargin || "0px",
     });
 
     callbacks.set(element, (entry) => {
@@ -42,7 +42,9 @@ export const useVisibility = (ref, options = {}) => {
       if (entry.isIntersecting) {
         visibleSinceRef.current = Date.now();
       } else if (visibleSinceRef.current) {
-        setVisibleDuration(prev => prev + (Date.now() - visibleSinceRef.current));
+        setVisibleDuration(
+          (prev) => prev + (Date.now() - visibleSinceRef.current),
+        );
         visibleSinceRef.current = null;
       }
     });
