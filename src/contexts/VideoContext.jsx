@@ -31,6 +31,7 @@ export const VideoProvider = ({
   const hasUserUnmutedAnyVideoRef = useRef(false);
   const hasUserInteractedRef = useRef(false); // Track if user has interacted with the page
   const justUnmutedRef = useRef(false); // Prevent unmute tap from also toggling play
+  const userWantsMutedRef = useRef(false); // Track if user explicitly chose to stay muted
   const [isVideoSwitching, setIsVideoSwitching] = useState(false);
   const [focusedVideos, setFocusedVideos] = useState(null); // New state for focused feed
   const videoRef = useRef(null);
@@ -193,7 +194,7 @@ export const VideoProvider = ({
 
   // Auto-unmute on first user interaction (tap/click anywhere on page)
   useEffect(() => {
-    const handleFirstInteraction = (event) => {
+    const handleFirstInteraction = () => {
       hasUserInteractedRef.current = true;
       // Unmute if user hasn't explicitly chosen mute
       if (!userWantsMutedRef.current) {
@@ -205,15 +206,11 @@ export const VideoProvider = ({
         justUnmutedRef.current = true;
         // Set global unmuted so all future videos are unmuted
         hasUserUnmutedAnyVideoRef.current = true;
-        // Prevent this event from bubbling to video element
-        if (event && typeof event.stopImmediatePropagation === "function") {
-          event.stopImmediatePropagation();
-        } else if (event && typeof event.stopPropagation === "function") {
-          event.stopPropagation();
-        }
+        // Do NOT stopPropagation — let the event reach the video element
+        // so the user sees a seamless unmute without pausing
         setTimeout(() => {
           justUnmutedRef.current = false;
-        }, 500); // Slightly longer to ensure coverage
+        }, 500);
       }
       document.removeEventListener("touchstart", handleFirstInteraction, true);
       document.removeEventListener("click", handleFirstInteraction, true);
