@@ -199,6 +199,13 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, setVideoById]);
 
+  // Sync video element's muted property with isMuted state
+  useEffect(() => {
+    if (videoRef.current && currentVideo?.videoType !== "youtube") {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted, currentVideo?._id, currentVideo?.videoType]);
+
   // Reset processed video ID when component unmounts or URL changes to a non-video page
   useEffect(() => {
     return () => {
@@ -376,15 +383,6 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       setVideoError(true);
                     }}
                   />
-                  {/* Sync video element's muted property with isMuted prop */}
-                  {/** This effect ensures the video element always matches the context mute state */}
-                  <React.Fragment>
-                    {useEffect(() => {
-                      if (videoRef.current) {
-                        videoRef.current.muted = isMuted;
-                      }
-                    }, [isMuted, videoRef, currentVideo?._id])}
-                  </React.Fragment>
 
                   {/* Fallback when video file fails to load (e.g. server restart wiped files) */}
                   {videoError && (
