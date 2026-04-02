@@ -144,24 +144,24 @@ router.post(
         });
       }
 
-      // Log file info for debugging upload issues
-      console.log("[Upload] req.file:", {
-        filename: req.file.filename,
-        path: req.file.path,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        originalname: req.file.originalname,
-      });
+      // Log ALL file fields for debugging upload issues
+      console.log("[Upload] req.file keys:", Object.keys(req.file));
+      console.log("[Upload] req.file:", JSON.stringify(req.file, null, 2));
       console.log("[Upload] Cloudinary configured:", isCloudinaryConfigured());
 
       // ── Cloudinary path: video already uploaded, generate thumbnails via URL transforms ──
-      if (
-        isCloudinaryConfigured() &&
-        req.file.path &&
-        req.file.path.startsWith("http")
-      ) {
-        const cloudUrl = req.file.path; // full Cloudinary URL
-        const filename = req.file.filename || path.basename(cloudUrl);
+      // multer-storage-cloudinary may set the URL in req.file.path, req.file.secure_url, or req.file.url
+      const cloudUrl =
+        (req.file.path && req.file.path.startsWith("http") && req.file.path) ||
+        req.file.secure_url ||
+        req.file.url ||
+        null;
+
+      if (isCloudinaryConfigured() && cloudUrl) {
+        const filename =
+          req.file.filename ||
+          req.file.public_id ||
+          path.basename(cloudUrl);
 
         // Cloudinary can generate thumbnails from video by changing the extension to .jpg
         // and adding a time-offset transformation (so_<seconds>)
@@ -194,6 +194,12 @@ router.post(
       // Guard: if multer didn't set filename/path (e.g. Cloudinary misconfigured),
       // fall back to req.file.path (diskStorage) or reject gracefully.
       if (!req.file.filename && !req.file.path) {
+        console.error(
+          "[Upload] File metadata missing. req.file keys:",
+          Object.keys(req.file),
+          "Cloudinary configured:",
+          isCloudinaryConfigured(),
+        );
         return res.status(500).json({
           success: false,
           message:
