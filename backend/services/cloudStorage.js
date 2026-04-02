@@ -78,26 +78,33 @@ const avatarsDir = path.join(uploadsDir, "avatars");
 
 // ── Multer storages ────────────────────────────
 
-// Video storage
+// Video storage — always use local disk; we upload to Cloudinary manually
+// in the route handler for reliability (multer-storage-cloudinary is unreliable)
 function getVideoStorage() {
-  if (isCloudinaryConfigured()) {
-    return new CloudinaryStorage({
-      cloudinary,
-      params: {
-        folder: "nudl/videos",
-        resource_type: "video",
-        allowed_formats: ["mp4", "webm", "mov", "mpeg", "avi", "mkv", "ogg", "3gp", "m4v"],
-      },
-    });
-  }
-
-  // Local disk fallback
   return multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, videosDir),
     filename: (_req, file, cb) => {
       const suffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
       cb(null, `video-${suffix}${path.extname(file.originalname)}`);
     },
+  });
+}
+
+// Upload a local file to Cloudinary (returns { secure_url, public_id, bytes })
+function uploadToCloudinary(filePath, options = {}) {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload(
+      filePath,
+      {
+        folder: options.folder || "nudl/videos",
+        resource_type: options.resource_type || "video",
+        ...options,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      },
+    );
   });
 }
 
@@ -162,6 +169,7 @@ module.exports = {
   isCloudinaryConfigured,
   getVideoStorage,
   getImageStorage,
+  uploadToCloudinary,
   resolveUrl,
   deleteResource,
   // Expose dirs for legacy code that still references them

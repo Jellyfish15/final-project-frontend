@@ -10,6 +10,7 @@ const {
   isCloudinaryConfigured,
   getVideoStorage,
   getImageStorage,
+  uploadToCloudinary,
   resolveUrl,
   deleteResource,
   videosDir,
@@ -144,91 +145,62 @@ router.post(
         });
       }
 
-      // Log ALL file fields for debugging upload issues
-      console.log("[Upload] req.file keys:", Object.keys(req.file));
-      console.log("[Upload] req.file:", JSON.stringify(req.file, null, 2));
+      console.log("[Upload] File saved to disk:", req.file.filename, req.file.path);
       console.log("[Upload] Cloudinary configured:", isCloudinaryConfigured());
 
-      // ── Cloudinary path: video already uploaded, generate thumbnails via URL transforms ──
-      // multer-storage-cloudinary may set the URL in req.file.path, req.file.secure_url, or req.file.url
-      const cloudUrl =
-        (req.file.path && req.file.path.startsWith("http") && req.file.path) ||
-        req.file.secure_url ||
-        req.file.url ||
-        null;
-
-      if (isCloudinaryConfigured() && cloudUrl) {
-        const filename =
-          req.file.filename ||
-          req.file.public_id ||
-          path.basename(cloudUrl);
-
-        // Cloudinary can generate thumbnails from video by changing the extension to .jpg
-        // and adding a time-offset transformation (so_<seconds>)
-        const baseUrl = cloudUrl.replace(/\.[^/.]+$/, ""); // strip extension
-        const thumbnailUrls = [
-          `${baseUrl}.jpg`, // first frame
-          // Use Cloudinary transformation to grab frames at 25%, 50%, 75%
-          cloudUrl
-            .replace("/upload/", "/upload/so_2,w_640,c_fill/")
-            .replace(/\.[^/.]+$/, ".jpg"),
-          cloudUrl
-            .replace("/upload/", "/upload/so_5,w_640,c_fill/")
-            .replace(/\.[^/.]+$/, ".jpg"),
-        ];
-
-        return res.status(200).json({
-          success: true,
-          message: "Video uploaded to cloud and thumbnails generated",
-          videoData: {
-            filename,
-            videoUrl: cloudUrl,
-            fileSize: req.file.size || 0,
-            thumbnailUrls,
-            thumbnailPrefix: filename,
-            cloudinary: true,
-          },
-        });
-      }
-
-      // Guard: if multer didn't set filename/path (e.g. Cloudinary misconfigured),
-      // fall back to req.file.path (diskStorage) or reject gracefully.
-      if (!req.file.filename && !req.file.path) {
-        console.error(
-          "[Upload] File metadata missing. req.file keys:",
-          Object.keys(req.file),
-          "Cloudinary configured:",
-          isCloudinaryConfigured(),
-        );
-        return res.status(500).json({
-          success: false,
-          message:
-            "Upload failed: file metadata missing. Check storage configuration.",
-        });
-      }
-
-      // If filename is missing but path exists (Cloudinary misconfigured), derive filename
-      const resolvedFilename =
-        req.file.filename || path.basename(req.file.path);
-
-      // ── Local storage path: original FFmpeg-based flow ──
-      const videoPath = path.join(videosDir, resolvedFilename);
-      const originalFilename = resolvedFilename;
-
-      // If multer saved the file outside videosDir (e.g. Cloudinary partial failure),
-      // move it into videosDir so the rest of the pipeline can find it.
-      if (
-        req.file.path &&
-        !req.file.path.startsWith("http") &&
-        req.file.path !== videoPath &&
-        fs.existsSync(req.file.path)
-      ) {
+      // ── Cloudinary path: upload the disk file to Cloudinary ──
+      if (isCloudinaryConfigured()) {
         try {
-          fs.renameSync(req.file.path, videoPath);
-        } catch (_) {
-          // best effort — file may already be in the right place
+          console.log("[Upload] Uploading to Cloudinary...");
+          const result = await uploadToCloudinary(req.file.path, {
+            folder: "nudl/videos",
+            resource_type: "video",
+          });
+          console.log("[Upload] Cloudinary upload success:", result.secure_url);
+
+          const cloudUrl = result.secure_url;
+          const filename = result.public_id;
+
+          // Clean up local file after successful Cloudinary upload
+          try {
+            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+          } catch (_) {}
+
+          // Generate thumbnail URLs from Cloudinary video
+          const baseUrl = cloudUrl.replace(/\.[^/.]+$/, "");
+          const thumbnailUrls = [
+            `${baseUrl}.jpg`,
+            cloudUrl
+              .replace("/upload/", "/upload/so_2,w_640,c_fill/")
+              .replace(/\.[^/.]+$/, ".jpg"),
+            cloudUrl
+              .replace("/upload/", "/upload/so_5,w_640,c_fill/")
+              .replace(/\.[^/.]+$/, ".jpg"),
+          ];
+
+          return res.status(200).json({
+            success: true,
+            message: "Video uploaded to cloud and thumbnails generated",
+            videoData: {
+              filename,
+              videoUrl: cloudUrl,
+              fileSize: result.bytes || req.file.size || 0,
+              thumbnailUrls,
+              thumbnailPrefix: filename,
+              cloudinary: true,
+            },
+          });
+        } catch (cloudErr) {
+          console.error("[Upload] Cloudinary upload failed:", cloudErr.message);
+          console.log("[Upload] Falling back to local storage");
+          // Fall through to local storage path
         }
       }
+
+      // ── Local storage path ──
+      const resolvedFilename = req.file.filename;
+      const videoPath = req.file.path;
+      const originalFilename = resolvedFilename;
 
       // On Render (any tier), skip FFmpeg entirely — it causes OOM/timeout on free tier
       // and client-side thumbnails are used anyway.
