@@ -370,7 +370,9 @@ export const VideoProvider = ({
         setIsPlaying(true);
 
         // Persist the user's mute preference across videos (TikTok behavior)
-        setIsMuted(userWantsMutedRef.current || !hasUserUnmutedAnyVideoRef.current);
+        setIsMuted(
+          userWantsMutedRef.current || !hasUserUnmutedAnyVideoRef.current,
+        );
 
         // Switch video immediately — no artificial delay
         setIsVideoSwitching(true);

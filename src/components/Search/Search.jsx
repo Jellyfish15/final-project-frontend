@@ -24,7 +24,7 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
   const loadMoreCooldownRef = useRef(false);
 
   const navigate = useNavigate();
-  const { videos } = useVideo();
+  const { videos, setCustomFeed } = useVideo();
 
   const searchInputRef = useRef(null);
 
@@ -54,44 +54,37 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     return processedVideo;
   }, []);
 
-  // Load featured videos for the empty state
+  // Load featured videos for the empty state — use fast backend cache
   const loadFeaturedVideos = useCallback(async () => {
     setIsLoadingFeatured(true);
     try {
-      let selectedVideos = [];
-      const uploadedVideos = videos || [];
-      const uploadedCount = uploadedVideos.length;
-      const youtubeNeeded = Math.max(0, 20 - uploadedCount);
-
-      if (youtubeNeeded > 0) {
-        try {
-          const youtubeResults = await searchYouTubeVideos(
-            "educational quick lesson",
-            youtubeNeeded,
-          );
-          if (youtubeResults && youtubeResults.length > 0) {
-            selectedVideos = [...uploadedVideos, ...youtubeResults];
-          } else {
-            selectedVideos = uploadedVideos;
-          }
-        } catch (youtubeError) {
-          selectedVideos = uploadedVideos;
-        }
-      } else {
-        selectedVideos = uploadedVideos.slice(0, 20);
+      // Show any already-loaded feed videos instantly while fetching more
+      const uploadedVideos = (videos || []).filter(
+        (v) => v.videoType === "uploaded",
+      );
+      if (uploadedVideos.length > 0) {
+        const processed = uploadedVideos.map(processThumbnail);
+        const idSet = new Set();
+        processed.forEach((v) => idSet.add(v._id || v.id));
+        featuredVideoIdsRef.current = idSet;
+        setFeaturedVideos(processed);
       }
 
-      const processedVideos = selectedVideos.map(processThumbnail);
+      // Fetch cached YouTube videos from backend (fast, no YouTube API call)
+      const response = await videosAPI.getRandomCachedVideos(30);
+      if (response?.videos && response.videos.length > 0) {
+        const cachedVideos = response.videos.map(processThumbnail);
+        const combined = [...uploadedVideos.map(processThumbnail), ...cachedVideos];
 
-      // Track IDs for deduplication when loading more
-      const idSet = new Set();
-      processedVideos.forEach((v) => idSet.add(v._id || v.id));
-      featuredVideoIdsRef.current = idSet;
+        const idSet = new Set();
+        combined.forEach((v) => idSet.add(v._id || v.id));
+        featuredVideoIdsRef.current = idSet;
 
-      setFeaturedVideos(processedVideos);
+        setFeaturedVideos(combined);
+      }
     } catch (error) {
       if (videos && videos.length > 0) {
-        setFeaturedVideos(videos.slice(0, 6));
+        setFeaturedVideos(videos.slice(0, 6).map(processThumbnail));
       }
     } finally {
       setIsLoadingFeatured(false);
@@ -267,15 +260,34 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     performSearch(suggestion);
   };
 
-  const handleVideoClick = (video) => {
-    const videoId = video._id || video.id;
-    if (video.videoType === "uploaded") {
-      navigate(`/videos?videoId=${videoId}&feedType=similar`, {
-        state: { video },
-      });
-    } else {
-      navigate(`/videos?videoId=${videoId}`, { state: { video } });
+  const handleVideoClick = async (video) => {
+    // Build a focused feed: clicked video first, then more cached videos
+    const clickedVideo = {
+      ...video,
+      _id: video._id || video.id,
+      videoUrl:
+        video.videoUrl ||
+        `https://www.youtube.com/embed/${video._id || video.id}`,
+      videoType: video.videoType || "youtube",
+    };
+
+    let feedVideos = [clickedVideo];
+    try {
+      const response = await videosAPI.getRandomCachedVideos(50);
+      if (response?.videos?.length > 0) {
+        const additional = response.videos.filter(
+          (v) =>
+            (v._id || v.id) !== (video._id || video.id) &&
+            (v._id || v.id) !== clickedVideo._id,
+        );
+        feedVideos = [clickedVideo, ...additional];
+      }
+    } catch (e) {
+      // Continue with just the clicked video
     }
+
+    setCustomFeed(feedVideos, 0);
+    navigate("/videos");
   };
 
   const handleInputFocus = () => {
@@ -375,6 +387,8 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
                         "https://via.placeholder.com/200x150?text=Video"
                       }
                       alt={video.title}
+                      loading={index < 15 ? "eager" : "lazy"}
+                      decoding="async"
                       onError={(e) => {
                         e.target.src =
                           "https://via.placeholder.com/200x150?text=Video";
@@ -510,6 +524,8 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
                 <img
                   src={video.thumbnailUrl}
                   alt={video.title}
+                  loading="lazy"
+                  decoding="async"
                   onError={(e) => {
                     e.target.src =
                       "https://via.placeholder.com/120x150?text=Video";
