@@ -197,10 +197,15 @@ export const VideoProvider = ({
   }, []);
 
   // Auto-unmute on first user interaction (tap/click anywhere on page)
+  // Re-registers whenever isMuted becomes true (e.g. navigating from search)
+  // so tap-to-unmute works on every new video session.
   useEffect(() => {
+    // Only register if currently muted and user hasn't explicitly chosen mute
+    if (!isMuted || userWantsMutedRef.current) return;
+
     const handleFirstInteraction = () => {
       hasUserInteractedRef.current = true;
-      // Unmute if user hasn't explicitly chosen mute
+      // Double-check user hasn't explicitly muted since we registered
       if (!userWantsMutedRef.current) {
         if (videoRef.current && videoRef.current.muted) {
           videoRef.current.muted = false;
@@ -210,8 +215,6 @@ export const VideoProvider = ({
         justUnmutedRef.current = true;
         // Set global unmuted so all future videos are unmuted
         hasUserUnmutedAnyVideoRef.current = true;
-        // Do NOT stopPropagation — let the event reach the video element
-        // so the user sees a seamless unmute without pausing
         setTimeout(() => {
           justUnmutedRef.current = false;
         }, 500);
@@ -233,7 +236,7 @@ export const VideoProvider = ({
       document.removeEventListener("touchstart", handleFirstInteraction, true);
       document.removeEventListener("click", handleFirstInteraction, true);
     };
-  }, []);
+  }, [isMuted]);
 
   // Sync play/pause state with the video element.
   // Videos start MUTED to guarantee autoplay on all browsers.
