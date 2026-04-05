@@ -192,8 +192,20 @@ router.post(
           });
         } catch (cloudErr) {
           console.error("[Upload] Cloudinary upload failed:", cloudErr.message);
+          // Clean up the local file
+          try {
+            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+          } catch (_) {}
+
+          // On Render, local storage is ephemeral — don't fall through
+          if (process.env.RENDER) {
+            return res.status(500).json({
+              success: false,
+              message: `Cloud upload failed: ${cloudErr.message}. Please try a smaller file or try again.`,
+            });
+          }
           console.log("[Upload] Falling back to local storage");
-          // Fall through to local storage path
+          // Fall through to local storage path (only for local dev)
         }
       }
 

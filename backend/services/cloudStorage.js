@@ -91,20 +91,34 @@ function getVideoStorage() {
 }
 
 // Upload a local file to Cloudinary (returns { secure_url, public_id, bytes })
+// Uses chunked upload for files > 6MB for reliability on slow connections
 function uploadToCloudinary(filePath, options = {}) {
+  const fileSize = fs.statSync(filePath).size;
+  const useChunked = fileSize > 6 * 1024 * 1024; // 6MB threshold
+
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload(
-      filePath,
-      {
-        folder: options.folder || "nudl/videos",
-        resource_type: options.resource_type || "video",
-        ...options,
-      },
-      (error, result) => {
+    const uploadOptions = {
+      folder: options.folder || "nudl/videos",
+      resource_type: options.resource_type || "video",
+      timeout: 300000, // 5 minute timeout
+      ...options,
+    };
+
+    if (useChunked) {
+      console.log(
+        `[Cloudinary] Using chunked upload for ${(fileSize / 1024 / 1024).toFixed(1)}MB file`,
+      );
+      uploadOptions.chunk_size = 6000000; // 6MB chunks
+      cloudinary.uploader.upload_large(filePath, uploadOptions, (error, result) => {
         if (error) return reject(error);
         resolve(result);
-      },
-    );
+      });
+    } else {
+      cloudinary.uploader.upload(filePath, uploadOptions, (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      });
+    }
   });
 }
 
