@@ -231,15 +231,16 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchCancel}
         >
-          {(isVideoSwitching || (isLoading && videos.length === 0)) && (
-            <VideoLoader
-              message={
-                isVideoSwitching
-                  ? "Loading next video..."
-                  : "Loading first video..."
-              }
-            />
-          )}
+          {(isVideoSwitching || (isLoading && videos.length === 0)) &&
+            currentVideo?.videoType !== "youtube" && (
+              <VideoLoader
+                message={
+                  isVideoSwitching
+                    ? "Loading next video..."
+                    : "Loading first video..."
+                }
+              />
+            )}
 
           {currentVideo && (
             <>
