@@ -104,20 +104,30 @@ function uploadToCloudinary(filePath, options = {}) {
       ...options,
     };
 
+    const handleResult = (error, result) => {
+      if (error) return reject(error);
+      if (!result || !result.secure_url) {
+        const err = new Error(
+          "Cloudinary returned an invalid response (no secure_url). Result: " +
+            JSON.stringify(result),
+        );
+        // Attach public_id so callers can clean up the orphaned resource
+        if (result && result.public_id) {
+          err._cloudinaryPublicId = result.public_id;
+        }
+        return reject(err);
+      }
+      resolve(result);
+    };
+
     if (useChunked) {
       console.log(
         `[Cloudinary] Using chunked upload for ${(fileSize / 1024 / 1024).toFixed(1)}MB file`,
       );
       uploadOptions.chunk_size = 6000000; // 6MB chunks
-      cloudinary.uploader.upload_large(filePath, uploadOptions, (error, result) => {
-        if (error) return reject(error);
-        resolve(result);
-      });
+      cloudinary.uploader.upload_large(filePath, uploadOptions, handleResult);
     } else {
-      cloudinary.uploader.upload(filePath, uploadOptions, (error, result) => {
-        if (error) return reject(error);
-        resolve(result);
-      });
+      cloudinary.uploader.upload(filePath, uploadOptions, handleResult);
     }
   });
 }

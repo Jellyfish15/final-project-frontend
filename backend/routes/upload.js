@@ -145,7 +145,11 @@ router.post(
         });
       }
 
-      console.log("[Upload] File saved to disk:", req.file.filename, req.file.path);
+      console.log(
+        "[Upload] File saved to disk:",
+        req.file.filename,
+        req.file.path,
+      );
       console.log("[Upload] Cloudinary configured:", isCloudinaryConfigured());
 
       // ── Cloudinary path: upload the disk file to Cloudinary ──
@@ -156,10 +160,23 @@ router.post(
             folder: "nudl/videos",
             resource_type: "video",
           });
-          console.log("[Upload] Cloudinary upload success:", result.secure_url);
+          console.log(
+            "[Upload] Cloudinary upload result:",
+            JSON.stringify({
+              secure_url: result.secure_url,
+              public_id: result.public_id,
+              bytes: result.bytes,
+            }),
+          );
 
           const cloudUrl = result.secure_url;
           const filename = result.public_id;
+
+          if (!cloudUrl) {
+            throw new Error(
+              "Cloudinary upload returned no secure_url. The upload may have failed silently.",
+            );
+          }
 
           // Clean up local file after successful Cloudinary upload
           try {
@@ -192,20 +209,19 @@ router.post(
           });
         } catch (cloudErr) {
           console.error("[Upload] Cloudinary upload failed:", cloudErr.message);
-          // Clean up the local file
+          // Attempt to clean up orphaned Cloudinary resource if it was uploaded
           try {
-            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-          } catch (_) {}
-
-          // On Render, local storage is ephemeral — don't fall through
-          if (process.env.RENDER) {
-            return res.status(500).json({
-              success: false,
-              message: `Cloud upload failed: ${cloudErr.message}. Please try a smaller file or try again.`,
-            });
+            if (cloudErr._cloudinaryPublicId) {
+              await deleteResource(cloudErr._cloudinaryPublicId, "video");
+              console.log("[Upload] Cleaned up orphaned Cloudinary resource:", cloudErr._cloudinaryPublicId);
+            }
+          } catch (cleanupErr) {
+            console.warn("[Upload] Cloudinary cleanup failed:", cleanupErr.message);
           }
-          console.log("[Upload] Falling back to local storage");
-          // Fall through to local storage path (only for local dev)
+          // Don't delete the local file — fall through to local storage path
+          // so the upload isn't lost. On Render, local storage is ephemeral
+          // (cleared on redeploy) but still works for the current session.
+          console.log("[Upload] Falling back to local storage path");
         }
       }
 
