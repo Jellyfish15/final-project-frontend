@@ -159,6 +159,11 @@ router.post(
           const result = await uploadToCloudinary(req.file.path, {
             folder: "nudl/videos",
             resource_type: "video",
+            // Force transcoding to h264/mp4 for browser compatibility
+            eager: [
+              { format: "mp4", video_codec: "h264", audio_codec: "aac" },
+            ],
+            eager_async: false, // Wait for transcoding to complete
           });
           console.log(
             "[Upload] Cloudinary upload result:",
@@ -166,16 +171,28 @@ router.post(
               secure_url: result.secure_url,
               public_id: result.public_id,
               bytes: result.bytes,
+              format: result.format,
+              eager: result.eager,
             }),
           );
 
-          const cloudUrl = result.secure_url;
           const filename = result.public_id;
 
-          if (!cloudUrl) {
+          if (!result.secure_url) {
             throw new Error(
               "Cloudinary upload returned no secure_url. The upload may have failed silently.",
             );
+          }
+
+          // Use the eager-transcoded mp4 URL if available, otherwise force .mp4 extension
+          let cloudUrl = result.secure_url;
+          if (result.eager && result.eager[0] && result.eager[0].secure_url) {
+            cloudUrl = result.eager[0].secure_url;
+            console.log("[Upload] Using eager-transcoded URL:", cloudUrl);
+          } else {
+            // Force .mp4 extension for browser playback
+            cloudUrl = cloudUrl.replace(/\.[^/.]+$/, ".mp4");
+            console.log("[Upload] Forced .mp4 URL:", cloudUrl);
           }
 
           // Clean up local file after successful Cloudinary upload
@@ -184,15 +201,10 @@ router.post(
           } catch (_) {}
 
           // Generate thumbnail URLs from Cloudinary video
-          const baseUrl = cloudUrl.replace(/\.[^/.]+$/, "");
           const thumbnailUrls = [
-            `${baseUrl}.jpg`,
-            cloudUrl
-              .replace("/upload/", "/upload/so_2,w_640,c_fill/")
-              .replace(/\.[^/.]+$/, ".jpg"),
-            cloudUrl
-              .replace("/upload/", "/upload/so_5,w_640,c_fill/")
-              .replace(/\.[^/.]+$/, ".jpg"),
+            cloudUrl.replace("/upload/", "/upload/so_0,f_jpg,w_640,c_fill/").replace(/\.[^/.]+$/, ".jpg"),
+            cloudUrl.replace("/upload/", "/upload/so_2,f_jpg,w_640,c_fill/").replace(/\.[^/.]+$/, ".jpg"),
+            cloudUrl.replace("/upload/", "/upload/so_5,f_jpg,w_640,c_fill/").replace(/\.[^/.]+$/, ".jpg"),
           ];
 
           return res.status(200).json({
@@ -213,10 +225,16 @@ router.post(
           try {
             if (cloudErr._cloudinaryPublicId) {
               await deleteResource(cloudErr._cloudinaryPublicId, "video");
-              console.log("[Upload] Cleaned up orphaned Cloudinary resource:", cloudErr._cloudinaryPublicId);
+              console.log(
+                "[Upload] Cleaned up orphaned Cloudinary resource:",
+                cloudErr._cloudinaryPublicId,
+              );
             }
           } catch (cleanupErr) {
-            console.warn("[Upload] Cloudinary cleanup failed:", cleanupErr.message);
+            console.warn(
+              "[Upload] Cloudinary cleanup failed:",
+              cleanupErr.message,
+            );
           }
           // Don't delete the local file — fall through to local storage path
           // so the upload isn't lost. On Render, local storage is ephemeral
