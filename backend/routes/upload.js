@@ -159,9 +159,9 @@ router.post(
           const result = await uploadToCloudinary(req.file.path, {
             folder: "nudl/videos",
             resource_type: "video",
-            // Force transcoding to h264/mp4 for browser compatibility
+            // Request h264 transcoding in the background — don't block the upload
             eager: [{ format: "mp4", video_codec: "h264", audio_codec: "aac" }],
-            eager_async: false, // Wait for transcoding to complete
+            eager_async: true, // Don't wait — avoids timeout on large files
           });
           console.log(
             "[Upload] Cloudinary upload result:",
@@ -182,15 +182,18 @@ router.post(
             );
           }
 
-          // Use the eager-transcoded mp4 URL if available, otherwise force .mp4 extension
+          // Build a browser-compatible playback URL using Cloudinary's on-the-fly
+          // transcoding. eager_async runs in the background so it won't be ready yet.
           let cloudUrl = result.secure_url;
           if (result.eager && result.eager[0] && result.eager[0].secure_url) {
             cloudUrl = result.eager[0].secure_url;
             console.log("[Upload] Using eager-transcoded URL:", cloudUrl);
           } else {
-            // Force .mp4 extension for browser playback
+            // Use on-the-fly transformation: vc_auto normalises codec for
+            // the requesting browser, f_mp4 ensures mp4 container.
+            cloudUrl = cloudUrl.replace("/upload/", "/upload/f_mp4,vc_auto/");
             cloudUrl = cloudUrl.replace(/\.[^/.]+$/, ".mp4");
-            console.log("[Upload] Forced .mp4 URL:", cloudUrl);
+            console.log("[Upload] Using on-the-fly transcoded URL:", cloudUrl);
           }
 
           // Clean up local file after successful Cloudinary upload
@@ -703,9 +706,15 @@ router.post(
       const videoUrl = `/uploads/videos/${videoFilename}`;
 
       // Extract just the path from selectedThumbnailUrl (remove any backend URL prefix)
+      // but preserve Cloudinary URLs as-is
       let thumbnailUrl = selectedThumbnailUrl || "";
-      if (thumbnailUrl && !thumbnailUrl.startsWith("data:")) {
-        // Strip any http(s)://host prefix to get just the path
+      const isCloudinaryThumbnail = thumbnailUrl.includes("res.cloudinary.com");
+      if (
+        thumbnailUrl &&
+        !thumbnailUrl.startsWith("data:") &&
+        !isCloudinaryThumbnail
+      ) {
+        // Strip backend host prefix to get just the path (local uploads only)
         thumbnailUrl = thumbnailUrl.replace(/^https?:\/\/[^\/]+/, "");
       }
 
@@ -715,11 +724,10 @@ router.post(
       const finalVideoUrl = isCloudVideo
         ? req.body.videoUrl || videoFilename
         : videoUrl;
-      // For Cloudinary thumbnails keep full URL, otherwise use the relative path
-      const finalThumbnailUrl =
-        (selectedThumbnailUrl || "").startsWith("http") && isCloudVideo
-          ? selectedThumbnailUrl
-          : thumbnailUrl;
+      // Keep full Cloudinary thumbnail URL regardless of video source
+      const finalThumbnailUrl = isCloudinaryThumbnail
+        ? selectedThumbnailUrl
+        : thumbnailUrl;
 
       console.log("Finalizing video:", {
         title,
