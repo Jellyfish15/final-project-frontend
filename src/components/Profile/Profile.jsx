@@ -130,7 +130,11 @@ const Profile = ({ onOpenLogin, onOpenRegister }) => {
             final: thumbnailUrl,
           });
 
-          if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
+          if (
+            thumbnailUrl &&
+            !thumbnailUrl.startsWith("http") &&
+            !thumbnailUrl.startsWith("data:")
+          ) {
             const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
             thumbnailUrl = thumbnailUrl.startsWith("/api/")
               ? thumbnailUrl.replace("/api/", "/")

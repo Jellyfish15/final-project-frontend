@@ -33,7 +33,11 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
     const processedVideo = { ...video };
     let thumbnailUrl = video.thumbnailUrl;
 
-    if (thumbnailUrl && !thumbnailUrl.startsWith("http")) {
+    if (
+      thumbnailUrl &&
+      !thumbnailUrl.startsWith("http") &&
+      !thumbnailUrl.startsWith("data:")
+    ) {
       const backendURL = API_BASE_URL.replace(/\/api\/?$/, "");
       thumbnailUrl = thumbnailUrl.startsWith("/api/")
         ? thumbnailUrl.replace("/api/", "/")
@@ -74,7 +78,10 @@ const Search = ({ onOpenLogin, onOpenRegister }) => {
       const response = await videosAPI.getRandomCachedVideos(30);
       if (response?.videos && response.videos.length > 0) {
         const cachedVideos = response.videos.map(processThumbnail);
-        const combined = [...uploadedVideos.map(processThumbnail), ...cachedVideos];
+        const combined = [
+          ...uploadedVideos.map(processThumbnail),
+          ...cachedVideos,
+        ];
 
         const idSet = new Set();
         combined.forEach((v) => idSet.add(v._id || v.id));

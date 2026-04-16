@@ -341,7 +341,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                     src={currentVideo.videoUrl}
                     autoPlay
                     loop
-                    // muted attribute removed; controlled via isMuted and useEffect
+                    muted
                     playsInline
                     preload="auto"
                     controls={false}

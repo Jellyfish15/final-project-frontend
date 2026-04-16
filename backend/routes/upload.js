@@ -160,9 +160,7 @@ router.post(
             folder: "nudl/videos",
             resource_type: "video",
             // Force transcoding to h264/mp4 for browser compatibility
-            eager: [
-              { format: "mp4", video_codec: "h264", audio_codec: "aac" },
-            ],
+            eager: [{ format: "mp4", video_codec: "h264", audio_codec: "aac" }],
             eager_async: false, // Wait for transcoding to complete
           });
           console.log(
@@ -201,10 +199,19 @@ router.post(
           } catch (_) {}
 
           // Generate thumbnail URLs from Cloudinary video
+          // Use the ORIGINAL secure_url (not the eager-transcoded one)
+          // because chaining video codec transforms with image extraction breaks
+          const originalCloudUrl = result.secure_url;
           const thumbnailUrls = [
-            cloudUrl.replace("/upload/", "/upload/so_0,f_jpg,w_640,c_fill/").replace(/\.[^/.]+$/, ".jpg"),
-            cloudUrl.replace("/upload/", "/upload/so_2,f_jpg,w_640,c_fill/").replace(/\.[^/.]+$/, ".jpg"),
-            cloudUrl.replace("/upload/", "/upload/so_5,f_jpg,w_640,c_fill/").replace(/\.[^/.]+$/, ".jpg"),
+            originalCloudUrl
+              .replace("/upload/", "/upload/so_0,f_jpg,w_640,c_fill/")
+              .replace(/\.[^/.]+$/, ".jpg"),
+            originalCloudUrl
+              .replace("/upload/", "/upload/so_2,f_jpg,w_640,c_fill/")
+              .replace(/\.[^/.]+$/, ".jpg"),
+            originalCloudUrl
+              .replace("/upload/", "/upload/so_5,f_jpg,w_640,c_fill/")
+              .replace(/\.[^/.]+$/, ".jpg"),
           ];
 
           return res.status(200).json({
