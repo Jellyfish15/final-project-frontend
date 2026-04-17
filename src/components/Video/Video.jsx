@@ -200,10 +200,14 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, setVideoById]);
 
-  // Sync video element's muted property with isMuted state
+  // Sync video element's muted property with isMuted state.
+  // Only apply when video is already playing — the play/pause sync effect
+  // handles the muted→unmute transition during autoplay startup.
   useEffect(() => {
     if (videoRef.current && currentVideo?.videoType !== "youtube") {
-      videoRef.current.muted = isMuted;
+      if (!videoRef.current.paused) {
+        videoRef.current.muted = isMuted;
+      }
     }
   }, [isMuted, currentVideo?._id, currentVideo?.videoType]);
 
@@ -231,15 +235,10 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchCancel}
         >
-          {(isVideoSwitching || (isLoading && videos.length === 0)) &&
+          {isLoading &&
+            videos.length === 0 &&
             currentVideo?.videoType !== "youtube" && (
-              <VideoLoader
-                message={
-                  isVideoSwitching
-                    ? "Loading next video..."
-                    : "Loading first video..."
-                }
-              />
+              <VideoLoader message="Loading first video..." />
             )}
 
           {currentVideo && (
@@ -383,7 +382,9 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                         e.target.error,
                       );
                       setVideoError(true);
-                    }}
+                      // Auto-skip broken videos instead of requiring manual tap
+                      setTimeout(() => scrollToVideo("next"), 500);
+                    }}}
                   />
 
                   {/* Fallback when video file fails to load (e.g. server restart wiped files) */}

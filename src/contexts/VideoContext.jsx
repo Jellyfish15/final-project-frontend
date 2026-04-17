@@ -249,16 +249,25 @@ export const VideoProvider = ({
     if (isPlaying) {
       if (videoElement.paused) {
         const doPlay = () => {
-          // Always set muted state from React state
-          videoElement.muted = isMuted;
+          // Always start muted to guarantee autoplay works on mobile.
+          // Unmuted autoplay is blocked without a direct user gesture.
+          videoElement.muted = true;
           const playPromise = videoElement.play();
           if (playPromise !== undefined) {
-            playPromise.catch(() => {
-              // If play still fails (very rare with muted), force muted play
-              videoElement.muted = true;
-              setIsMuted(true);
-              videoElement.play().catch(() => {});
-            });
+            playPromise
+              .then(() => {
+                // Play succeeded — now apply the user's mute preference
+                videoElement.muted = isMuted;
+              })
+              .catch(() => {
+                // Extremely rare with muted — keep muted and retry
+                videoElement.muted = true;
+                setIsMuted(true);
+                videoElement.play().catch(() => {});
+              });
+          } else {
+            // Old browsers without promise — apply preference directly
+            videoElement.muted = isMuted;
           }
         };
         // Wait for enough data before playing

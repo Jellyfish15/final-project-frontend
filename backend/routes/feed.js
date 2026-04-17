@@ -201,8 +201,14 @@ router.get("/", optionalAuth, async (req, res) => {
       YouTubeVideo.find(ytQuery).sort({ cachedAt: -1 }).limit(300).lean(),
     ]);
 
+    // Filter out uploaded videos with broken/local URLs (e.g. uploaded before
+    // Cloudinary fix was deployed — the local files no longer exist on Render).
+    const validUploaded = uploadedVideos.filter(
+      (v) => v.videoUrl && v.videoUrl.startsWith("http"),
+    );
+
     // Normalise
-    const normalizedUploaded = uploadedVideos.map(normalizeUploadedVideo);
+    const normalizedUploaded = validUploaded.map(normalizeUploadedVideo);
     const normalizedYT = youtubeVideos.map(normalizeYouTubeVideo);
 
     // Score everything
