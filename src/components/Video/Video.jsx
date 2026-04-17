@@ -384,7 +384,7 @@ const Video = ({ onOpenLogin, onOpenRegister }) => {
                       setVideoError(true);
                       // Auto-skip broken videos instead of requiring manual tap
                       setTimeout(() => scrollToVideo("next"), 500);
-                    }}}
+                    }}
                   />
 
                   {/* Fallback when video file fails to load (e.g. server restart wiped files) */}
