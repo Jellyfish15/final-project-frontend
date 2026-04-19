@@ -246,9 +246,24 @@ router.post(
               cleanupErr.message,
             );
           }
-          // Don't delete the local file — fall through to local storage path
-          // so the upload isn't lost. On Render, local storage is ephemeral
-          // (cleared on redeploy) but still works for the current session.
+
+          // On Render, local disk is ephemeral — a local-only video will break
+          // after the next deploy.  Return an error so the user knows to retry.
+          if (process.env.RENDER) {
+            // Clean up the local file since we can't use it reliably
+            try {
+              if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            } catch (_) {}
+
+            return res.status(500).json({
+              success: false,
+              message:
+                "Video upload to cloud storage failed. Please try again or use a smaller file. Error: " +
+                cloudErr.message,
+            });
+          }
+
+          // Local dev — fall through to local storage path
           console.log("[Upload] Falling back to local storage path");
         }
       }

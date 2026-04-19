@@ -26,7 +26,9 @@ router.get("/feed", optionalAuth, async (req, res) => {
     );
 
     // Format videos for response
-    const formattedVideos = videos.map((video) => ({
+    const formattedVideos = videos
+      .filter((video) => !video.videoUrl || video.videoUrl.startsWith("http"))
+      .map((video) => ({
       id: video._id || video.id,
       title: video.title,
       description: video.description,
