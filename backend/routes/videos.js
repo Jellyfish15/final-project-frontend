@@ -29,33 +29,35 @@ router.get("/feed", optionalAuth, async (req, res) => {
     const formattedVideos = videos
       .filter((video) => !video.videoUrl || video.videoUrl.startsWith("http"))
       .map((video) => ({
-      id: video._id || video.id,
-      title: video.title,
-      description: video.description,
-      videoUrl: video.videoUrl,
-      thumbnailUrl: video.thumbnailUrl,
-      duration: video.duration,
-      category: video.category,
-      tags: video.tags,
-      creator: video.creatorInfo || {
-        username: video.creatorDetails?.[0]?.username || "unknown",
-        displayName:
-          video.creatorDetails?.[0]?.displayName || "Unknown Creator",
-        avatar:
-          video.creatorDetails?.[0]?.avatar ||
-          "https://via.placeholder.com/40x40?text=U",
-        isVerified: video.creatorDetails?.[0]?.isVerified || false,
-      },
-      views: video.views,
-      likes: video.likes?.length || 0,
-      comments: video.comments?.length || 0,
-      shares: video.shares,
-      engagementRate: video.engagementRate,
-      publishedAt: video.publishedAt,
-      isLiked: req.user
-        ? video.likes?.some((like) => like.user.toString() === req.user.userId)
-        : false,
-    }));
+        id: video._id || video.id,
+        title: video.title,
+        description: video.description,
+        videoUrl: video.videoUrl,
+        thumbnailUrl: video.thumbnailUrl,
+        duration: video.duration,
+        category: video.category,
+        tags: video.tags,
+        creator: video.creatorInfo || {
+          username: video.creatorDetails?.[0]?.username || "unknown",
+          displayName:
+            video.creatorDetails?.[0]?.displayName || "Unknown Creator",
+          avatar:
+            video.creatorDetails?.[0]?.avatar ||
+            "https://via.placeholder.com/40x40?text=U",
+          isVerified: video.creatorDetails?.[0]?.isVerified || false,
+        },
+        views: video.views,
+        likes: video.likes?.length || 0,
+        comments: video.comments?.length || 0,
+        shares: video.shares,
+        engagementRate: video.engagementRate,
+        publishedAt: video.publishedAt,
+        isLiked: req.user
+          ? video.likes?.some(
+              (like) => like.user.toString() === req.user.userId,
+            )
+          : false,
+      }));
 
     res.json({
       success: true,

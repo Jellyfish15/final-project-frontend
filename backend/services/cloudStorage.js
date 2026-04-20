@@ -92,6 +92,26 @@ function getVideoStorage() {
 
 // Upload a local file to Cloudinary (returns { secure_url, public_id, bytes })
 // Uses chunked upload for files > 6MB for reliability on slow connections
+// Poll Cloudinary until a pending resource is fully processed
+async function waitForCloudinaryResource(publicId, resourceType = "video", maxAttempts = 30, intervalMs = 3000) {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const resource = await cloudinary.api.resource(publicId, {
+        resource_type: resourceType,
+      });
+      if (resource && resource.secure_url) {
+        console.log(`[Cloudinary] Resource ready after ${i + 1} poll(s)`);
+        return resource;
+      }
+    } catch (err) {
+      // Resource may not be queryable yet — keep polling
+      console.log(`[Cloudinary] Poll ${i + 1}/${maxAttempts}: not ready yet (${err.message})`);
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error(`Cloudinary resource ${publicId} did not become ready after ${maxAttempts} attempts`);
+}
+
 function uploadToCloudinary(filePath, options = {}) {
   const fileSize = fs.statSync(filePath).size;
   const useChunked = fileSize > 6 * 1024 * 1024; // 6MB threshold
@@ -104,8 +124,27 @@ function uploadToCloudinary(filePath, options = {}) {
       ...options,
     };
 
-    const handleResult = (error, result) => {
+    const handleResult = async (error, result) => {
       if (error) return reject(error);
+
+      // Cloudinary may return a "pending" status for large chunked uploads
+      // before the resource is fully processed. Poll until it's ready.
+      if (result && result.public_id && result.status === "pending" && !result.secure_url) {
+        console.log(
+          `[Cloudinary] Upload accepted but pending (public_id: ${result.public_id}). Polling for completion...`,
+        );
+        try {
+          const ready = await waitForCloudinaryResource(
+            result.public_id,
+            uploadOptions.resource_type || "video",
+          );
+          return resolve(ready);
+        } catch (pollErr) {
+          pollErr._cloudinaryPublicId = result.public_id;
+          return reject(pollErr);
+        }
+      }
+
       if (!result || !result.secure_url) {
         const err = new Error(
           "Cloudinary returned an invalid response (no secure_url). Result: " +
